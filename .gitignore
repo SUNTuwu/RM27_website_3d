@@ -1,0 +1,23 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Local scratch space and generated artifacts
+tmp/
+output/
+tmp_*.py
+.test/
+playwright-report/
+test-results/
+coverage/
+
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+
+# Logs
+*.log

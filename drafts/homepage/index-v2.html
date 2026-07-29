@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENTERPRIZE · 香港科技大学 RoboMaster 战队 | RM2027 招新 · 新舰起航</title>
+<meta name="description" content="香港科技大学 RoboMaster 机甲大师战队 ENTERPRIZE RM2027 赛季招新。国际赛区四连冠，机械/硬件/电控/算法四大部门招新，零基础友好。新舰起航，勇闯前人未至之境。">
+<style>
+:root{
+  --bg:#04060e; --bg2:#0a0f1e; --card:rgba(140,180,220,.05); --line:rgba(120,180,220,.14);
+  --cyan:#46b8c8; --cyan2:#5ee6f5; --gold:#f5a623; --gold2:#ffd166;
+  --pink:#ec4899; --green:#10b981; --indigo:#818cf8;
+  --txt:#e8edf7; --dim:#8ea0c0;
+  --mono:ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:auto}
+body{background:var(--bg);color:var(--txt);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;overflow-x:hidden}
+a{color:var(--cyan2);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:rgba(70,184,200,.4)}
+
+/* ===== 深空画布与星云层 ===== */
+#warp{position:fixed;inset:0;z-index:0;pointer-events:none}
+#nebula{position:fixed;inset:0;z-index:-1;pointer-events:none;transition:opacity 1s;
+  background:
+    radial-gradient(1100px 700px at 82% -10%, rgba(70,184,200,.13), transparent 60%),
+    radial-gradient(900px 600px at 5% 110%, rgba(245,166,35,.08), transparent 60%),
+    radial-gradient(700px 500px at 50% 50%, rgba(99,102,241,.05), transparent 70%),
+    var(--bg)}
+#scanlines{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(255,255,255,.5) 2px 3px)}
+#flash{position:fixed;inset:0;z-index:200;background:#dff8ff;opacity:0;pointer-events:none}
+
+main{position:relative;z-index:1}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+section{padding:110px 0;position:relative}
+
+/* ===== 章节标题（航点风格） ===== */
+.sec-head{margin-bottom:44px}
+.sec-head .wp{font-family:var(--mono);font-size:12px;letter-spacing:4px;color:var(--cyan);opacity:.85;margin-bottom:10px}
+.sec-head .wp::before{content:"◈ WAYPOINT "}
+.sec-head h2{font-size:clamp(28px,4.5vw,40px);letter-spacing:3px;font-weight:800;
+  text-shadow:0 0 30px rgba(70,184,200,.35)}
+.sec-head .en{color:var(--dim);font-size:12.5px;letter-spacing:4px;text-transform:uppercase;margin-top:4px;font-family:var(--mono)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px;backdrop-filter:blur(8px);
+  transition:transform .3s,border-color .3s,box-shadow .3s}
+.card:hover{transform:translateY(-4px);border-color:rgba(94,230,245,.5);box-shadow:0 10px 44px rgba(70,184,200,.14)}
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.hl{color:var(--gold);font-weight:700}
+.cy{color:var(--cyan2);font-weight:700}
+
+/* ===== 顶栏 ===== */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,6,14,.72);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:2.5px;font-size:16px;color:var(--txt)}
+.logo img{width:32px;height:32px;border-radius:8px}
+nav .links{display:flex;gap:24px;font-size:13.5px;align-items:center}
+nav .links a{color:var(--dim);letter-spacing:1px}
+nav .links a:hover{color:var(--cyan2);text-decoration:none}
+.join-btn{background:linear-gradient(90deg,var(--cyan),#2b8fa0);color:#031018 !important;font-weight:700;
+  padding:7px 18px;border-radius:99px;box-shadow:0 0 18px rgba(70,184,200,.35)}
+@media(max-width:860px){nav .links a:not(.join-btn){display:none}}
+
+/* ===== 侧边航点导航 + 速度表 ===== */
+#waypoints{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:90;display:flex;flex-direction:column;gap:18px}
+#waypoints a{display:flex;align-items:center;gap:10px;flex-direction:row-reverse;color:var(--dim);font-size:11px;
+  letter-spacing:2px;font-family:var(--mono);opacity:.55;transition:opacity .3s}
+#waypoints a:hover,#waypoints a.act{opacity:1;color:var(--cyan2);text-decoration:none}
+#waypoints .dot{width:9px;height:9px;border-radius:50%;border:1px solid currentColor;flex:none;transition:background .3s,box-shadow .3s}
+#waypoints a.act .dot{background:var(--cyan2);box-shadow:0 0 10px var(--cyan2)}
+#waypoints a span{white-space:nowrap}
+@media(max-width:1100px){#waypoints{display:none}}
+#hud-vel{position:fixed;left:22px;bottom:18px;z-index:90;font-family:var(--mono);font-size:11px;letter-spacing:2px;
+  color:var(--cyan);opacity:.8;pointer-events:none}
+#hud-vel b{color:var(--gold2);font-size:15px}
+#hud-vel .bar{display:inline-block;width:90px;height:5px;background:rgba(120,180,220,.15);border-radius:3px;margin-left:10px;vertical-align:middle;overflow:hidden}
+#hud-vel .bar i{display:block;height:100%;width:8%;background:linear-gradient(90deg,var(--cyan),var(--gold2));border-radius:3px;transition:width .2s}
+@media(max-width:640px){#hud-vel{display:none}}
+
+/* ===== S0 深空 HERO ===== */
+.hero{min-height:100vh;display:flex;align-items:center;padding:130px 0 90px;position:relative}
+.hero-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:56px;align-items:center}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}}
+.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--cyan);color:var(--cyan2);
+  padding:5px 16px;border-radius:99px;font-size:12.5px;letter-spacing:3px;margin-bottom:26px;font-family:var(--mono)}
+.badge .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.hero h1{font-size:min(78px,9.5vw);font-weight:900;letter-spacing:5px;line-height:1.08;
+  background:linear-gradient(92deg,#fff 25%,var(--cyan2) 75%,#2b8fa0);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 26px rgba(70,184,200,.35))}
+.hero .trek{color:var(--dim);font-size:14px;letter-spacing:2px;margin-top:14px;font-family:var(--mono)}
+.hero .theme{font-size:clamp(22px,3vw,28px);color:var(--gold2);letter-spacing:10px;margin-top:24px;font-weight:700;
+  text-shadow:0 0 24px rgba(245,166,35,.4)}
+.hero p.lead{margin-top:18px;color:#c0cce2;font-size:16px;max-width:560px}
+.cta{display:flex;gap:16px;margin-top:36px;flex-wrap:wrap}
+.btn{padding:13px 30px;border-radius:99px;font-weight:700;font-size:15px;letter-spacing:1.5px;transition:transform .2s,box-shadow .2s}
+.btn:hover{text-decoration:none;transform:translateY(-2px)}
+.btn-p{background:linear-gradient(90deg,var(--cyan),#2b8fa0);color:#031018;box-shadow:0 6px 28px rgba(70,184,200,.4)}
+.btn-o{border:1px solid var(--cyan);color:var(--cyan2)}
+.stats{display:flex;gap:44px;margin-top:56px;flex-wrap:wrap}
+.stat b{display:block;font-size:36px;color:var(--cyan2);font-weight:800;font-family:var(--mono);text-shadow:0 0 18px rgba(94,230,245,.5)}
+.stat span{color:var(--dim);font-size:13px}
+.hero-logo{text-align:center;position:relative}
+.hero-logo img{width:min(330px,68vw);border-radius:50%;border:1px solid rgba(120,180,220,.3);
+  box-shadow:0 0 80px rgba(70,184,200,.3),0 0 160px rgba(70,184,200,.12);background:#fff;
+  animation:hover-float 6s ease-in-out infinite}
+@keyframes hover-float{50%{transform:translateY(-14px)}}
+.scroll-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);color:var(--dim);
+  font-family:var(--mono);font-size:11px;letter-spacing:4px;animation:hint 2.2s ease-in-out infinite}
+@keyframes hint{50%{transform:translate(-50%,8px);opacity:.4}}
+
+/* ===== 视频 ===== */
+.video-box{border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 14px 60px rgba(0,0,0,.6)}
+.video-box iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
+.note{color:#5d6f8f;font-size:12.5px;margin-top:12px}
+
+/* ===== 战绩：星图时间线 ===== */
+.tl{position:relative;margin-top:14px;padding-left:34px}
+.tl::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(180deg,var(--cyan),rgba(70,184,200,.15));box-shadow:0 0 12px rgba(70,184,200,.5)}
+.tl-item{position:relative;padding:16px 0 16px 14px}
+.tl-item::before{content:"";position:absolute;left:-30px;top:26px;width:12px;height:12px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--cyan2);box-shadow:0 0 14px var(--cyan2)}
+.tl-item.gold::before{border-color:var(--gold);box-shadow:0 0 14px var(--gold)}
+.tl-item .yr{font-family:var(--mono);color:var(--cyan2);font-weight:700;font-size:15px;letter-spacing:2px}
+.tl-item.gold .yr{color:var(--gold2)}
+.tl-item p{color:#c0cce2;font-size:14.5px;margin-top:2px}
+.metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:52px}
+.metric{text-align:center;padding:24px 14px}
+.metric .num{font-size:30px;color:var(--gold2);font-weight:800;font-family:var(--mono);text-shadow:0 0 18px rgba(245,166,35,.45)}
+.metric p{color:var(--dim);font-size:13.5px;margin-top:6px}
+
+/* ===== 四颗星球 ===== */
+.planets{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:26px}
+.planet-card{text-align:center;padding-top:10px}
+.planet{width:130px;height:130px;margin:6px auto 20px;border-radius:50%;position:relative;animation:hover-float 7s ease-in-out infinite;
+  transition:transform .4s}
+.planet-card:nth-child(2) .planet{animation-delay:-1.8s}
+.planet-card:nth-child(3) .planet{animation-delay:-3.4s}
+.planet-card:nth-child(4) .planet{animation-delay:-5s}
+.planet::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:1px dashed rgba(140,200,220,.25);animation:orbit 26s linear infinite}
+@keyframes orbit{to{transform:rotate(360deg)}}
+.planet-card:hover .planet{transform:scale(1.1)}
+.p-mech{background:radial-gradient(circle at 32% 30%,#ffe3ae,#f5a623 45%,#7a4a08 90%);box-shadow:0 0 44px rgba(245,166,35,.5)}
+.p-hw{background:radial-gradient(circle at 32% 30%,#a7f3d0,#10b981 45%,#04462e 90%);box-shadow:0 0 44px rgba(16,185,129,.5)}
+.p-ec{background:radial-gradient(circle at 32% 30%,#fbcfe8,#ec4899 45%,#6d0f42 90%);box-shadow:0 0 44px rgba(236,72,153,.5)}
+.p-alg{background:radial-gradient(circle at 32% 30%,#baf6fd,#46b8c8 45%,#0d4a55 90%);box-shadow:0 0 44px rgba(70,184,200,.55)}
+.planet-card h3{font-size:20px;margin-bottom:2px}
+.planet-card .en2{font-size:11px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;font-family:var(--mono)}
+.planet-card ul{margin:16px 0 0 18px;font-size:14px;color:#c0cce2;text-align:left}
+.planet-card li{margin:5px 0}
+.planet-card .req{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--dim);text-align:left}
+
+/* ===== 舰载科技 HUD ===== */
+.hud{position:relative;overflow:hidden}
+.hud::before,.hud::after{content:"";position:absolute;width:16px;height:16px;border-color:var(--cyan);border-style:solid;opacity:.7}
+.hud::before{top:10px;left:10px;border-width:2px 0 0 2px}
+.hud::after{bottom:10px;right:10px;border-width:0 2px 2px 0}
+.hud .hud-tag{position:absolute;top:12px;right:16px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);opacity:.65}
+.hud h3{font-size:19px;margin-bottom:8px}
+.hud p{color:var(--dim);font-size:14px}
+.tag{display:inline-block;background:rgba(70,184,200,.12);color:var(--cyan2);border:1px solid rgba(70,184,200,.25);
+  border-radius:6px;padding:1px 10px;font-size:12px;margin:10px 4px 0 0;font-family:var(--mono)}
+.tech img{width:100%;border-radius:10px;margin-top:14px;border:1px solid var(--line)}
+.readout{font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:1px;margin-top:10px;opacity:.85}
+.readout b{color:var(--gold2)}
+
+/* ===== 开源墙 ===== */
+.repo{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:15px 18px;
+  background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:14px;transition:border-color .3s,transform .3s}
+.repo:hover{border-color:rgba(94,230,245,.5);transform:translateX(4px);text-decoration:none}
+.repo .nm{color:var(--txt);font-weight:600;font-family:var(--mono);font-size:13.5px}
+.repo .ds{color:var(--dim);font-size:13px}
+.star{color:var(--gold2);white-space:nowrap;font-weight:700;font-family:var(--mono)}
+
+/* ===== 入队之路 ===== */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;counter-reset:step}
+.step{position:relative;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.step::before{counter-increment:step;content:"0" counter(step);font-size:32px;font-weight:900;font-family:var(--mono);
+  color:transparent;-webkit-text-stroke:1px rgba(94,230,245,.55);letter-spacing:2px}
+.step h4{margin:10px 0 6px;color:var(--cyan2);font-size:16.5px}
+.step p{font-size:13.5px;color:var(--dim)}
+
+/* ===== FAQ ===== */
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin-bottom:12px}
+summary{cursor:pointer;font-weight:700;font-size:15.5px}
+summary::marker{color:var(--cyan)}
+details p{margin-top:10px;color:#c0cce2;font-size:14px}
+
+/* ===== 跃迁黑洞 ===== */
+#join{overflow:hidden}
+.bh-stage{position:relative;height:460px;display:flex;align-items:center;justify-content:center;margin:10px 0 30px}
+.bh{position:relative;width:300px;height:300px;flex:none}
+.bh .disk{position:absolute;inset:-38px;border-radius:50%;filter:blur(6px);
+  background:conic-gradient(from 0deg,transparent 0%,rgba(94,230,245,.05) 12%,rgba(70,184,200,.85) 30%,rgba(245,166,35,.9) 46%,rgba(255,220,150,.35) 55%,transparent 68%,rgba(70,184,200,.25) 84%,transparent 100%);
+  animation:bhspin 7s linear infinite;-webkit-mask:radial-gradient(circle,transparent 31%,#000 34%);mask:radial-gradient(circle,transparent 31%,#000 34%)}
+.bh .disk2{position:absolute;inset:-20px;border-radius:50%;filter:blur(12px);opacity:.7;
+  background:conic-gradient(from 180deg,transparent 10%,rgba(94,230,245,.5) 35%,transparent 60%,rgba(245,166,35,.4) 82%,transparent 100%);
+  animation:bhspin 11s linear infinite reverse;-webkit-mask:radial-gradient(circle,transparent 36%,#000 40%);mask:radial-gradient(circle,transparent 36%,#000 40%)}
+@keyframes bhspin{to{transform:rotate(360deg)}}
+.bh .hole{position:absolute;inset:0;border-radius:50%;background:#000;
+  box-shadow:0 0 60px 18px rgba(70,184,200,.28),0 0 140px 40px rgba(70,184,200,.12),inset 0 0 40px #000}
+.bh .photon{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(220,250,255,.85);filter:blur(1.5px);
+  box-shadow:0 0 26px rgba(94,230,245,.9);animation:photon 3s ease-in-out infinite}
+@keyframes photon{50%{opacity:.55;transform:scale(1.02)}}
+.bh-cta{position:absolute;z-index:2;text-align:center}
+.bh-cta .jump{font-size:20px;font-weight:800;letter-spacing:6px;color:#fff;text-shadow:0 0 20px rgba(94,230,245,.9);
+  background:rgba(4,6,14,.55);border:1px solid rgba(94,230,245,.6);border-radius:99px;padding:14px 38px;cursor:pointer;
+  backdrop-filter:blur(4px);transition:box-shadow .3s,transform .3s;display:inline-block}
+.bh-cta .jump:hover{box-shadow:0 0 40px rgba(94,230,245,.7);transform:scale(1.05);text-decoration:none}
+.bh-cta .sub{margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--dim)}
+.chan{display:flex;flex-direction:column;gap:6px}
+.chan b{color:var(--cyan2);font-size:14.5px}
+.chan span{color:#c0cce2;font-size:14px;word-break:break-all}
+
+footer{padding:44px 0 60px;color:var(--dim);font-size:13px;text-align:center;border-top:1px solid var(--line);position:relative;z-index:1}
+
+/* ===== 动效基类 ===== */
+.reveal{opacity:0;transform:translateY(30px)}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<div id="nebula"></div>
+<canvas id="warp"></canvas>
+<div id="scanlines"></div>
+<div id="flash"></div>
+
+<nav>
+  <div class="wrap">
+    <div class="logo"><img src="assets/logo.png" alt="ENTERPRIZE logo">ENTERPRIZE</div>
+    <div class="links">
+      <a href="#about">点火</a><a href="#honors">巡航</a><a href="#depts">星球</a>
+      <a href="#tech">科技</a><a href="#oss">开源</a><a href="#path">航线</a><a href="#faq">FAQ</a>
+      <a class="join-btn" href="#join">跃迁 · 加入</a>
+    </div>
+  </div>
+</nav>
+
+<div id="waypoints">
+  <a href="#hero" data-wp="hero"><span>深空 DEEP SPACE</span><i class="dot"></i></a>
+  <a href="#about" data-wp="about"><span>点火 IGNITION</span><i class="dot"></i></a>
+  <a href="#honors" data-wp="honors"><span>巡航 CRUISE</span><i class="dot"></i></a>
+  <a href="#depts" data-wp="depts"><span>星球 PLANETS</span><i class="dot"></i></a>
+  <a href="#tech" data-wp="tech"><span>科技 SYSTEMS</span><i class="dot"></i></a>
+  <a href="#join" data-wp="join"><span>跃迁 THE JUMP</span><i class="dot"></i></a>
+</div>
+<div id="hud-vel">WARP <b id="vel-val">0.0</b> c <span class="bar"><i id="vel-bar"></i></span></div>
+
+<main>
+<!-- ================= S0 深空 ================= -->
+<header class="hero" id="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="badge"><span class="dot"></span>RM2027 RECRUITMENT · STANDBY</div>
+      <h1>ENTERPRIZE</h1>
+      <div class="trek">HKUST ROBOMASTER TEAM // EST. 2015</div>
+      <div class="theme">新 舰 起 航</div>
+      <p class="lead">队名来自《星际迷航》的星舰 Enterprise——我们要做的，是驾驶自己的战舰，勇闯前人未至之境。在这里，你将亲手设计、制造并驾驶真正的机器人，站上全国最大的大学生机器人赛场。</p>
+      <div class="cta">
+        <a class="btn btn-p" href="#join">🚀 点火起航</a>
+        <a class="btn btn-o" href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">▶ B站看我们的视频</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><b data-n="4">0</b><span>国际赛区冠军（2016–2019 四连冠）</span></div>
+        <div class="stat"><b data-n="34">0</b><span>GitHub 开源仓库</span></div>
+        <div class="stat"><b data-n="480">0</b><span>开源项目累计 Stars</span></div>
+        <div class="stat"><b data-n="10">0</b><span>年队史 · 最老牌战队之一</span></div>
+      </div>
+    </div>
+    <div class="hero-logo"><img src="assets/logo.png" alt="ENTERPRIZE 战队队徽"></div>
+  </div>
+  <div class="scroll-hint">▼ SCROLL TO IGNITE ▼</div>
+</header>
+
+<!-- ================= S1 点火 · 我们是谁 ================= -->
+<section id="about">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="wp">01 // IGNITION</div>
+      <h2>点火 · 我们是谁</h2>
+      <div class="en">Who We Are</div>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal"><h3 style="color:var(--cyan2)">🛰 最老牌</h3><p>成立于 2015 年，全球最早参加 RoboMaster 机甲大师赛的战队之一，代表香港科技大学征战十年。</p></div>
+      <div class="card reveal"><h3 style="color:var(--gold2)">🏆 最能打</h3><p>国际赛区四连冠（2016–2019），2019 全球总决赛 12 强；2025 高校联盟赛浙江站 3V3 冠军、超级对抗赛全国赛二等奖。</p></div>
+      <div class="card reveal"><h3 style="color:var(--green)">🔓 最开放</h3><p>RM 社区最完整的开源体系之一：34+ GitHub 仓库、30+ 篇论坛开源帖、论坛阅读 2.1 万+，超级电容方案被全圈采用。</p></div>
+      <div class="card reveal"><h3 style="color:var(--pink)">🌍 最国际</h3><p>队员来自不同国家与地区，被官方称为"万国博览队伍"，中英双语工作环境，地处香港连接全球赛场。</p></div>
+      <div class="card reveal"><h3 style="color:var(--indigo)">🏫 学校背书</h3><p>HKUST 工学院 Dream Team Hub 四大学生战队之一，以学分项目课程运行，获学院资源支持。</p></div>
+      <div class="card reveal"><h3 style="color:var(--cyan2)">🤝 老带新</h3><p>系统化新生培训（B站 20+ 期公开教程），现役队员一对一引导，零基础也能成长为独当一面的工程师。</p></div>
+    </div>
+
+    <div style="margin-top:56px" class="reveal">
+      <div class="video-box">
+        <iframe src="https://player.bilibili.com/player.html?bvid=BV1rMaVzTEh1&page=1&high_quality=1&danmaku=0" scrolling="no" allowfullscreen title="港科ENTERPRIZE2026招新｜新舰起航" loading="lazy"></iframe>
+      </div>
+      <p class="note">招新宣传片：《港科ENTERPRIZE2026招新｜新舰起航》 · B站 @港科大ENTERPRIZE战队（RM2027 宣传片预计 2026 年 8 月发布）</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= S2 巡航 · 战绩 ================= -->
+<section id="honors">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="wp">02 // CRUISE</div>
+      <h2>曲速巡航 · 十年战绩</h2>
+      <div class="en">Honors · 2015 – 2025</div>
+    </div>
+    <div class="metric-row">
+      <div class="card metric reveal"><div class="num">×4</div><p>国际赛区冠军<br>2016–2019 四连冠</p></div>
+      <div class="card metric reveal"><div class="num">Top 12</div><p>2019 全球总决赛<br>（173 支队伍）</p></div>
+      <div class="card metric reveal"><div class="num">冠军</div><p>2025 高校联盟赛<br>浙江站 3V3 对抗赛</p></div>
+      <div class="card metric reveal"><div class="num">No.1</div><p>2025 雷达局均易伤时间<br>1618.3s 全国第一</p></div>
+    </div>
+    <div class="tl">
+      <div class="tl-item gold reveal"><div class="yr">2016 – 2019</div><p>RoboMaster 国际赛区 <span class="hl">四连冠</span>——属于 ENTERPRIZE 的黄金时代</p></div>
+      <div class="tl-item reveal"><div class="yr">2018</div><p>国际赛区冠军 · 全球总决赛 32 强 · 超级电容方案首次开源，改变全圈供电设计</p></div>
+      <div class="tl-item gold reveal"><div class="yr">2019</div><p>国际赛区冠军 · 全球总决赛 <span class="hl">12 强</span>（173 队，队史最佳）</p></div>
+      <div class="tl-item reveal"><div class="yr">2021</div><p>RMUC 中期进度评估 203 分，<span class="hl">港澳台及海外队伍第 1 名</span></p></div>
+      <div class="tl-item reveal"><div class="yr">2024</div><p>高校联盟赛（广东站）3V3 对抗赛 <span class="hl">一等奖</span> · 超级电容控制器获赛季开源奖三等奖</p></div>
+      <div class="tl-item gold reveal"><div class="yr">2025</div><p>高校联盟赛（浙江站）3V3 <span class="hl">冠军</span> · 超级对抗赛全国赛 <span class="hl">二等奖</span> · 雷达局均易伤 1618.3s <span class="hl">全国第一</span> · 步兵局均总伤害 Top1 · 工程四级矿兑换速度 Top1 · 入选全明星赛 · RM AWARD 硬件方向提名</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= S3 星球 · 四大部门 ================= -->
+<section id="depts">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="wp">03 // PLANETS</div>
+      <h2>四颗星球 · 选择你的航向</h2>
+      <div class="en">Four Divisions · Find Your Role</div>
+    </div>
+    <div class="planets">
+      <div class="card planet-card reveal">
+        <div class="planet p-mech"></div>
+        <h3 style="color:var(--gold2)">机械部</h3><div class="en2">Mechanical</div>
+        <ul>
+          <li>负责英雄、工程、步兵等机器人的机械结构设计：底盘、云台、机械臂、传动与轴系</li>
+          <li>从立项、采购到设计、迭代的完整项目流程</li>
+          <li>你将掌握：SolidWorks 三维建模、3D 打印、CNC 加工、装配与测试</li>
+        </ul>
+        <div class="req">希望你：喜欢动手造物，对结构有直觉；零基础可，部内有自学路线与老队员带教。</div>
+      </div>
+      <div class="card planet-card reveal">
+        <div class="planet p-hw"></div>
+        <h3 style="color:var(--green)">硬件部</h3><div class="en2">Hardware</div>
+        <ul>
+          <li>设计、构建、维护全队的电子系统与供电网络</li>
+          <li>核心模块：机器人主控板、超级电容功率控制板、无线充电接收系统</li>
+          <li>你将掌握：元器件特性、KiCad PCB 设计、电源拓扑、硬件调试与维护</li>
+        </ul>
+        <div class="req">希望你：对电路世界好奇，细致耐心；提供从基础到进阶的完整自学建议。</div>
+      </div>
+      <div class="card planet-card reveal">
+        <div class="planet p-ec"></div>
+        <h3 style="color:var(--pink)">电控部</h3><div class="en2">Embedded Control</div>
+        <ul>
+          <li>开发 STM32 驱动程序，设计控制与信号处理逻辑</li>
+          <li>整机调试与维护，追求"赛场级"稳定性</li>
+          <li>你将掌握：C/C++、PID/LQR 控制、CAN 总线与 DJI 电机、滤波器、FreeRTOS</li>
+        </ul>
+        <div class="req">希望你：有热情、责任心强、能独立思考；零基础建议先自学 C++ 与 PID 控制（部内有教程）。</div>
+      </div>
+      <div class="card planet-card reveal">
+        <div class="planet p-alg"></div>
+        <h3 style="color:var(--cyan2)">算法部</h3><div class="en2">Algorithm & Vision</div>
+        <ul>
+          <li>处理相机、激光雷达等传感器数据，让机器人拥有"眼睛"</li>
+          <li>自动瞄准（装甲板识别跟踪）、智能导航、全自动哨兵、雷达站</li>
+          <li>你将掌握：OpenCV、YOLO 深度学习、卡尔曼滤波、TensorRT 部署、ROS</li>
+        </ul>
+        <div class="req">希望你：对 AI 与视觉着迷，愿意读论文写代码；代表作：局均易伤 1618.3s 全国第一的雷达算法。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= S4 舰载科技 ================= -->
+<section id="tech">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="wp">04 // SYSTEMS</div>
+      <h2>舰载科技 · 你将亲手打造</h2>
+      <div class="en">What You Will Build</div>
+    </div>
+    <div class="grid g2">
+      <div class="card hud tech reveal">
+        <span class="hud-tag">SYS.PWR-01</span>
+        <h3 style="color:var(--gold2)">⚡ 超级电容功率系统</h3>
+        <p>战队招牌技术，2018 年首次开源、让超级电容正式走上 RM 赛场。八年间每赛季迭代：RM2024 完全开源获赛季开源奖三等奖；RM2025 电容组 + 无线充电系统获 RM AWARD 候选。全赛季零超功率扣血、稳定飞坡。</p>
+        <span class="tag">电源拓扑</span><span class="tag">BUCK-BOOST</span><span class="tag">KiCad</span><span class="tag">无线充电</span>
+        <div class="readout">STATUS: <b>ONLINE</b> · OVERPOWER PENALTY: <b>0</b></div>
+      </div>
+      <div class="card hud tech reveal">
+        <span class="hud-tag">SYS.VIS-02</span>
+        <h3 style="color:var(--cyan2)">📡 单目雷达站视觉算法</h3>
+        <p>2025 赛季局均易伤时间 1618.3s、单局最高 1912.1s，<b class="hl">全国赛+复活赛双第一</b>。YOLOv12 三级检测 + 射线投射三维定位 + 匈牙利匹配追踪，数据集与代码全部 MIT 开源。</p>
+        <span class="tag">YOLOv12</span><span class="tag">3D 定位</span><span class="tag">多目标追踪</span><span class="tag">TensorRT</span>
+        <div class="readout">TRACKING: <b>1618.3s</b> AVG · RANK: <b>#1 NATIONAL</b></div>
+      </div>
+      <div class="card hud tech reveal">
+        <span class="hud-tag">SYS.MOB-03</span>
+        <h3 style="color:var(--pink)">🦿 串联轮腿 & 舵轮机器人</h3>
+        <p>RM2025 串联轮腿步兵（中心供弹构型）获 RoboMaster 官方专题报道；自研无 CNC / 全 CNC 舵轮方案与减速箱，轮式机械臂工程机器人实现 <b class="hl">5.8s 四级矿</b>兑换。</p>
+        <span class="tag">轮腿平衡</span><span class="tag">舵轮</span><span class="tag">机械臂</span><span class="tag">SolidWorks</span>
+        <div class="readout">MINERAL L4 EXCHANGE: <b>5.8s</b> · TOP 1</div>
+      </div>
+      <div class="card hud tech reveal">
+        <span class="hud-tag">SYS.ENG-04</span>
+        <h3 style="color:var(--green)">🤖 工程机器人装配算法（RM2026）</h3>
+        <p>面向新赛季能量单元装配任务（靠近、插入、拨动、翻转）的全流程方案：装配站视觉定位、接近规划、约束运动规划与仿真验证，数据集与权重在 Hugging Face 公开。</p>
+        <span class="tag">视觉定位</span><span class="tag">运动规划</span><span class="tag">仿真验证</span><span class="tag">Hugging Face</span>
+        <div class="readout">MISSION: <b>IN DEVELOPMENT</b> · SEASON: <b>RM2026</b></div>
+      </div>
+    </div>
+    <div class="card reveal" style="margin-top:20px">
+      <h3 style="color:var(--cyan2);margin-bottom:8px">雷达站系统框图（RM2025 开源）</h3>
+      <img src="assets/radar-teaser.png" alt="雷达站算法系统框图" loading="lazy">
+      <p class="note">图片来源：hkustenterprize/RM2025-Radar-Algorithm（MIT License）</p>
+    </div>
+
+    <!-- 开源墙 -->
+    <div id="oss" style="padding-top:90px">
+      <div class="sec-head reveal">
+        <div class="wp">04-B // OPEN SOURCE</div>
+        <h2>开源，是我们的传统</h2>
+        <div class="en">Open Source Since 2016</div>
+      </div>
+      <p style="max-width:760px;color:#c0cce2;margin-bottom:26px" class="reveal">从 2016 年起，我们把每一赛季的代码、硬件、机械图纸与培训资料全部开源。你的作品将被整个 RoboMaster 社区阅读、引用、点 Star——这是比简历更有说服力的工程师名片。</p>
+      <div class="grid g2">
+        <a class="repo reveal" href="https://github.com/hkustenterprize/RM2023-SuperCapacitor" target="_blank" rel="noopener"><span><span class="nm">RM2023-SuperCapacitor</span><br><span class="ds">数控超级电容方案 · GPL-3.0</span></span><span class="star">★ 80</span></a>
+        <a class="repo reveal" href="https://github.com/hkustenterprize/RM2024-PowerModule" target="_blank" rel="noopener"><span><span class="nm">RM2024-PowerModule</span><br><span class="ds">功率控制模块（舵轮/轮腿/全自动调参）· C++</span></span><span class="star">★ 75</span></a>
+        <a class="repo reveal" href="https://github.com/hkustenterprize/RM2024-SuperCapacitorController" target="_blank" rel="noopener"><span><span class="nm">RM2024-SuperCapacitorController</span><br><span class="ds">超级电容控制器软硬件完全开源 · 赛季开源奖三等奖</span></span><span class="star">★ 65</span></a>
+        <a class="repo reveal" href="https://github.com/hkustenterprize/RM2025-Radar-Algorithm" target="_blank" rel="noopener"><span><span class="nm">RM2025-Radar-Algorithm</span><br><span class="ds">单目雷达站视觉算法（含数据集）· MIT</span></span><span class="star">★ 62</span></a>
+        <a class="repo reveal" href="https://github.com/hkustenterprize/RM2025-Wireless-JLink" target="_blank" rel="noopener"><span><span class="nm">RM2025-Wireless-JLink</span><br><span class="ds">全志 V3S 无线 JLink 烧录器 · 成本约 30 元</span></span><span class="star">★ 25</span></a>
+        <a class="repo reveal" href="https://github.com/hkustenterprize/RM2026-Engineer-Assembly-Algorithm" target="_blank" rel="noopener"><span><span class="nm">RM2026-Engineer-Assembly-Algorithm</span><br><span class="ds">工程机器人装配算法（新赛季，在研）· Python</span></span><span class="star">★ 15</span></a>
+      </div>
+      <p style="margin-top:18px" class="reveal">还有更多：主控板、无线充电、手持装甲板、交换机、培训模板……尽在 <a href="https://github.com/hkustenterprize" target="_blank" rel="noopener">github.com/hkustenterprize</a> 与 <a href="https://bbs.robomaster.com/article/54254" target="_blank" rel="noopener">论坛开源汇总帖</a>（阅读 2.1 万+）。</p>
+    </div>
+
+    <!-- 培训 -->
+    <div id="training" style="padding-top:90px">
+      <div class="sec-head reveal">
+        <div class="wp">04-C // TRAINING</div>
+        <h2>系统化新生培训</h2>
+        <div class="en">Training Program</div>
+      </div>
+      <div class="grid g3">
+        <div class="card reveal"><h3 style="color:var(--pink)">📚 20+ 期公开教程</h3><p style="color:var(--dim);font-size:14px">Embedded（时钟/UART/CAN/PID/FreeRTOS/Git）、Mechanics（SolidWorks I–III、机械设计）、Hardware（KiCad/电源/原理图/Layout）三大方向全套视频教程，B站公开可查。</p></div>
+        <div class="card reveal"><h3 style="color:var(--cyan2)">🧭 老带新机制</h3><p style="color:var(--dim);font-size:14px">零基础友好：教程面向零基础设计，现役队员全程引导，历届不少非工科背景队员（商学院/理学院）也成长为骨干。</p></div>
+        <div class="card reveal"><h3 style="color:var(--gold2)">📖 培训资料开源</h3><p style="color:var(--dim);font-size:14px">新生培训资料连续多赛季对外开源（RM2022 硬件教程、2025/2026 赛季新生培训资料），帮助你的同时也帮助整个社区。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= S5 航线 · 入队之路 ================= -->
+<section id="path">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="wp">05 // FLIGHT PLAN</div>
+      <h2>入队航线</h2>
+      <div class="en">Your Path to ENTERPRIZE</div>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><h4>报名 & 面试</h4><p>RM2027 招新预计 2026 年 9–10 月开启（关注公众号第一时间获取报名表）。面试看热情与团队精神，不要求经验。</p></div>
+      <div class="step reveal"><h4>新生培训</h4><p>按部门方向参加系列 Tutorial（机械/硬件/电控/算法），老队员带教，快速上手工程基础。</p></div>
+      <div class="step reveal"><h4>RDC 校内赛</h4><p>参加机器人设计大赛（Robot Design Contest，约 11 月）：组队造两台机器人真实对抗——2023 年 180+ 人参赛、13 支队伍同场竞技。</p></div>
+      <div class="step reveal"><h4>正式入队</h4><p>通过最终面试，成为 ENTERPRIZE 正式队员，进入 RM2027 赛季备战：分区赛 → 全国赛，一路打到深圳。</p></div>
+    </div>
+    <p class="note">* 时间线为往年规律（招新 9–10 月、RDC 11 月、联盟赛次年 3–4 月、超级对抗赛 7–8 月），RM2027 具体安排以公众号通知为准。另设 Fast Track 通道：有嵌入式/系统/编程基础者可申请直接进入技术面试。</p>
+
+    <div style="padding-top:70px">
+      <div class="grid g3">
+        <div class="card reveal"><h3 style="color:var(--gold2)">🏅 Hall Points</h3><p style="color:var(--dim);font-size:14px">凭比赛成绩为队员争取 Hall Points（2025 赛季联盟赛冠军已为队员争取到）。</p></div>
+        <div class="card reveal"><h3 style="color:var(--cyan2)">💼 DJI 专属通道</h3><p style="color:var(--dim);font-size:14px">RoboMaster 队员专享大疆 DJI 招聘通道与 OpenDay 活动，先人一步接触行业。</p></div>
+        <div class="card reveal"><h3 style="color:var(--green)">🛠 硬核项目经历</h3><p style="color:var(--dim);font-size:14px">一年完整机器人产品研发闭环 + 开源署名的工程作品，实习/求职/申研的硬通货。</p></div>
+        <div class="card reveal"><h3 style="color:var(--pink)">🎓 前辈去向</h3><p style="color:var(--dim);font-size:14px">华为、大疆、商汤实习、CUHK PhD、本校直博……ENTERPRIZE 的履历被学术界与工业界双重认可。</p></div>
+        <div class="card reveal"><h3 style="color:var(--indigo)">🌏 国际队友</h3><p style="color:var(--dim);font-size:14px">与来自世界各地的队友并肩作战，中英双语环境，收获一群能熬夜也能夺冠的挚友。</p></div>
+        <div class="card reveal"><h3 style="color:var(--cyan2)">🚀 完整赛季体验</h3><p style="color:var(--dim);font-size:14px">从校内赛到全国赛，从设计图纸到赛场对抗，亲历"把想象变成钢铁"的全过程。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq" style="padding-top:40px">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="wp">05-B // SHIP'S LOG</div>
+      <h2>常见问题</h2>
+      <div class="en">FAQ</div>
+    </div>
+    <details class="reveal"><summary>零基础可以报名吗？</summary><p>完全可以。教程面向零基础设计，历届许多队员入队时没有任何机器人经验。我们更看重热情、责任心与自学能力。电控方向建议提前自学 C++ 与 PID 控制，其余部门均有完整带教路线。</p></details>
+    <details class="reveal"><summary>有专业或年级限制吗？</summary><p>不限专业、不限年级。工学院与 ISD 同学居多，但商学院、理学院的同学也曾入选并成为骨干。</p></details>
+    <details class="reveal"><summary>时间投入大吗？会影响学业吗？</summary><p>工作量"不可低估"——这是一支打全国赛的队伍。但往届队员成绩并未受显著影响，且过程可随时退出（We won't pressure anyone to stay）。你会学会比任何人都擅长时间管理。</p></details>
+    <details class="reveal"><summary>如何报名？</summary><p>招新报名表随公众号「HKUST ENTERPRIZE」招新推文发布（预计 2026 年 9–10 月）。建议现在就加入 QQ 群 581184202 或发邮件至 robomasterhkust@gmail.com 咨询，第一时间获取招新动态。</p></details>
+    <details class="reveal"><summary>我已经是高手，有快速通道吗？</summary><p>有。具备嵌入式（ELEC3300 或同等）、Linux 内核（COMP3511 或同等）或扎实 C/C++、Python 能力的同学可申请 Fast Track，直接进入技术面试。</p></details>
+  </div>
+</section>
+
+<!-- ================= S6 跃迁 · 加入我们 ================= -->
+<section id="join">
+  <div class="wrap">
+    <div class="sec-head reveal" style="text-align:center">
+      <div class="wp">06 // THE JUMP</div>
+      <h2>新舰起航，缺你不可</h2>
+      <div class="en">Join Us · RM2027</div>
+    </div>
+    <div class="bh-stage reveal">
+      <div class="bh">
+        <div class="disk"></div>
+        <div class="disk2"></div>
+        <div class="photon"></div>
+        <div class="hole"></div>
+      </div>
+      <div class="bh-cta">
+        <a class="jump" id="jump-btn">跃 入 其 中</a>
+        <div class="sub">ENGAGE WARP DRIVE // DESTINATION: ENTERPRIZE</div>
+      </div>
+    </div>
+    <p style="max-width:700px;margin:0 auto 34px;color:#c0cce2;text-align:center" class="reveal">
+      Space: the final frontier. 星舰 Enterprise 的下一个十年，由你来书写。<br>关注公众号获取报名表，或直接来群里聊聊。
+    </p>
+    <div class="grid g4">
+      <div class="card chan reveal"><b>📱 QQ 招新群</b><span>581184202</span></div>
+      <div class="card chan reveal"><b>📧 邮箱</b><span>robomasterhkust@gmail.com<br>robomaster@ust.hk</span></div>
+      <div class="card chan reveal"><b>💬 微信公众号</b><span>HKUST ENTERPRIZE<br>(gh_855d709c046e)</span></div>
+      <div class="card chan reveal"><b>📺 Bilibili</b><span><a href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">港科大ENTERPRIZE战队</a></span></div>
+      <div class="card chan reveal"><b>📸 Instagram</b><span><a href="https://www.instagram.com/hkust_enterprize_robomaster/" target="_blank" rel="noopener">@hkust_enterprize_robomaster</a></span></div>
+      <div class="card chan reveal"><b>🐙 GitHub</b><span><a href="https://github.com/hkustenterprize" target="_blank" rel="noopener">github.com/hkustenterprize</a></span></div>
+      <div class="card chan reveal"><b>💼 LinkedIn</b><span>HKUST ENTERPRIZE Team (RoboMaster)</span></div>
+      <div class="card chan reveal"><b>🏫 学校</b><span>HKUST 工学院 Dream Team Hub<br>综合系统与设计学部 (ISD)</span></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <b style="color:var(--cyan2)">ENTERPRIZE · HKUST RoboMaster Team</b> · EST. 2015<br>
+    新舰起航 · To boldly go where no team has gone before.
+    <p class="note">© 2026 HKUST RoboMaster Team ENTERPRIZE · 本页信息基于 2026-07 前公开资料整理，赛事安排以官方通知为准</p>
+  </div>
+</footer>
+
+<script src="assets/vendor/three.min.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/vendor/lenis.min.js"></script>
+<script>
+(function(){
+"use strict";
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var isMobile = window.innerWidth < 720;
+
+/* ============ HUD 速度表（须先于 initWarp 声明） ============ */
+var velVal = document.getElementById('vel-val'), velBar = document.getElementById('vel-bar');
+var lastHUD = 0;
+function updateHUD(w){
+  if (!velVal || !velBar) return;
+  var now = performance.now(); if (now - lastHUD < 120) return; lastHUD = now;
+  velVal.textContent = (w * 9.2).toFixed(1);
+  velBar.style.width = (6 + w * 94) + '%';
+}
+
+/* ============ 1. 曲速星场（Three.js 线段拉伸版） ============ */
+var warpSpeed = 0, targetSpeed = 0;   // 0 = 静止, 1 = 全速
+var boost = 0;                        // ScrollTrigger 里程碑加速
+function spawn(anywhere){
+  var a = Math.random()*Math.PI*2, r = 20 + Math.random()*340;
+  return { x: Math.cos(a)*r, y: Math.sin(a)*r,
+           z: anywhere ? -Math.random()*900 : -900 - Math.random()*100 };
+}
+if (!reduced && window.THREE) (function initWarp(){
+  var canvas = document.getElementById('warp');
+  var renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, .1, 2000);
+  camera.position.z = 1;
+
+  var N = isMobile ? 500 : 1300;      // 星数
+  var stars = [];
+  var pos = new Float32Array(N * 6);  // 每颗星 2 个端点 -> 线段
+  var i;
+  for (i = 0; i < N; i++) stars.push(spawn(true));
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var mat = new THREE.LineBasicMaterial({color:0x9fdcef, transparent:true, opacity:.75,
+    blending:THREE.AdditiveBlending, depthWrite:false});
+  scene.add(new THREE.LineSegments(geo, mat));
+
+  // 远处静止星尘背景层
+  var dustGeo = new THREE.BufferGeometry();
+  var dn = isMobile ? 200 : 500, dp = new Float32Array(dn*3);
+  for (var j = 0; j < dn; j++){
+    var a2 = Math.random()*Math.PI*2, r2 = 60+Math.random()*500;
+    dp[j*3]=Math.cos(a2)*r2; dp[j*3+1]=Math.sin(a2)*r2; dp[j*3+2]=-300-Math.random()*900;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dp,3));
+  scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({color:0x6f87b8,size:1.4,
+    transparent:true,opacity:.6,depthWrite:false})));
+
+  var mouseX = 0, mouseY = 0;
+  window.addEventListener('pointermove', function(e){
+    mouseX = (e.clientX/window.innerWidth - .5); mouseY = (e.clientY/window.innerHeight - .5);
+  });
+
+  var BASE = .35, MAXV = 14;          // 基础巡航速 / 最大曲速
+  function frame(){
+    warpSpeed += (Math.min(targetSpeed + boost, 1) - warpSpeed) * .045;
+    var v = BASE + warpSpeed * MAXV;
+    var stretch = 2 + warpSpeed * 90; // 星条长度随速度
+    for (var i = 0; i < N; i++){
+      var s = stars[i];
+      s.z += v;
+      if (s.z > 60) { var ns = spawn(false); s.x=ns.x; s.y=ns.y; s.z=ns.z; }
+      var o = i*6;
+      pos[o]=s.x; pos[o+1]=s.y; pos[o+2]=s.z;
+      pos[o+3]=s.x; pos[o+4]=s.y; pos[o+5]=s.z - stretch;
+    }
+    geo.attributes.position.needsUpdate = true;
+    camera.fov = 60 + warpSpeed * 38; // FOV 随速度扩张
+    camera.position.x += (mouseX*30 - camera.position.x) * .03;
+    camera.position.y += (-mouseY*30 - camera.position.y) * .03;
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+    updateHUD(warpSpeed);
+    requestAnimationFrame(frame);
+  }
+  frame();
+
+  window.addEventListener('resize', function(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+
+/* ============ 2. Lenis 平滑滚动 + GSAP ============ */
+var lenis = null;
+if (!reduced && window.Lenis){
+  lenis = new Lenis({ duration: 1.15, smoothWheel: true });
+  var rafL = function(t){ lenis.raf(t); requestAnimationFrame(rafL); };
+  requestAnimationFrame(rafL);
+}
+// 滚动速度 -> 曲速
+var lastY = window.scrollY, lastT = performance.now();
+function pollScroll(){
+  var now = performance.now(), y = window.scrollY;
+  var dt = Math.max(now - lastT, 16);
+  var vel = Math.abs(y - lastY) / dt;        // px/ms
+  targetSpeed += (Math.min(vel/2.2, 1) - targetSpeed) * .12;
+  lastY = y; lastT = now;
+  requestAnimationFrame(pollScroll);
+}
+if (!reduced) pollScroll();
+
+// 锚点跳转走 Lenis
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click', function(e){
+    var t = document.querySelector(a.getAttribute('href'));
+    if (!t) return;
+    e.preventDefault();
+    if (lenis) lenis.scrollTo(t, {offset: -50});
+    else t.scrollIntoView({behavior:'smooth'});
+  });
+});
+
+if (window.gsap){
+  gsap.registerPlugin(ScrollTrigger);
+  if (lenis) lenis.on('scroll', ScrollTrigger.update);
+
+  // 章节渐显
+  document.querySelectorAll('.reveal').forEach(function(el){
+    gsap.to(el, {opacity:1, y:0, duration:1, ease:'power3.out',
+      scrollTrigger:{trigger:el, start:'top 88%', once:true}});
+  });
+
+  // 航点里程碑：进入关键区域时短暂推满曲速
+  [['#about',.8],['#honors',1.4],['#depts',.9],['#tech',1.0],['#join',2.2]].forEach(function(pair){
+    ScrollTrigger.create({trigger:pair[0], start:'top 70%', once:true,
+      onEnter:function(){
+        var obj = {b: pair[1]};
+        gsap.to(obj, {b:0, duration:2.4, ease:'power2.out',
+          onUpdate:function(){ boost = obj.b; }});
+        boost = pair[1];
+      }});
+  });
+
+  // 侧边航点高亮
+  document.querySelectorAll('#waypoints a').forEach(function(a){
+    var id = a.dataset.wp;
+    ScrollTrigger.create({trigger:'#'+id, start:'top 50%', end:'bottom 50%',
+      onToggle:function(st){ a.classList.toggle('act', st.isActive); }});
+  });
+
+  // 星云随航程变色
+  gsap.to('#nebula', {opacity:.75, scrollTrigger:{trigger:'#honors', start:'top 60%', end:'bottom top', scrub:true}});
+} else {
+  document.querySelectorAll('.reveal').forEach(function(el){ el.style.opacity=1; el.style.transform='none'; });
+}
+
+/* ============ 3. 跃迁按钮：闪光 + 曲速冲刺 ============ */
+document.getElementById('jump-btn').addEventListener('click', function(){
+  if (reduced || !window.gsap) { document.querySelector('#join .grid').scrollIntoView({behavior:'smooth'}); return; }
+  var obj = {b:0};
+  var tl = gsap.timeline();
+  tl.to(obj, {b:3.2, duration:.9, ease:'power2.in',
+        onUpdate:function(){ boost = obj.b; }})
+    .to('#flash', {opacity:1, duration:.28, ease:'power1.in'}, '-=.25')
+    .add(function(){
+      var chans = document.querySelector('#join .grid');
+      if (lenis) lenis.scrollTo(chans, {offset:-120, immediate:true});
+      else chans.scrollIntoView();
+      boost = 0;
+    })
+    .to('#flash', {opacity:0, duration:.9, ease:'power2.out'});
+});
+
+/* ============ 4. 数字滚动 ============ */
+var nio = new IntersectionObserver(function(es){ es.forEach(function(e){
+  if (!e.isIntersecting) return;
+  var el = e.target, n = +el.dataset.n, t0 = performance.now(), dur = 1500;
+  (function tick(t){ var p = Math.min((t-t0)/dur, 1);
+    el.textContent = Math.round(n * (1 - Math.pow(1-p, 3)));
+    if (p < 1) requestAnimationFrame(tick); })(t0);
+  nio.unobserve(el);
+});}, {threshold:.5});
+document.querySelectorAll('.stat b').forEach(function(el){ nio.observe(el); });
+})();
+</script>
+</body>
+</html>
