@@ -16,9 +16,13 @@ copies or substantial portions of the Software.
 
 Lenis v1.0.42
 
+Package: @studio-freight/lenis@1.0.42
+Source: https://github.com/darkroomengineering/lenis
+License: MIT
+
 The vendored Lenis bundle is distributed under the MIT terms applicable to
 version 1.0.42. The upstream copyright and permission notice should accompany
-this bundle when it is redistributed. Source: https://github.com/darkroomengineering/lenis
+this bundle when it is redistributed.
 
 GSAP and ScrollTrigger v3.12.5
 
