@@ -34,15 +34,15 @@ Add domains through **Workers & Pages → [project] → Custom domains** first.
 
 ## Password protection
 
-The current preview deployment includes a Pages Functions middleware at `functions/_middleware.js` that requires HTTP Basic Auth for every request. The username is fixed as `enterprize`; the password is never stored in Git and must be configured as an encrypted Pages secret:
+The current preview deployment includes a Pages Functions middleware at `functions/_middleware.js` that displays a password-only login form for every request. There is no username field. After a successful password check, the middleware issues a short-lived, encrypted, HttpOnly session cookie; the password is never stored in Git and must be configured as an encrypted Pages secret:
 
 1. Open **Workers & Pages → [project] → Settings → Variables and Secrets**.
 2. Select **Production** and add an encrypted Secret named `SITE_PASSWORD`.
 3. Repeat for **Preview** if preview deployments should also require the password.
 4. Redeploy the project after saving the secret.
-5. Open the HTTPS site in a private window and verify that the browser asks for username `enterprize` and the configured password.
+5. Open the HTTPS site in a private window and verify that the site displays a password-only form.
 
-The middleware returns `401` when the secret is missing or credentials are incorrect. Do not put the password in a URL, source file, GitHub Action log, or frontend JavaScript. This is a shared temporary review password; replace it with Cloudflare Access for individual member identities before long-term public use.
+The middleware returns `401` when the secret is missing or the password is incorrect. Do not put the password in a URL, source file, GitHub Action log, or frontend JavaScript. The session lasts seven days and can be invalidated for everyone by changing `SITE_PASSWORD` and redeploying. This is a shared temporary review password; replace it with Cloudflare Access for individual member identities before long-term public use.
 
 ## Pre-release gate
 
