@@ -10,6 +10,7 @@
 - `assets/` — 网站运行所需素材、第三方浏览器库，以及可供后续设计迭代使用的视觉素材。
 - `data/metrics.json` — 自动同步的 GitHub Stars 与 RoboMaster 论坛引用指标；由 GitHub Actions 定期刷新。
 - `scripts/` — 生成受限的 Cloudflare Pages 发布目录，以及刷新公开指标的脚本。
+- `functions/_middleware.js` — Cloudflare Pages 全站临时 Basic Auth 门禁；密码通过 Pages 加密 Secret `SITE_PASSWORD` 配置，不进入 Git。
 - `drafts/homepage/` — 首页的历史设计草稿（`index-v1.html`、`index-v2.html`）。
 - `research/` — 网站策略、战队资料与竞品调研信息，仅供内部内容和设计决策参考。
 - `tests/legacy/` — 历史 Playwright 浏览器检查脚本；尚未整理为 CI 测试套件。

@@ -18,6 +18,8 @@ This repository deliberately deploys only the generated `site/` directory. Do **
    | Build output directory | `site` |
    | Node.js version | `20` |
 
+   Cloudflare detects the root-level `functions/_middleware.js` separately from the `site/` static output, so the Pages password gate is deployed without exposing its source as a static file.
+
 7. Select **Save and Deploy**. Cloudflare will deploy the `site/` directory to a `*.pages.dev` address.
 8. Every future push to `main` triggers a production deploy. Other Git branches become preview deployments.
 
@@ -29,6 +31,18 @@ Add domains through **Workers & Pages → [project] → Custom domains** first.
 - For a subdomain such as `www.robomaster.hk`, configure it through the Pages dashboard and point a DNS CNAME to the assigned `<project>.pages.dev` host when Cloudflare instructs you to do so.
 - Do not add only a manual CNAME before associating the domain in Pages; Cloudflare documents that this can cause connection errors.
 - A repository `CNAME` file is not required for Cloudflare Pages.
+
+## Password protection
+
+The current preview deployment includes a Pages Functions middleware at `functions/_middleware.js` that requires HTTP Basic Auth for every request. The username is fixed as `enterprize`; the password is never stored in Git and must be configured as an encrypted Pages secret:
+
+1. Open **Workers & Pages → [project] → Settings → Variables and Secrets**.
+2. Select **Production** and add an encrypted Secret named `SITE_PASSWORD`.
+3. Repeat for **Preview** if preview deployments should also require the password.
+4. Redeploy the project after saving the secret.
+5. Open the HTTPS site in a private window and verify that the browser asks for username `enterprize` and the configured password.
+
+The middleware returns `401` when the secret is missing or credentials are incorrect. Do not put the password in a URL, source file, GitHub Action log, or frontend JavaScript. This is a shared temporary review password; replace it with Cloudflare Access for individual member identities before long-term public use.
 
 ## Pre-release gate
 
