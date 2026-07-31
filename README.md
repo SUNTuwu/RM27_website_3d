@@ -8,19 +8,30 @@
 
 - `index.html` — 当前的单页招新网站入口。
 - `assets/` — 网站运行所需素材、第三方浏览器库，以及可供后续设计迭代使用的视觉素材。
+- `data/metrics.json` — 自动同步的 GitHub Stars 与 RoboMaster 论坛引用指标；由 GitHub Actions 定期刷新。
+- `scripts/` — 生成受限的 Cloudflare Pages 发布目录，以及刷新公开指标的脚本。
 - `drafts/homepage/` — 首页的历史设计草稿（`index-v1.html`、`index-v2.html`）。
 - `research/` — 网站策略、战队资料与竞品调研信息，仅供内部内容和设计决策参考。
 - `tests/legacy/` — 历史 Playwright 浏览器检查脚本；尚未整理为 CI 测试套件。
 
 ## Local preview
 
-The site is static and does not require a build step. From the repository root, run:
+The site is static. For full development preview from the repository root, run:
 
 ```bash
 python -m http.server 8377
 ```
 
 Then open <http://127.0.0.1:8377/>.
+
+For the production-equivalent Cloudflare Pages artifact, build the explicit public allowlist instead:
+
+```bash
+node scripts/build-site.mjs
+python -m http.server 8377 --directory site
+```
+
+Only `site/` is intended for public deployment. See [Cloudflare Pages deployment](docs/cloudflare-pages.md) for the dashboard configuration and pre-release requirements.
 
 ## Legacy browser checks
 
