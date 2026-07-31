@@ -10,11 +10,30 @@ const PROJECTS = [
   { articleId: 54121, repository: 'RM2024-PowerModule' },
   { articleId: 760959, repository: 'RM2025-Super-Capacitor-Array' },
   { articleId: 761385, repository: 'RM2025-PowerControlBoard-WirelessCharging' },
+  { articleId: 760961, repository: 'RM2025-PowerControlBoard-WirelessCharging' },
+  { articleId: 714430 },
   { articleId: 761138, repository: 'RM2025-Radar-Algorithm' },
   { articleId: 48014 },
   { articleId: 803685 },
   { articleId: 20424 },
+  { articleId: 764738 },
+  { articleId: 766927 },
+  { articleId: 54153 },
+  { articleId: 760969 },
+  { articleId: 761377 },
+  { articleId: 54086 },
+  { articleId: 55593 },
+  { articleId: 53682, repository: 'RM2024-MainControlBoard' },
   { articleId: 760965, repository: 'RM2025-G4-MainControlBoard-V2' },
+  { articleId: 760967, repository: 'RM2025-Tiny-JLink' },
+  { articleId: 779451, repository: 'RM2025-Wireless-JLink' },
+  { articleId: 803683 },
+  { articleId: 760956, repository: 'RM2025-LM5145-48to24' },
+  { articleId: 760947, repository: 'RM2025-Ethernet-Switch' },
+  { articleId: 765552, repository: 'RM2025-Portable-Armor' },
+  { articleId: 9656 },
+  { articleId: 54087 },
+  { articleId: 54198, repository: 'RM2024-SerialDriver-STM32' },
   { articleId: 95847 },
 ];
 
@@ -147,16 +166,19 @@ function parseForumProject(html, articleId) {
 }
 
 function hasDataChanged(previous, next) {
-  const clone = (value) => structuredClone(value);
-  const normalize = (value) => {
-    const normalized = clone(value);
-    delete normalized.generatedAt;
-    delete normalized.errors;
-    normalized.forum?.archive && delete normalized.forum.archive.observedAt;
-    Object.values(normalized.forum?.projects ?? {}).forEach((project) => delete project.observedAt);
-    return normalized;
-  };
-  return JSON.stringify(normalize(previous)) !== JSON.stringify(normalize(next));
+  const normalized = structuredClone(next);
+  delete normalized.generatedAt;
+  delete normalized.errors;
+  normalized.forum?.archive && delete normalized.forum.archive.observedAt;
+  Object.values(normalized.forum?.projects ?? {}).forEach((project) => delete project.observedAt);
+
+  const previousNormalized = structuredClone(previous);
+  delete previousNormalized.generatedAt;
+  delete previousNormalized.errors;
+  previousNormalized.forum?.archive && delete previousNormalized.forum.archive.observedAt;
+  Object.values(previousNormalized.forum?.projects ?? {}).forEach((project) => delete project.observedAt);
+
+  return JSON.stringify(previousNormalized) !== JSON.stringify(normalized);
 }
 
 async function readExistingMetrics() {
@@ -176,10 +198,10 @@ next.forum ??= { archive: {}, projects: {} };
 next.forum.projects ??= {};
 const errors = [];
 
-for (const project of PROJECTS.filter(({ repository }) => repository)) {
+for (const repository of [...new Set(PROJECTS.map(({ repository }) => repository).filter(Boolean))]) {
   try {
-    const data = await fetchJson(`https://api.github.com/repos/${GITHUB_OWNER}/${project.repository}`, githubHeaders);
-    next.github.repositories[project.repository] = {
+    const data = await fetchJson(`https://api.github.com/repos/${GITHUB_OWNER}/${repository}`, githubHeaders);
+    next.github.repositories[repository] = {
       stars: data.stargazers_count,
       forks: data.forks_count,
       archived: data.archived,
@@ -187,14 +209,11 @@ for (const project of PROJECTS.filter(({ repository }) => repository)) {
       sourceUrl: data.html_url,
     };
   } catch (error) {
-    errors.push(`GitHub ${project.repository}: ${error.message}`);
+    errors.push(`GitHub ${repository}: ${error.message}`);
   }
 }
 
 try {
-  // The forum does not expose a documented public API. This reads the source page
-  // weekly, saves citation fields only for project cards, and deliberately avoids
-  // displaying the collector-influenced view count anywhere on the public site.
   next.forum.archive = parseForumIndex(await fetchText(FORUM_INDEX_URL));
 } catch (error) {
   errors.push(`Forum index: ${error.message}`);
@@ -216,7 +235,7 @@ next.errors = errors;
 if (hasDataChanged(existing, next)) {
   next.generatedAt = new Date().toISOString();
   await writeFile(METRICS_PATH, `${JSON.stringify(next, null, 2)}\n`);
-  console.log(`Metrics changed: refreshed ${PROJECTS.filter(({ repository }) => repository).length} GitHub repositories and ${PROJECTS.length} forum records.`);
+  console.log(`Metrics changed: refreshed ${new Set(PROJECTS.map(({ repository }) => repository).filter(Boolean)).size} GitHub repositories and ${PROJECTS.length} forum records.`);
 } else {
   console.log('Metrics are unchanged; keeping the existing generated data timestamp.');
 }

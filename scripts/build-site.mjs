@@ -7,7 +7,7 @@ const files = ['index.html', 'open-source.html'];
 const directories = [
   'assets/vendor',
   'assets/department-patterns',
-  'assets/open-source',
+  'assets/open-source/web',
   'data',
 ];
 const individualAssets = [
