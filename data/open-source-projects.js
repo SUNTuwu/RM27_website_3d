@@ -112,7 +112,7 @@ window.OPEN_SOURCE_PROJECTS = [
     repository: 'RM2025-Radar-Algorithm',
     image: 'assets/open-source/web/rm2025-radar-teaser.webp',
     imageAlt: 'RM2025 单目雷达站算法系统预览图',
-    imageCredit: '图：HKUST ENTERPRIZE 项目仓库 · 具体许可请见原仓库',
+    imageCredit: '图：HKUST ENTERPRIZE 项目仓库 · 含第三方素材，使用前请核验授权',
   },
   {
     index: 11,

@@ -13,6 +13,7 @@ The production site includes third-party browser libraries. Keep this file avail
 - Source: <https://github.com/darkroomengineering/lenis>
 - Package version: `1.0.42`
 - License: MIT
+- Copyright and permission notice: the upstream Lenis MIT license must accompany redistributed copies of the bundle.
 
 ## GSAP and ScrollTrigger v3.12.5
 
