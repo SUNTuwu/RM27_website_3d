@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENTERPRIZE · 开源档案库 | HKUST RoboMaster</title>
+<meta name="description" content="香港科技大学 RoboMaster 战队 ENTERPRIZE 的开源项目档案库，整理超级电容、功率控制、视觉算法、机械结构、主控板与培训资料。">
+<meta property="og:title" content="ENTERPRIZE · Open Source Archive">
+<meta property="og:description" content="把工程，留给下一位。探索 ENTERPRIZE 历年公开的机器人代码、硬件、机械与培训资料。">
+<meta property="og:image" content="assets/logo.png">
+<style>
+:root{
+  --bg:#04060e;--bg2:#0a1020;--card:rgba(140,180,220,.055);--line:rgba(120,180,220,.16);
+  --cyan:#46b8c8;--cyan2:#7fd4e0;--gold:#f5a623;--gold2:#ffd166;
+  --purple:#9a8fb8;--pink:#d889a7;--green:#6fa08f;--blue:#7d9cbd;
+  --txt:#e8edf7;--dim:#8ea0c0;--mono:ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{min-height:100vh;background:
+  radial-gradient(900px 560px at 88% -10%,rgba(70,184,200,.14),transparent 65%),
+  radial-gradient(720px 520px at 0 82%,rgba(154,143,184,.10),transparent 68%),var(--bg);
+  color:var(--txt);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.25;background-image:linear-gradient(rgba(127,212,224,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(127,212,224,.04) 1px,transparent 1px);background-size:54px 54px;mask-image:linear-gradient(180deg,#000,transparent 85%)}
+a{color:var(--cyan2);text-decoration:none}a:hover{text-decoration:underline}
+::selection{background:rgba(70,184,200,.4)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+nav{position:fixed;top:0;left:0;right:0;z-index:10;background:rgba(4,6,14,.82);backdrop-filter:blur(15px);border-bottom:1px solid var(--line)}
+.navbar{height:64px;display:flex;align-items:center;justify-content:space-between;gap:22px}
+.logo{display:flex;align-items:center;gap:11px;color:var(--txt);font-weight:800;letter-spacing:2px;font-family:var(--mono);font-size:15px}.logo:hover{text-decoration:none}.logo img{width:34px;height:34px;border-radius:8px;background:#fff}.logo small{display:block;color:var(--dim);font:400 9px var(--mono);letter-spacing:1.5px}
+.navlinks{display:flex;align-items:center;gap:22px;font-size:13px}.navlinks a{color:var(--dim)}.navlinks a:hover,.navlinks .active{color:var(--cyan2);text-decoration:none}.navlinks .join{color:#04121a;background:var(--cyan);padding:6px 16px;border-radius:99px;font-weight:800}
+main{padding-top:64px}.hero{min-height:570px;display:flex;align-items:center;padding:92px 0 84px;position:relative;overflow:hidden}.hero::after{content:"OPEN SOURCE";position:absolute;right:-60px;top:120px;color:rgba(127,212,224,.05);font:900 clamp(70px,13vw,170px)/1 var(--mono);letter-spacing:8px;transform:rotate(90deg);pointer-events:none}.eyebrow,.code{font:11px var(--mono);letter-spacing:3px;color:var(--cyan);text-transform:uppercase}.eyebrow{display:inline-flex;align-items:center;gap:9px;border:1px solid rgba(70,184,200,.34);border-radius:99px;padding:5px 13px;background:rgba(70,184,200,.07)}.eyebrow::before{content:"";width:7px;height:7px;background:var(--gold);border-radius:50%;box-shadow:0 0 12px var(--gold)}h1{max-width:760px;margin-top:22px;font-size:clamp(42px,8vw,82px);line-height:1.04;letter-spacing:5px;background:linear-gradient(92deg,#fff 22%,var(--cyan2) 72%,#2b8fa0);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 25px rgba(70,184,200,.3))}.hero p{max-width:670px;color:#cdd8ec;font-size:17px;margin-top:22px}.hero .sub{font:13px var(--mono);color:var(--dim);letter-spacing:2px;margin-top:20px}.hero-actions{display:flex;gap:13px;flex-wrap:wrap;margin-top:30px}.btn{display:inline-flex;align-items:center;gap:8px;border-radius:99px;padding:11px 21px;font:700 13px var(--mono);letter-spacing:1px;transition:transform .2s,filter .2s,box-shadow .2s}.btn:hover{text-decoration:none;transform:translateY(-2px);filter:brightness(1.12)}.btn-primary{background:var(--cyan);color:#04121a;box-shadow:0 7px 24px rgba(70,184,200,.3)}.btn-outline{border:1px solid rgba(127,212,224,.4);color:var(--cyan2);background:rgba(70,184,200,.05)}
+.stats{display:flex;gap:42px;flex-wrap:wrap;margin-top:48px}.stat strong{display:block;color:var(--gold2);font:700 27px var(--mono)}.stat span{display:block;color:var(--dim);font-size:12px}
+section{padding:86px 0;border-top:1px solid rgba(120,180,220,.08)}.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:30px}.section-head h2{font-size:clamp(27px,4vw,40px);letter-spacing:3px}.section-head h2::before{content:"// ";color:var(--cyan)}.en{margin-top:4px;color:var(--dim);font:11px var(--mono);letter-spacing:4px;text-transform:uppercase}.section-count{color:var(--dim);font:11px/2 var(--mono);letter-spacing:2px;text-align:right}
+.grid{display:grid;gap:18px}.g3{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.g4{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.panel{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--tone,var(--cyan));border-radius:0 15px 15px 0;padding:22px;backdrop-filter:blur(8px);transition:transform .25s,border-color .25s,box-shadow .25s}.panel:hover{transform:translateY(-4px);border-color:rgba(127,212,224,.52);box-shadow:0 12px 40px rgba(70,184,200,.12)}.panel::after{content:"";position:absolute;right:-30px;top:-40px;width:130px;height:130px;border:1px solid rgba(127,212,224,.12);border-radius:50%}.panel h3{font-size:19px;margin:9px 0 6px}.panel p{font-size:13.5px;color:var(--dim)}.panel .meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}.tag{display:inline-flex;border:1px solid rgba(127,212,224,.28);background:rgba(70,184,200,.07);border-radius:3px;padding:1px 8px;color:var(--cyan2);font:10px var(--mono);letter-spacing:1px}.panel .source{display:inline-block;margin-top:18px;font:11px var(--mono);letter-spacing:1px;color:var(--cyan2)}.panel .source::after{content:"  ↗"}.feature{min-height:235px;padding:25px}.feature .code{color:var(--tone,var(--cyan))}.feature h3{font-size:22px}.feature p{font-size:14px;max-width:380px}.feature:nth-child(1){--tone:var(--gold)}.feature:nth-child(2){--tone:var(--cyan)}.feature:nth-child(3){--tone:var(--purple)}
+.archive-intro{max-width:740px;color:#c0cce2;margin-bottom:22px}.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:22px}.filter{cursor:pointer;border:1px solid var(--line);background:rgba(140,180,220,.04);color:var(--dim);border-radius:99px;padding:7px 14px;font:11px var(--mono);letter-spacing:1px}.filter:hover,.filter.active{color:#04121a;background:var(--cyan2);border-color:var(--cyan2)}.repo-card{min-height:218px;display:flex;flex-direction:column}.repo-card[hidden]{display:none}.repo-card .year{font:11px var(--mono);letter-spacing:2px;color:var(--gold2)}.repo-card h3{font-family:var(--mono);font-size:16px;letter-spacing:.3px;word-break:break-word}.repo-card .source{margin-top:auto}.empty{display:none;color:var(--dim);padding:30px 0;font:13px var(--mono)}
+.notice{margin-top:30px;padding:16px 19px;border:1px dashed rgba(245,166,35,.38);border-left:4px solid var(--gold);border-radius:0 10px 10px 0;color:#c6cfdf;font-size:12.5px;background:rgba(245,166,35,.045)}.notice strong{color:var(--gold2)}.cta-panel{text-align:center;padding:58px 24px;background:linear-gradient(135deg,rgba(70,184,200,.1),rgba(154,143,184,.08));border:1px solid var(--line);border-radius:0 20px 20px 0}.cta-panel p{max-width:620px;margin:12px auto 24px;color:var(--dim);font-size:14px}.footer{padding:30px 0 45px;border-top:1px solid var(--line);color:var(--dim);font-size:12px}.footer b{color:var(--cyan2);font-family:var(--mono);letter-spacing:1px}
+@media(max-width:760px){.wrap{padding:0 19px}.navlinks a:not(.join){display:none}.hero{min-height:auto;padding:75px 0 65px}.hero::after{right:-100px;top:230px}.hero p{font-size:15px}.stats{gap:22px}.section-count{display:none}section{padding:67px 0}.g3,.g4{grid-template-columns:1fr}.panel{padding:19px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.panel{transition:none}.btn:hover,.panel:hover{transform:none}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="wrap navbar">
+    <a class="logo" href="index.html"><img src="assets/logo.png" alt="ENTERPRIZE 队徽"><span>ENTERPRIZE<small>HKUST ROBOMASTER // ARCHIVE</small></span></a>
+    <div class="navlinks"><a href="index.html#about">战队</a><a href="index.html#tech">技术</a><a class="active" href="#archive">开源档案</a><a class="join" href="index.html#join">加入我们 ⟶</a></div>
+  </div>
+</nav>
+<main>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">OPEN SOURCE ARCHIVE // RM2018—RM2025</div>
+      <h1>把工程，<br>留给下一位。</h1>
+      <p>从超级电容到视觉算法，从机械结构到新生培训，ENTERPRIZE 把赛场上验证过的思路整理成可以继续阅读、复现和改进的公开资料。</p>
+      <div class="sub">CODE · HARDWARE · MECHANICS · TRAINING // 公开资料持续整理中</div>
+      <div class="hero-actions"><a class="btn btn-primary" href="#archive">浏览项目档案 ⟶</a><a class="btn btn-outline" href="https://bbs.robomaster.com/article/54254" target="_blank" rel="noopener">查看论坛汇总 ↗</a></div>
+      <div class="stats"><div class="stat"><strong>32</strong><span>论坛汇总条目</span></div><div class="stat"><strong>04</strong><span>工程方向</span></div><div class="stat"><strong>2018→</strong><span>公开记录起点</span></div></div>
+    </div>
+  </header>
+
+  <section id="featured">
+    <div class="wrap">
+      <div class="section-head"><div><div class="eyebrow">WAYPOINT 01 // FEATURED</div><h2>从系统，到细节</h2><div class="en">Selected engineering work</div></div><div class="section-count">SELECTED<br>03 SYSTEMS</div></div>
+      <div class="grid g3">
+        <article class="panel feature"><div class="code">SYS.PWR // POWER</div><h3>超级电容与无线充电</h3><p>连续多个赛季公开的供电系统线索：从数控超级电容、控制器，到 1980J 电容组与无线充电站。</p><div class="meta"><span class="tag">RM2023—25</span><span class="tag">硬件</span></div><a class="source" href="https://bbs.robomaster.com/article/761385" target="_blank" rel="noopener">打开 RM2025 系统资料</a></article>
+        <article class="panel feature"><div class="code">SYS.VIS // PERCEPTION</div><h3>单目雷达站算法</h3><p>面向能量机关识别与追踪的视觉算法资料，包含数据集研究与单目雷达站方案介绍。</p><div class="meta"><span class="tag">RM2025</span><span class="tag">算法</span></div><a class="source" href="https://bbs.robomaster.com/article/761138" target="_blank" rel="noopener">打开雷达算法资料</a></article>
+        <article class="panel feature"><div class="code">SYS.MECH // MOBILITY</div><h3>工程与移动机构</h3><p>轮式机械臂、轮腿平衡步兵、舵轮和低成本空中机器人等结构思路，记录把概念做成可比赛设备的过程。</p><div class="meta"><span class="tag">RM2024—25</span><span class="tag">机械</span></div><a class="source" href="https://bbs.robomaster.com/article/803685" target="_blank" rel="noopener">打开工程机械资料</a></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="archive">
+    <div class="wrap">
+      <div class="section-head"><div><div class="eyebrow">WAYPOINT 02 // ARCHIVE</div><h2>开源项目档案</h2><div class="en">Browse by engineering track</div></div><div class="section-count">INDEX 001—012<br>FORUM SOURCES</div></div>
+      <p class="archive-intro">以下条目暂以 <strong>2024-10-30 发布的论坛汇总帖</strong>为索引，保留原始文章入口。项目名称和用途根据文章标题做了轻量整理；仓库地址、许可证和附件权限请以各原帖及其作者说明为准。</p>
+      <div class="filters" role="toolbar" aria-label="筛选开源项目"><button class="filter active" type="button" data-filter="all">全部 12</button><button class="filter" type="button" data-filter="power">功率 / 硬件</button><button class="filter" type="button" data-filter="vision">视觉 / 算法</button><button class="filter" type="button" data-filter="mechanics">机械 / 结构</button><button class="filter" type="button" data-filter="training">培训 / 通信</button></div>
+      <div class="grid g4" id="repo-grid">
+        <article class="panel repo-card" data-track="power"><span class="year">2018 · POWER</span><h3>超级电容软、硬件开源</h3><p>ENTERPRIZE 早期超级电容方案的软硬件分享。</p><a class="source" href="https://bbs.robomaster.com/article/4812" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="power"><span class="year">RM2023 · POWER</span><h3>数控超级电容方案</h3><p>数控超级电容系统的赛季开源资料。</p><a class="source" href="https://bbs.robomaster.com/article/9452" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="power"><span class="year">RM2024 · POWER</span><h3>超级电容控制器</h3><p>超级电容控制器硬件与软件的完整分享。</p><a class="source" href="https://bbs.robomaster.com/article/54127" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="power"><span class="year">RM2024 · CONTROL</span><h3>功率控制算法</h3><p>覆盖舵轮、轮腿和全自动调参的功率控制思路。</p><a class="source" href="https://bbs.robomaster.com/article/54121" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="power"><span class="year">RM2025 · POWER</span><h3>1980J 超小体积电容组</h3><p>面向机器人供电的紧凑型电容组设计分享。</p><a class="source" href="https://bbs.robomaster.com/article/760959" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="power"><span class="year">RM2025 · POWER</span><h3>超级电容与无线充电</h3><p>超级电容系统与无线充电方案的赛季资料。</p><a class="source" href="https://bbs.robomaster.com/article/761385" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="vision"><span class="year">RM2025 · VISION</span><h3>单目雷达站算法</h3><p>单目视觉雷达站算法与赛季数据表现分享。</p><a class="source" href="https://bbs.robomaster.com/article/761138" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="mechanics"><span class="year">RM2024 · MECHANICS</span><h3>龙门架构工程机器人</h3><p>低成本工程机器人技术报告、结构与控制器资料。</p><a class="source" href="https://bbs.robomaster.com/article/48014" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="mechanics"><span class="year">RM2025 · MECHANICS</span><h3>轮式机械臂工程开源</h3><p>面向四级矿任务的轮式机械臂工程方案。</p><a class="source" href="https://bbs.robomaster.com/article/803685" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="mechanics"><span class="year">RM2024 · MECHANICS</span><h3>轮腿平衡步兵结构</h3><p>轮腿平衡步兵的机械结构设计分享。</p><a class="source" href="https://bbs.robomaster.com/article/20424" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="power"><span class="year">RM2025 · EMBEDDED</span><h3>G4 主控板 V2</h3><p>RM2025 赛季 G4 主控板硬件开源资料。</p><a class="source" href="https://bbs.robomaster.com/article/760965" target="_blank" rel="noopener">论坛原帖</a></article>
+        <article class="panel repo-card" data-track="training"><span class="year">RM2025 · TRAINING</span><h3>新生培训资料</h3><p>面向新成员的赛季培训与学习资料。</p><a class="source" href="https://bbs.robomaster.com/article/95847" target="_blank" rel="noopener">论坛原帖</a></article>
+      </div>
+      <p class="empty" id="empty-state">当前筛选没有对应条目。</p>
+      <div class="notice"><strong>资料状态 // ARCHIVE NOTICE</strong><br>论坛汇总帖未统一列出每个项目的许可证。页面只做索引，不代表这些文章、图片、图纸或附件可以直接复制、商用或重新发布；使用前请阅读原帖许可说明并联系作者确认。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap"><div class="cta-panel"><div class="eyebrow">WAYPOINT 03 // CONTINUE</div><h2 style="margin-top:18px">继续阅读，继续造。</h2><p>访问 GitHub 组织页查看当前公开仓库，或回到招新页面，加入下一次把想法变成机器人的航行。</p><a class="btn btn-primary" href="https://github.com/hkustenterprize" target="_blank" rel="noopener">访问 GitHub 组织 ↗</a> <a class="btn btn-outline" href="index.html#join">加入 ENTERPRIZE ⟶</a></div></div>
+  </section>
+</main>
+<footer class="footer"><div class="wrap"><b>ENTERPRIZE · HKUST ROBOMASTER</b> // OPEN SOURCE ARCHIVE<br><span>资料索引来自论坛开源汇总帖（2024-10-30），项目许可与公开状态以原作者最新说明为准。</span></div></footer>
+<script>
+(function(){
+  var buttons=document.querySelectorAll('[data-filter]');
+  var cards=document.querySelectorAll('.repo-card');
+  var empty=document.getElementById('empty-state');
+  buttons.forEach(function(button){button.addEventListener('click',function(){
+    var filter=button.dataset.filter;var visible=0;
+    buttons.forEach(function(item){item.classList.toggle('active',item===button);});
+    cards.forEach(function(card){var show=filter==='all'||card.dataset.track===filter;card.hidden=!show;if(show)visible++;});
+    empty.style.display=visible?'none':'block';
+  });});
+})();
+</script>
+</body>
+</html>
