@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const output = resolve(root, 'site');
-const files = ['index.html', 'open-source.html'];
+const files = ['index.html', 'open-source.html', '252478fc73dc3522687c788d2f12f490.txt'];
 const directories = [
   'assets/vendor',
   'assets/department-patterns',
