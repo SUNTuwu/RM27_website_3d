@@ -1,6 +1,7 @@
 const SESSION_COOKIE = 'ENTERPRIZE_PREVIEW'
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 const LOGIN_PATH = '/__enterprize-login'
+const PUBLIC_PATHS = new Set(['/252478fc73dc3522687c788d2f12f490.txt'])
 const textEncoder = new TextEncoder()
 
 function gatePage() {
@@ -148,7 +149,13 @@ async function handleLogin(context) {
 }
 
 export async function onRequest(context) {
-  if (context.request.method === 'POST' && new URL(context.request.url).pathname === LOGIN_PATH) {
+  const pathname = new URL(context.request.url).pathname
+
+  if (PUBLIC_PATHS.has(pathname)) {
+    return context.next()
+  }
+
+  if (context.request.method === 'POST' && pathname === LOGIN_PATH) {
     return handleLogin(context)
   }
 
