@@ -26,6 +26,9 @@ body{background:var(--bg);color:var(--txt);font-family:"Source Han Sans","Source
 a{color:var(--cyan2);text-decoration:none}
 a:hover{text-decoration:underline}
 ::selection{background:rgba(70,184,200,.4)}
+.skip-link{position:fixed;z-index:240;left:18px;top:-64px;padding:9px 15px;border-radius:0 0 8px 8px;background:var(--cyan2);color:#04121a;font-weight:800;transition:top .2s}
+.skip-link:focus{top:0}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--gold2);outline-offset:4px}
 
 /* ===== 深空画布 / 星云 / 扫描线 ===== */
 #warp{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -59,9 +62,14 @@ nav .links a:hover{color:var(--cyan2);text-decoration:none}
 nav .links a.act{color:var(--cyan2)}
 nav .join-btn{background:linear-gradient(90deg,var(--cyan),#2b8fa0);color:#04121a !important;font-weight:700;padding:7px 18px;border-radius:99px;transition:transform .2s,box-shadow .2s}
 nav .join-btn:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(78,168,184,.4);text-decoration:none}
+.nav-toggle{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--line);border-radius:8px;background:rgba(78,168,184,.08);color:var(--cyan2);font:800 21px var(--mono);cursor:pointer}
 @media(max-width:1100px){
-  nav .links a:not(.join-btn){display:none}
   #warp-hud{display:none}
+  .nav-toggle{display:inline-flex}
+  nav .links{position:absolute;top:62px;left:18px;right:18px;display:none;align-items:stretch;gap:4px;padding:12px;border:1px solid var(--line);border-radius:0 0 14px 14px;background:rgba(4,6,14,.97);box-shadow:0 18px 48px rgba(0,0,0,.45)}
+  nav .links.is-open{display:flex;flex-direction:column}
+  nav .links a{padding:10px 12px;border-radius:7px}
+  nav .links .join-btn{text-align:center;margin-top:4px}
 }
 
 /* ===== 主区 ===== */
@@ -253,6 +261,7 @@ nav.holo-surface::after{inset:0;border-radius:0}
   border-radius:0 14px 14px 0}
 .step::before{counter-increment:step;content:"0" counter(step);font-size:30px;font-weight:900;font-family:var(--mono);
   color:transparent;-webkit-text-stroke:1px rgba(183,148,244,.7);letter-spacing:2px}
+.step .en2{color:var(--cyan);font:10px var(--mono);letter-spacing:1.6px;text-transform:uppercase}
 .step h4{margin:10px 0 6px;color:var(--purple);font-size:16.5px}
 .step p{font-size:13.5px;color:var(--dim)}
 
@@ -307,27 +316,38 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 .reveal{opacity:0;transform:translateY(30px)}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none !important;transition:none !important}
-  .reveal{opacity:1;transform:none}
+  .reveal,.card:hover,.lpanel:hover,.btn:hover,.repo:hover,.bh-cta .jump:hover{opacity:1;transform:none}
+  .planet-card:hover .planet{transform:none}
 }
 @media(max-width:600px){
   .video-teaser{min-height:270px;padding:24px}.video-teaser p{font-size:13px}
   .recruit-status{padding:20px}.action-row{margin-top:18px}
 }
 </style>
+<noscript><style>
+@media(max-width:1100px){
+  .nav-toggle{display:none}
+  nav .bar{height:auto;min-height:62px;flex-wrap:wrap;padding-bottom:10px}
+  nav .links{position:static;display:flex;flex-direction:row;width:100%;overflow-x:auto;padding:8px 0;border:0;border-radius:0;background:transparent;box-shadow:none}
+  nav .links a{white-space:nowrap}
+}
+</style></noscript>
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
 
-<div id="nebula"></div>
+<div id="nebula" aria-hidden="true"></div>
 <canvas id="nebula-field" aria-hidden="true"></canvas>
-<canvas id="warp"></canvas>
-<div id="scanlines"></div>
-<div id="flash"></div>
+<canvas id="warp" aria-hidden="true"></canvas>
+<div id="scanlines" aria-hidden="true"></div>
+<div id="flash" aria-hidden="true"></div>
 
 <!-- ===== 顶部导航 ===== -->
-<nav>
+<nav aria-label="主要导航">
   <div class="bar">
-    <div class="logo"><img src="assets/logo.png" alt="ENTERPRIZE logo"><div>ENTERPRIZE<div class="n">NCC-2015-EPZ // HKUST ROBOMASTER</div></div></div>
-    <div class="links">
+    <a class="logo" href="#hero" aria-label="返回 ENTERPRIZE 首页顶部"><img src="assets/logo.png" alt=""><div>ENTERPRIZE<div class="n">NCC-2015-EPZ // HKUST ROBOMASTER</div></div></a>
+    <button class="nav-toggle" id="nav-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false" aria-label="打开导航菜单">☰</button>
+    <div class="links" id="primary-navigation">
       <a href="#hero"   data-wp="hero">深空</a>
       <a href="#about"  data-wp="about">战队</a>
       <a href="#honors" data-wp="honors">战绩</a>
@@ -342,7 +362,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 
 <div id="warp-hud">WARP <b id="vel-val">0.0</b> c</div>
 
-<main>
+<main id="main-content" tabindex="-1">
 <!-- ================= 01 深空 ================= -->
 <header class="hero" id="hero">
   <div class="hero-bg"></div>
@@ -350,13 +370,13 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   <div class="hero-warp-glow" id="hero-warp-glow" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div>
-      <div class="badge"><span class="dot"></span>RM2027 RECRUITMENT · STANDBY</div>
+      <div class="badge"><span class="dot"></span><span data-recruit-badge>RM2027 RECRUITMENT · STANDBY</span></div>
       <h1>ENTERPRIZE</h1>
       <div class="trek">HKUST ROBOMASTER TEAM // EST. 2015</div>
       <div class="theme">新 舰 起 航</div>
       <p class="lead">队名来自《星际迷航》的星舰 Enterprise——我们要做的，是驾驶自己的战舰，勇闯前人未至之境。在这里，你将亲手设计、制造并驾驶真正的机器人，站上全国最大的大学生机器人赛场。</p>
       <div class="cta">
-        <a class="btn btn-p" href="#join">点火起航 ⟶</a>
+        <a class="btn btn-p" href="#interest-actions" data-recruit-primary>获取开招提醒 ⟶</a>
         <a class="btn btn-o" href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">▶ B站视频</a>
       </div>
       <div class="stats">
@@ -440,48 +460,8 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       <div><div class="wp">WAYPOINT 04 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
       <div class="nums">34 0776 EP<br>56 3300 11</div>
     </div>
-    <div class="planets">
-      <div class="card planet-card reveal" style="--pc:var(--gold)">
-        <div class="planet p-mech"></div>
-        <h3 style="color:var(--gold2)">机械部</h3><div class="en2">Mechanical</div>
-        <ul>
-          <li>负责英雄、工程、步兵等机器人的机械结构设计：底盘、云台、机械臂、传动与轴系</li>
-          <li>从立项、采购到设计、迭代的完整项目流程</li>
-          <li>你将掌握：SolidWorks 三维建模、3D 打印、CNC 加工、装配与测试</li>
-        </ul>
-        <div class="req">希望你：喜欢动手造物，对结构有直觉；零基础可，部内有自学路线与老队员带教。</div>
-      </div>
-      <div class="card planet-card reveal" style="--pc:var(--green)">
-        <div class="planet p-hw"></div>
-        <h3 style="color:var(--green)">硬件部</h3><div class="en2">Hardware</div>
-        <ul>
-          <li>设计、构建、维护全队的电子系统与供电网络</li>
-          <li>核心模块：机器人主控板、超级电容功率控制板、无线充电接收系统</li>
-          <li>你将掌握：元器件特性、KiCad PCB 设计、电源拓扑、硬件调试与维护</li>
-        </ul>
-        <div class="req">希望你：对电路世界好奇，细致耐心；提供从基础到进阶的完整自学建议。</div>
-      </div>
-      <div class="card planet-card reveal" style="--pc:var(--pink)">
-        <div class="planet p-ec"></div>
-        <h3 style="color:var(--pink)">电控部</h3><div class="en2">Embedded Control</div>
-        <ul>
-          <li>开发 STM32 驱动程序，设计控制与信号处理逻辑</li>
-          <li>整机调试与维护，追求"赛场级"稳定性</li>
-          <li>你将掌握：C/C++、PID/LQR 控制、CAN 总线与 DJI 电机、滤波器、FreeRTOS</li>
-        </ul>
-        <div class="req">希望你：有热情、责任心强、能独立思考；零基础建议先自学 C++ 与 PID 控制（部内有教程）。</div>
-      </div>
-      <div class="card planet-card reveal" style="--pc:var(--cyan)">
-        <div class="planet p-alg"></div>
-        <h3 style="color:var(--cyan2)">算法部</h3><div class="en2">Algorithm & Vision</div>
-        <ul>
-          <li>处理相机、激光雷达等传感器数据，让机器人拥有"眼睛"</li>
-          <li>自动瞄准（装甲板识别跟踪）、智能导航、全自动哨兵、雷达站</li>
-          <li>你将掌握：OpenCV、YOLO 深度学习、卡尔曼滤波、TensorRT 部署、ROS</li>
-        </ul>
-        <div class="req">希望你：对 AI 与视觉着迷，愿意读论文写代码；代表作：局均易伤 1618.3s 全国第一的雷达算法。</div>
-      </div>
-    </div>
+    <div class="planets" id="department-grid" aria-live="polite"></div>
+    <noscript><p class="note">启用 JavaScript 后可查看四个部门的职责、技术方向、成长路线与代表项目。</p></noscript>
   </div>
 </section>
 
@@ -573,13 +553,8 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       <div><div class="wp">WAYPOINT 06 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
       <div class="nums">09 - 10 MON<br>11 RDC</div>
     </div>
-    <div class="steps">
-      <div class="step reveal"><h4>获取开招提醒</h4><p>RM2027 正式报名时间待公布。现在可订阅公众号动态、加入 QQ 招新群或发邮件咨询；开招后将在这些渠道发布报名表。</p></div>
-      <div class="step reveal"><h4>新生培训</h4><p>按部门方向参加系列 Tutorial（机械/硬件/电控/算法），老队员带教，快速上手工程基础。</p></div>
-      <div class="step reveal"><h4>RDC 校内赛</h4><p>参加机器人设计大赛（Robot Design Contest，约 11 月）：组队造两台机器人真实对抗——2023 年 180+ 人参赛、13 支队伍同场竞技。</p></div>
-      <div class="step reveal"><h4>面试 & 入队</h4><p>面试看热情、责任心与协作能力；通过后进入项目组，在真实研发、联调与比赛中逐步承担角色。</p></div>
-    </div>
-    <p class="note">* 时间线参考往年节奏：招新约 9–10 月、RDC 约 11 月、联盟赛通常在次年春季。RM2027 的具体安排以公众号通知为准；具备扎实相关经验者可在报名时说明项目经历。</p>
+    <div class="steps" id="recruitment-path" aria-live="polite"></div>
+    <p class="note" data-recruit-schedule></p>
 
     <div style="padding-top:70px">
       <div class="grid g3">
@@ -601,11 +576,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       <div><div class="wp">WAYPOINT 06-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
       <div class="nums">Q & A<br>05 LOGS</div>
     </div>
-    <details class="reveal"><summary>零基础可以报名吗？</summary><p>完全可以。教程面向零基础设计，历届许多队员入队时没有任何机器人经验。我们更看重热情、责任心与自学能力。电控方向建议提前自学 C++ 与 PID 控制，其余部门均有完整带教路线。</p></details>
-    <details class="reveal"><summary>有专业或年级限制吗？</summary><p>不限专业、不限年级。工学院与 ISD 同学居多，但商学院、理学院的同学也曾入选并成为骨干。</p></details>
-    <details class="reveal"><summary>时间投入大吗？会影响学业吗？</summary><p>比赛与交付节点前的投入会明显增加。建议在咨询或宣讲时了解当季节奏、训练安排与项目责任，再结合自己的课业规划决定；团队重视清晰沟通和长期协作。</p></details>
-    <details class="reveal"><summary>如何报名？</summary><p>RM2027 正式报名尚未开放。请关注公众号「HKUST ENTERPRIZE」、加入 QQ 招新群 581184202，或邮件联系 robomasterhkust@gmail.com 获取开招提醒。</p></details>
-    <details class="reveal"><summary>我已有经验，应该怎么准备？</summary><p>在报名时附上 GitHub、作品集、机器人项目或比赛经历即可。机械、嵌入式、硬件、算法与工程协作经验都会帮助你更快找到合适的项目入口。</p></details>
+    <div id="faq-list"><details class="reveal" data-faq-details><summary>招新信息正在载入</summary><p>如未自动显示，请加入 QQ 招新群 581184202 或邮件咨询。</p></details></div>
   </div>
 </section>
 
@@ -631,16 +602,16 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       Space: the final frontier. 星舰 Enterprise 的下一个十年，由你来书写。<br>RM2027 正式报名尚未开放；现在留下一个可联系的入口，开招时第一时间加入。
     </p>
     <div class="card recruit-status reveal" id="interest-actions" style="--pc:var(--gold)">
-      <h3>RM2027 招新状态：筹备中</h3>
-      <p>报名表、宣讲与面试时间将由战队官方渠道发布。若你想先了解方向、培训或项目经历，欢迎通过 QQ 群或邮件联系。</p>
+      <h3 data-recruit-status-title>RM2027 招新状态：筹备中</h3>
+      <p data-recruit-status-message>正式安排尚未公布。现在可通过 QQ 群或邮件获取开招提醒。</p>
       <div class="action-row">
-        <button class="action-btn" type="button" data-copy="581184202">复制 QQ 招新群号</button>
-        <a class="action-btn alt" href="mailto:robomasterhkust@gmail.com?subject=RM2027%20%E6%8B%9B%E6%96%B0%E5%92%A8%E8%AF%A2">邮件咨询招新</a>
+        <button class="action-btn" type="button" data-copy="581184202" data-recruit-qq>复制 QQ 招新群号</button>
+        <a class="action-btn alt" href="mailto:robomasterhkust@gmail.com?subject=RM2027%20%E6%8B%9B%E6%96%B0%E5%92%A8%E8%AF%A2" data-recruit-email>邮件咨询招新</a>
       </div>
     </div>
     <div class="grid g4">
-      <div class="card chan reveal" style="--pc:var(--cyan)"><b>📱 QQ 招新群</b><span>581184202</span></div>
-      <div class="card chan reveal" style="--pc:var(--blue)"><b>📧 邮箱</b><span>robomasterhkust@gmail.com<br>robomaster@ust.hk</span></div>
+      <div class="card chan reveal" style="--pc:var(--cyan)"><b>📱 QQ 招新群</b><span data-recruit-qq-number>581184202</span></div>
+      <div class="card chan reveal" style="--pc:var(--blue)"><b>📧 邮箱</b><span><span data-recruit-email-address>robomasterhkust@gmail.com</span><br>robomaster@ust.hk</span></div>
       <div class="card chan reveal" style="--pc:var(--purple)"><b>💬 微信公众号</b><span>HKUST ENTERPRIZE<br>(gh_855d709c046e)</span></div>
       <div class="card chan reveal" style="--pc:var(--pink)"><b>📺 Bilibili</b><span><a href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">港科大ENTERPRIZE战队</a></span></div>
       <div class="card chan reveal" style="--pc:var(--gold)"><b>📸 Instagram</b><span><a href="https://www.instagram.com/hkust_enterprize_robomaster/" target="_blank" rel="noopener">@hkust_enterprize_robomaster</a></span></div>
@@ -661,6 +632,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </footer>
 
+<script src="data/recruitment.js"></script>
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
@@ -670,6 +642,72 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 "use strict";
 var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var isMobile = window.innerWidth < 720;
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>'"]/g, function(character){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[character];
+  });
+}
+
+function renderRecruitment(){
+  var content = window.ENTERPRIZE_RECRUITMENT;
+  if (!content) return;
+  var departmentGrid = document.getElementById('department-grid');
+  var path = document.getElementById('recruitment-path');
+  var faq = document.getElementById('faq-list');
+  departmentGrid.innerHTML = content.departments.map(function(department){
+    var rows = [
+      ['职责', department.responsibility],
+      ['技术', department.technologies],
+      ['成长', department.growth],
+      ['项目', department.project],
+    ];
+    return '<article class="card planet-card reveal" style="--pc:'+escapeHtml(department.tone)+'">' +
+      '<div class="planet '+escapeHtml(department.planetClass)+'" aria-hidden="true"></div>' +
+      '<h3 style="color:'+escapeHtml(department.titleTone)+'">'+escapeHtml(department.name)+'</h3>' +
+      '<div class="en2">'+escapeHtml(department.english)+'</div><ul>' +
+      rows.map(function(row){ return '<li><b>'+row[0]+'：</b>'+escapeHtml(row[1])+'</li>'; }).join('') +
+      '</ul></article>';
+  }).join('');
+  path.innerHTML = content.path.map(function(step){
+    return '<article class="step reveal"><div class="en2">'+escapeHtml(step.phase)+'</div><h4>'+escapeHtml(step.title)+'</h4><p>'+escapeHtml(step.description)+'</p></article>';
+  }).join('');
+  faq.innerHTML = content.faq.map(function(item){
+    return '<details class="reveal" data-faq-details><summary>'+escapeHtml(item.question)+'</summary><p>'+escapeHtml(item.answer)+'</p></details>';
+  }).join('');
+  document.querySelectorAll('[data-recruit-badge]').forEach(function(element){ element.textContent = content.badge; });
+  document.querySelectorAll('[data-recruit-primary]').forEach(function(element){ element.textContent = content.primaryCta.label; element.setAttribute('href', content.primaryCta.href); });
+  document.querySelectorAll('[data-recruit-status-title]').forEach(function(element){ element.textContent = content.statusTitle; });
+  document.querySelectorAll('[data-recruit-status-message]').forEach(function(element){ element.textContent = content.statusMessage; });
+  document.querySelectorAll('[data-recruit-schedule]').forEach(function(element){ element.textContent = '* '+content.scheduleNote; });
+  document.querySelectorAll('[data-recruit-qq]').forEach(function(element){ element.dataset.copy = content.contacts.qqGroup; });
+  document.querySelectorAll('[data-recruit-qq-number]').forEach(function(element){ element.textContent = content.contacts.qqGroup; });
+  document.querySelectorAll('[data-recruit-email-address]').forEach(function(element){ element.textContent = content.contacts.email; });
+  document.querySelectorAll('[data-recruit-email]').forEach(function(element){
+    element.href = 'mailto:'+content.contacts.email+'?subject='+encodeURIComponent(content.contacts.emailSubject);
+  });
+}
+
+function initNavigation(){
+  var toggle = document.getElementById('nav-toggle');
+  var navigation = document.getElementById('primary-navigation');
+  if (!toggle || !navigation) return;
+  function setOpen(isOpen){
+    navigation.classList.toggle('is-open', isOpen);
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? '关闭导航菜单' : '打开导航菜单');
+    toggle.textContent = isOpen ? '×' : '☰';
+  }
+  toggle.addEventListener('click', function(){ setOpen(toggle.getAttribute('aria-expanded') !== 'true'); });
+  navigation.addEventListener('click', function(event){ if (event.target.closest('a')) setOpen(false); });
+  document.addEventListener('keydown', function(event){
+    if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') { setOpen(false); toggle.focus(); }
+  });
+  window.addEventListener('resize', function(){ if (window.innerWidth > 1100) setOpen(false); }, {passive:true});
+}
+
+renderRecruitment();
+initNavigation();
 
 /* ============ HUD 速度表（须先于 initWarp 声明） ============ */
 var velVal = document.getElementById('vel-val');
@@ -854,11 +892,12 @@ if (!reduced) pollScroll();
 
 document.querySelectorAll('a[href^="#"]').forEach(function(a){
   a.addEventListener('click', function(e){
+    if (a.classList.contains('skip-link')) return;
     var t = document.querySelector(a.getAttribute('href'));
     if (!t) return;
     e.preventDefault();
     if (lenis) lenis.scrollTo(t, {offset: -70});
-    else t.scrollIntoView({behavior:'smooth'});
+    else t.scrollIntoView({behavior:reduced ? 'auto' : 'smooth'});
   });
 });
 
@@ -1059,7 +1098,7 @@ initNebulaField();
 initMouseWarp();
 initHoloLighting();
 
-if (window.gsap){
+if (window.gsap && !reduced){
   gsap.registerPlugin(ScrollTrigger);
   if (lenis) lenis.on('scroll', ScrollTrigger.update);
 
@@ -1112,7 +1151,7 @@ if (window.gsap){
 
 /* ============ 3. 跃迁按钮 ============ */
 document.getElementById('jump-btn').addEventListener('click', function(){
-  if (reduced || !window.gsap) { document.querySelector('#interest-actions').scrollIntoView({behavior:'smooth'}); return; }
+  if (reduced || !window.gsap) { document.querySelector('#interest-actions').scrollIntoView({behavior:reduced ? 'auto' : 'smooth'}); return; }
   var obj = {b:0};
   var tl = gsap.timeline();
   tl.to(obj, {b:3.2, duration:.9, ease:'power2.in', onUpdate:function(){ boost = obj.b; }})
@@ -1141,15 +1180,20 @@ document.querySelectorAll('[data-copy]').forEach(function(btn){
 });
 
 /* ============ 5. 数字滚动 ============ */
-var nio = new IntersectionObserver(function(es){ es.forEach(function(e){
-  if (!e.isIntersecting) return;
-  var el = e.target, n = +el.dataset.n, t0 = performance.now(), dur = 1500;
-  (function tick(t){ var p = Math.min((t-t0)/dur, 1);
-    el.textContent = Math.round(n * (1 - Math.pow(1-p, 3)));
-    if (p < 1) requestAnimationFrame(tick); })(t0);
-  nio.unobserve(el);
-});}, {threshold:.5});
-document.querySelectorAll('.stat b[data-n]').forEach(function(el){ nio.observe(el); });
+var numberTargets = document.querySelectorAll('.stat b[data-n]');
+if (reduced) {
+  numberTargets.forEach(function(element){ element.textContent = element.dataset.n; });
+} else {
+  var nio = new IntersectionObserver(function(es){ es.forEach(function(e){
+    if (!e.isIntersecting) return;
+    var el = e.target, n = +el.dataset.n, t0 = performance.now(), dur = 1500;
+    (function tick(t){ var p = Math.min((t-t0)/dur, 1);
+      el.textContent = Math.round(n * (1 - Math.pow(1-p, 3)));
+      if (p < 1) requestAnimationFrame(tick); })(t0);
+    nio.unobserve(el);
+  });}, {threshold:.5});
+  numberTargets.forEach(function(element){ nio.observe(element); });
+}
 })();
 </script>
 </body>

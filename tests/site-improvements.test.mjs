@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import test from 'node:test'
+
+const root = new URL('../', import.meta.url)
+const readSource = (path) => readFile(new URL(path, root), 'utf8')
+
+test('recruitment content has one data source', async () => {
+  const [data, homepage] = await Promise.all([
+    readSource('data/recruitment.js'),
+    readSource('index.html'),
+  ])
+
+  assert.match(data, /ENTERPRIZE_RECRUITMENT/)
+  assert.match(data, /departments/)
+  assert.match(data, /path/)
+  assert.match(data, /faq/)
+  assert.match(homepage, /data\/recruitment\.js/)
+  assert.match(homepage, /id="department-grid"/)
+  assert.match(homepage, /id="recruitment-path"/)
+  assert.match(homepage, /id="faq-list"/)
+  assert.match(homepage, /data-recruit-primary/)
+  assert.match(homepage, /data-recruit-status-title/)
+})
+
+test('homepage navigation and dynamic content remain keyboard accessible', async () => {
+  const homepage = await readSource('index.html')
+
+  assert.match(homepage, /class="skip-link"/)
+  assert.match(homepage, /id="nav-toggle"/)
+  assert.match(homepage, /aria-controls="primary-navigation"/)
+  assert.match(homepage, /aria-expanded="false"/)
+  assert.match(homepage, /:focus-visible/)
+  assert.match(homepage, /prefers-reduced-motion/)
+  assert.match(homepage, /<details[^>]*data-faq-details/)
+})
+
+test('archive provides search, sorting, results, and project details', async () => {
+  const archive = await readSource('open-source.html')
+
+  assert.match(archive, /id="project-search"/)
+  assert.match(archive, /id="project-sort"/)
+  assert.match(archive, /id="archive-results"/)
+  assert.match(archive, /id="project-dialog"/)
+  assert.match(archive, /data-details-index/)
+  assert.match(archive, /showModal/)
+  assert.match(archive, /<img class="preview"[^>]*loading="lazy"[^>]*decoding="async"/)
+})
+
+test('improvement roadmap records scope and acceptance criteria', async () => {
+  const roadmap = await readSource('docs/website-improvement-roadmap.md')
+
+  assert.match(roadmap, /P0/)
+  assert.match(roadmap, /招新转化/)
+  assert.match(roadmap, /开源项目/)
+  assert.match(roadmap, /无障碍/)
+  assert.match(roadmap, /验收/)
+})
