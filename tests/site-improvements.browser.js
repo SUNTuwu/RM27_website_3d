@@ -7,6 +7,8 @@ async function openPage(browser, path, options = {}) {
   const page = await browser.newPage(options)
   const errors = []
   page.on('pageerror', (error) => errors.push(String(error)))
+  // B 站播放器心跳遥测会让 networkidle 无法稳定，测试中统一中止播放器域请求
+  await page.route(/player\.bilibili\.com|bilivideo\.com/, (route) => route.abort())
   await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle' })
   return { page, errors }
 }
@@ -39,6 +41,34 @@ async function openPage(browser, path, options = {}) {
     assert.equal(await reducedFaq.evaluate((details) => details.classList.contains('is-animating')), false)
     await reducedFaq.locator('summary').click()
     assert.equal(await reducedFaq.evaluate((details) => details.open), false)
+
+    // 我们是谁 / 什么是 RoboMaster / 精彩展示：官方视频源与兵种名录
+    assert.equal(await homepage.locator('.intro-facts .fact-line').count(), 4)
+    assert.equal(await homepage.locator('.intro-facts').getAttribute('role'), 'group')
+    assert.equal(await homepage.locator('#what-is-rm .roster .unit').count(), 7)
+    assert.equal(await homepage.locator('#what-is-rm .roster').getAttribute('role'), 'group')
+    assert.equal(await homepage.locator('#showcase .show-card .video-facade').count(), 3)
+    // 首屏只载封面门面，不内嵌播放器 iframe
+    assert.equal(await homepage.locator('iframe').count(), 0)
+    const officialBvids = await homepage.locator('#what-is-rm [data-video-embed], #showcase [data-video-embed]').evaluateAll((facades) =>
+      facades.map((facade) => new URL(facade.dataset.videoEmbed).searchParams.get('bvid'))
+    )
+    assert.deepEqual(officialBvids, ['BV14g4y1z7QC', 'BV1LB55z9EUL', 'BV1pA7pzhEkF', 'BV1QQ4y1B7Cy'])
+    assert.equal(await homepage.locator('nav a[data-wp="what-is-rm"]').getAttribute('href'), '#what-is-rm')
+
+    // 点击门面后才注入播放器 iframe，src 指向对应官方视频
+    await homepage.locator('#showcase .video-facade').first().click()
+    const injected = homepage.locator('#showcase iframe').first()
+    assert.match(await injected.getAttribute('src'), /bvid=BV1LB55z9EUL/)
+    assert.equal(await injected.getAttribute('title'), 'RMUC 2025 机甲大师超级对抗赛规则视频')
+    assert.equal(await homepage.locator('#showcase .video-facade').count(), 2)
+
+    // 赛事板块门面同样可点击注入，带 autoplay 权限且焦点移交播放器
+    await homepage.locator('#what-is-rm .video-facade').click()
+    const rmFrame = homepage.locator('#what-is-rm iframe').first()
+    assert.match(await rmFrame.getAttribute('src'), /bvid=BV14g4y1z7QC/)
+    assert.equal(await rmFrame.getAttribute('allow'), 'autoplay; fullscreen; encrypted-media')
+    assert.equal(await rmFrame.evaluate((frame) => document.activeElement === frame), true)
     assert.deepEqual(homepageResult.errors, [])
 
     const mobileResult = await openPage(browser, '/index.html', {
@@ -58,6 +88,9 @@ async function openPage(browser, path, options = {}) {
     const noScriptHomepage = await browser.newPage({ viewport: { width: 375, height: 844 }, javaScriptEnabled: false })
     await noScriptHomepage.goto(`${baseUrl}/index.html`, { waitUntil: 'load' })
     assert.equal(await noScriptHomepage.locator('#primary-navigation').evaluate((element) => getComputedStyle(element).display), 'flex')
+    // 无 JS 时 reveal 内容直接可见，视频门面退化为新标签页打开官方视频页
+    assert.equal(await noScriptHomepage.locator('#showcase .show-card').first().evaluate((element) => getComputedStyle(element).opacity), '1')
+    assert.equal(await noScriptHomepage.locator('#what-is-rm .video-facade').getAttribute('href'), 'https://www.bilibili.com/video/BV14g4y1z7QC/')
     await noScriptHomepage.close()
 
     const archiveResult = await openPage(browser, '/open-source.html', {

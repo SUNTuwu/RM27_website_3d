@@ -117,3 +117,71 @@ test('interactive tags ship sci-fi open and close animations', async () => {
   assert.match(archive, /addEventListener\('cancel'/)
   assert.match(archive, /\.filter::after,\.project-dialog\[open\]/)
 })
+
+test('homepage introduces the team, the competition, and official highlights', async () => {
+  const homepage = await readSource('index.html')
+
+  // 我们是谁：叙事介绍 + 战队档案事实行
+  assert.match(homepage, /intro-panel/)
+  assert.match(homepage, /ENTERPRIZE 是香港科技大学的 RoboMaster 机甲大师战队/)
+  assert.match(homepage, /intro-facts/)
+
+  // 什么是 RoboMaster：赛事介绍 + 兵种名录 + 官方宣传片
+  assert.match(homepage, /id="what-is-rm"/)
+  assert.match(homepage, /什么是 RoboMaster 机甲大师赛/)
+  assert.match(homepage, /roster/)
+  assert.match(homepage, /bvid=BV14g4y1z7QC/)
+
+  // 精彩展示：三段官方短视频 + 官方账号链接
+  assert.match(homepage, /id="showcase"/)
+  assert.match(homepage, /bvid=BV1LB55z9EUL/)
+  assert.match(homepage, /bvid=BV1pA7pzhEkF/)
+  assert.match(homepage, /bvid=BV1QQ4y1B7Cy/)
+  assert.match(homepage, /space\.bilibili\.com\/20554233/)
+  assert.match(homepage, /data-wp="what-is-rm"/)
+
+  // 新板块插入后 Waypoint 编号连续重排
+  for (const label of [
+    'WAYPOINT 03 // FIRST CONTACT',
+    'WAYPOINT 04 // HIGHLIGHT REEL',
+    'WAYPOINT 05 // CRUISE',
+    'WAYPOINT 06 // PLANETS',
+    'WAYPOINT 07 // SYSTEMS',
+    'WAYPOINT 08 // FLIGHT PLAN',
+    "WAYPOINT 09 // THE JUMP",
+  ]) {
+    assert.ok(homepage.includes(label), label)
+  }
+
+  // 嵌入视频采用点击加载门面：data-video-embed 持有播放器地址，首屏只载封面，不产生播放器遥测
+  assert.match(homepage, /initVideoFacades/)
+  // 修饰键点击保留新标签页原生行为；注入的播放器带 autoplay 权限与焦点移交
+  assert.match(homepage, /event\.metaKey \|\| event\.ctrlKey/)
+  assert.match(homepage, /autoplay; fullscreen; encrypted-media/)
+  assert.match(homepage, /iframe\.focus\(\)/)
+  const embeds = homepage.match(/data-video-embed="[^"]+"/g) || []
+  assert.equal(embeds.length, 4)
+  for (const embed of embeds) {
+    assert.match(embed, /player\.bilibili\.com\/player\.html/)
+    assert.match(embed, /bvid=BV1[a-zA-Z0-9]+/)
+    assert.match(embed, /autoplay=1/)
+  }
+  // 门面封面图懒加载、异步解码且不带 Referer；无 JS 时门面退化为官方视频页链接
+  const covers = homepage.match(/<img[^>]+hdslb\.com[^>]*>/g) || []
+  assert.equal(covers.length, 4)
+  for (const cover of covers) {
+    assert.match(cover, /loading="lazy"/)
+    assert.match(cover, /decoding="async"/)
+    assert.match(cover, /referrerpolicy="no-referrer"/)
+  }
+  const facades = homepage.match(/<a class="video-facade"[^>]*>/g) || []
+  assert.equal(facades.length, 4)
+  for (const facade of facades) {
+    assert.match(facade, /href="https:\/\/www\.bilibili\.com\/video\/BV1[a-zA-Z0-9]+\/"/)
+    assert.match(facade, /target="_blank"/)
+    assert.match(facade, /rel="noopener"/)
+    assert.match(facade, /aria-label="/)
+  }
+  // 首页不再直接内嵌播放器 iframe
+  assert.equal((homepage.match(/<iframe[^>]+player\.bilibili\.com/g) || []).length, 0)
+})

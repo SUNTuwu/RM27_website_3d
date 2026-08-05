@@ -79,7 +79,7 @@ nav .bar{max-width:1280px;margin:0 auto;padding:0 26px;display:flex;align-items:
 nav .logo{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:2.5px;font-size:17px;color:var(--txt)}
 nav .logo img{width:34px;height:34px;border-radius:8px}
 nav .logo .n{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:2px;font-weight:400}
-nav .links{display:flex;align-items:center;gap:24px;font-size:14.5px}
+nav .links{display:flex;align-items:center;gap:18px;font-size:14.5px}
 nav .links a{color:var(--dim);transition:color .2s}
 nav .links a:hover{color:var(--cyan2);text-decoration:none}
 nav .links a.act{color:var(--cyan2)}
@@ -100,6 +100,7 @@ main{position:relative;z-index:1}
 footer{position:relative;z-index:1}
 .wrap{max-width:1080px;margin:0 auto;padding:0 26px}
 section{padding:100px 0;position:relative}
+section[id],[id="oss"],[id="training"]{scroll-margin-top:76px}
 
 /* ===== 章节标题（LCARS 星历） ===== */
 .sec-head{margin-bottom:42px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
@@ -312,6 +313,40 @@ details[data-faq-details][open] p::before{animation:faq-line .55s .08s cubic-bez
 @keyframes faq-line{to{transform:scaleX(1)}}
 details[data-faq-details].is-animating p{overflow:hidden}
 
+/* ===== 我们是谁 · 赛事介绍 · 精彩展示 ===== */
+.intro-panel{display:grid;grid-template-columns:1.5fr 1fr;gap:26px;align-items:stretch;margin-bottom:36px}
+.intro-main{padding:26px 30px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--cyan);border-radius:0 16px 16px 0}
+.intro-main p{color:#c9d4e8;font-size:15px;line-height:1.9;margin-bottom:14px}
+.intro-main p:last-child{margin-bottom:0}
+.intro-main b{color:var(--cyan2)}
+.intro-facts{padding:22px 24px;background:rgba(7,12,23,.72);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;justify-content:center;gap:12px;font-family:var(--mono)}
+.fact-line{display:flex;justify-content:space-between;gap:14px;border-bottom:1px dashed rgba(127,212,224,.18);padding-bottom:10px;font-size:12px}
+.fact-line:last-child{border-bottom:0;padding-bottom:0}
+.fact-line span{color:var(--dim);letter-spacing:2px}
+.fact-line b{color:var(--gold2);text-align:right;font-weight:700}
+.roster{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.roster .unit{border:1px solid rgba(127,212,224,.3);background:rgba(70,184,200,.06);border-radius:4px;padding:5px 11px;font:11px var(--mono);letter-spacing:1.5px;color:var(--cyan2)}
+.roster .unit i{font-style:normal;color:var(--dim);margin-left:6px}
+.rm-video{overflow:hidden;border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:0 16px 16px 0;background:rgba(7,12,23,.82);box-shadow:0 18px 60px rgba(0,0,0,.35)}
+.rm-video .cap2{padding:13px 18px;color:var(--dim);font-size:12.5px}
+.video-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#060b16;color:var(--cyan2);cursor:pointer;overflow:hidden;text-decoration:none}
+.video-facade img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.82;transition:opacity .35s ease,transform .5s cubic-bezier(.22,1,.36,1)}
+.video-facade:hover img,.video-facade:focus-visible img{opacity:1;transform:scale(1.03)}
+.video-facade .vf-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,6,14,.14) 40%,rgba(4,6,14,.7) 100%)}
+.video-facade .vf-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#04121a;background:var(--cyan2);box-shadow:0 0 26px rgba(112,224,255,.65);transition:transform .3s ease,box-shadow .3s ease}
+.video-facade:hover .vf-play,.video-facade:focus-visible .vf-play{transform:translate(-50%,-50%) scale(1.12);box-shadow:0 0 40px rgba(112,224,255,.9)}
+.video-facade .vf-hint{position:absolute;left:14px;right:14px;bottom:10px;font:10.5px var(--mono);letter-spacing:1.5px;color:#cfe6f2;text-align:left}
+.video-frame{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+#what-is-rm .intro-panel{margin-bottom:0}
+.show-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.show-card{overflow:hidden;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--pc,var(--cyan));border-radius:0 0 14px 14px;
+  transition:transform .4s cubic-bezier(.22,1,.36,1),box-shadow .4s ease,border-color .3s ease}
+.show-card:hover{transform:translateY(-6px);box-shadow:0 20px 50px rgba(70,184,200,.18);border-color:rgba(127,212,224,.5)}
+.show-card .sc-body{padding:15px 18px 17px}
+.show-card h3{font-size:14.5px;color:var(--txt);line-height:1.5}
+.show-card .sc-meta{margin-top:8px;font:10.5px var(--mono);letter-spacing:1.5px;color:var(--dim)}
+@media(max-width:900px){.intro-panel{grid-template-columns:1fr}.show-grid{grid-template-columns:1fr}}
+
 /* ===== 跃迁黑洞 ===== */
 #join{overflow:hidden}
 .bh-stage{position:relative;height:460px;display:flex;align-items:center;justify-content:center;margin:10px 0 30px}
@@ -371,6 +406,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 }
 </style>
 <noscript><style>
+.reveal{opacity:1 !important;transform:none !important}
 @media(max-width:1100px){
   .nav-toggle{display:none}
   nav .bar{height:auto;min-height:62px;flex-wrap:wrap;padding-bottom:10px}
@@ -396,6 +432,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <div class="links" id="primary-navigation">
       <a href="#hero"   data-wp="hero">深空</a>
       <a href="#about"  data-wp="about">战队</a>
+      <a href="#what-is-rm" data-wp="what-is-rm">赛事</a>
       <a href="#honors" data-wp="honors">战绩</a>
       <a href="#depts"  data-wp="depts">部门</a>
       <a href="#tech"   data-wp="tech">技术</a>
@@ -444,6 +481,19 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       <div><div class="wp">WAYPOINT 02 // IGNITION</div><h2>点火 · 我们是谁</h2><div class="en">Who We Are</div></div>
       <div class="nums">47 1701 63<br>09 2620 26</div>
     </div>
+    <div class="intro-panel reveal">
+      <div class="intro-main">
+        <p><b>ENTERPRIZE 是香港科技大学的 RoboMaster 机甲大师战队。</b>2015 年，一群想把课堂公式变成钢铁机器的学生创立了它——队名致敬《星际迷航》的星舰 Enterprise，"勇闯前人未至之境"从此成为我们的工程信条。</p>
+        <p>战队以学分项目课程在 HKUST 工学院 Dream Team Hub 运行，机械、硬件、电控、算法四条航线并行。队员们用一年时间，把图纸、焊点与代码锻造成能上场作战的机器人舰队；而每一位新人，都会在老队员的带领下走完同一条路。</p>
+        <p>我们既是一支竞赛队伍，也是一所工程师的学校——所有经过赛场验证的方案最终全部开源，留给下一位想造机器人的人。</p>
+      </div>
+      <div class="intro-facts" role="group" aria-label="战队档案">
+        <div class="fact-line"><span>TEAM // 建制</span><b>机械 · 硬件 · 电控 · 算法</b></div>
+        <div class="fact-line"><span>BASE // 基地</span><b>HKUST 工学院 Dream Team Hub</b></div>
+        <div class="fact-line"><span>MODE // 运行</span><b>学分项目课程 · 全年赛季制</b></div>
+        <div class="fact-line"><span>SINCE // 传承</span><b>2015 至今 · 方案全部开源</b></div>
+      </div>
+    </div>
     <div class="grid g3">
       <div class="card reveal" style="--pc:var(--cyan)"><h3 style="color:var(--cyan2)">🛰 最老牌</h3><p>成立于 2015 年，全球最早参加 RoboMaster 机甲大师赛的战队之一，代表香港科技大学征战十年。</p></div>
       <div class="card reveal" style="--pc:var(--gold)"><h3 style="color:var(--gold2)">🏆 赛场与工程并进</h3><p>2019 年闯入全球总决赛 12 强；2025 高校联盟赛浙江站 3V3 冠军、超级对抗赛全国赛二等奖；2026 高校联盟赛安徽站获甲级二等奖。</p></div>
@@ -464,11 +514,95 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </section>
 
-<!-- ================= 03 巡航 · 战绩 ================= -->
+<!-- ================= 03 首次接触 · 什么是 RoboMaster ================= -->
+<section id="what-is-rm">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div><div class="wp">WAYPOINT 03 // FIRST CONTACT</div><h2>什么是 RoboMaster 机甲大师赛</h2><div class="en">About the Competition</div></div>
+      <div class="nums">7 VS 7<br>ROBOT COMBAT</div>
+    </div>
+    <div class="intro-panel">
+      <div class="intro-main reveal">
+        <p><b>RoboMaster 机甲大师赛由大疆 DJI 发起</b>，是全球首个射击对抗类的大学生机器人赛事。参赛队伍用一年时间自主设计、制造机器人舰队，在布满机关的赛场上实时对抗：发射弹丸攻击敌方机器人与基地，血量归零即被击毁，先摧毁对方基地者获胜。</p>
+        <p>这不是遥控车比赛——每台机器人由机械结构、嵌入式硬件、电机控制与视觉算法共同驱动；哨兵机器人更需要全自动感知、决策与射击。英雄远程吊射、工程采矿补给、步兵近战缠斗、空中机器人俯冲支援，再配合飞镖与雷达系统，才构成一支队伍的完整战力。</p>
+        <p>赛季从高校联盟赛与超级对抗赛区域赛开始，层层晋级全国赛，最终站上总决赛舞台——全国数百所高校、数万名青年工程师，在同一片赛场上验证各自一年的答案。</p>
+        <div class="roster" role="group" aria-label="比赛机器人兵种">
+          <span class="unit">英雄<i>HERO</i></span>
+          <span class="unit">工程<i>ENGINEER</i></span>
+          <span class="unit">步兵<i>INFANTRY</i></span>
+          <span class="unit">哨兵<i>SENTRY</i></span>
+          <span class="unit">空中机器人<i>AERIAL</i></span>
+          <span class="unit">飞镖<i>DART</i></span>
+          <span class="unit">雷达站<i>RADAR</i></span>
+        </div>
+      </div>
+      <div class="rm-video reveal">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV14g4y1z7QC/" target="_blank" rel="noopener" aria-label="播放官方宣传片：三分钟带你了解 RoboMaster 机甲大师赛"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1&autoplay=1"
+          data-video-title="RoboMaster 官方宣传片：三分钟带你了解机甲大师赛">
+          <img src="https://i0.hdslb.com/bfs/archive/684e3e3b667e0ebf2d76e4a4782e41c3481954dd.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <p class="cap2">官方宣传片《三分钟带你了解万千青年工程师的舞台——RoboMaster机甲大师赛》 · 来源：B站「RoboMaster机甲大师」</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 高光回放 · 精彩展示 ================= -->
+<section id="showcase">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div><div class="wp">WAYPOINT 04 // HIGHLIGHT REEL</div><h2>高光回放 · 精彩展示</h2><div class="en">Official Match Highlights</div></div>
+      <div class="nums">OFFICIAL<br>CLIPS ×3</div>
+    </div>
+    <p style="max-width:780px;color:#c0cce2;margin-bottom:26px" class="reveal">以下视频均由 RoboMaster 官方账号「RoboMaster机甲大师」发布：先看懂规则，再感受赛场的极限操作——而这，正是 ENTERPRIZE 每个赛季的日常。</p>
+    <div class="show-grid">
+      <div class="show-card reveal" style="--pc:var(--gold)">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV1LB55z9EUL/" target="_blank" rel="noopener" aria-label="播放视频：RMUC 2025 机甲大师超级对抗赛规则视频"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=114477991200346&bvid=BV1LB55z9EUL&cid=31131238904&p=1&autoplay=1"
+          data-video-title="RMUC 2025 机甲大师超级对抗赛规则视频">
+          <img src="https://i2.hdslb.com/bfs/archive/472cd8245a06bd3c4e86b1bc4432db0c21cf4244.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <div class="sc-body"><h3>RMUC 2025 超级对抗赛 · 规则视频</h3><div class="sc-meta">RoboMaster机甲大师 // 看懂比赛 · 2 MIN</div></div>
+      </div>
+      <div class="show-card reveal" style="--pc:var(--cyan)">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV1pA7pzhEkF/" target="_blank" rel="noopener" aria-label="播放视频：RMUC 2025 东部赛区精彩集锦——空地协同，极限换家"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=114597092656537&bvid=BV1pA7pzhEkF&cid=30233464752&p=1&autoplay=1"
+          data-video-title="RMUC 2025 东部赛区精彩集锦：空地协同，极限换家">
+          <img src="https://i0.hdslb.com/bfs/archive/a7cbf9bbfee0b9a1a09dd2486a0c9146abf72e9a.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <div class="sc-body"><h3>空地协同，极限换家｜RMUC 2025 精彩集锦</h3><div class="sc-meta">RoboMaster机甲大师 // 高光时刻 · 2 MIN</div></div>
+      </div>
+      <div class="show-card reveal" style="--pc:var(--pink)">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV1QQ4y1B7Cy/" target="_blank" rel="noopener" aria-label="播放赛事介绍视频：致热爱的你，机甲大师超级对抗赛等你加入"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=721042980&bvid=BV1QQ4y1B7Cy&cid=424822031&p=1&autoplay=1"
+          data-video-title="赛事介绍：致热爱的你，机甲大师超级对抗赛等你加入">
+          <img src="https://i2.hdslb.com/bfs/archive/1aecfff058f590b0e284011452b4281ddcea0063.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <div class="sc-body"><h3>致热爱的你｜超级对抗赛等你加入</h3><div class="sc-meta">RoboMaster机甲大师 // 赛事介绍 · 4 MIN</div></div>
+      </div>
+    </div>
+    <p style="margin-top:20px" class="reveal"><a class="btn btn-o" href="https://space.bilibili.com/20554233" target="_blank" rel="noopener">更多官方视频 ⟶ B站「RoboMaster机甲大师」</a></p>
+  </div>
+</section>
+
+<!-- ================= 05 巡航 · 战绩 ================= -->
 <section id="honors">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 03 // CRUISE</div><h2>曲速巡航 · 十年战绩</h2><div class="en">Honors · 2015 – 2026</div></div>
+      <div><div class="wp">WAYPOINT 05 // CRUISE</div><h2>曲速巡航 · 十年战绩</h2><div class="en">Honors · 2015 – 2026</div></div>
       <div class="nums">88 5811 84<br>12 0046 B8</div>
     </div>
     <div class="metric-row">
@@ -499,11 +633,11 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </div>
 
-<!-- ================= 04 星球 · 四大部门 ================= -->
+<!-- ================= 06 星球 · 四大部门 ================= -->
 <section id="depts">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 04 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
+      <div><div class="wp">WAYPOINT 06 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
       <div class="nums">34 0776 EP<br>56 3300 11</div>
     </div>
     <div class="planets" id="department-grid" aria-live="polite"></div>
@@ -511,11 +645,11 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </section>
 
-<!-- ================= 05 舰载科技 ================= -->
+<!-- ================= 07 舰载科技 ================= -->
 <section id="tech">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 05 // SYSTEMS</div><h2>舰载科技 · 你将亲手打造</h2><div class="en">What You Will Build</div></div>
+      <div><div class="wp">WAYPOINT 07 // SYSTEMS</div><h2>舰载科技 · 你将亲手打造</h2><div class="en">What You Will Build</div></div>
       <div class="nums">77 1618 3<br>02 1912 1</div>
     </div>
     <div class="grid g2">
@@ -561,7 +695,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <!-- 开源墙 -->
     <div id="oss" style="padding-top:90px">
       <div class="sec-head reveal">
-        <div><div class="wp">WAYPOINT 05-B // OPEN SOURCE</div><h2>开源，是我们的传统</h2><div class="en">Open Source Since 2016</div></div>
+        <div><div class="wp">WAYPOINT 07-B // OPEN SOURCE</div><h2>开源，是我们的传统</h2><div class="en">Open Source Since 2016</div></div>
         <div class="nums">21 0000 +<br>34 REPOS</div>
       </div>
       <p style="max-width:760px;color:#c0cce2;margin-bottom:26px" class="reveal">从 2016 年起，我们把每一赛季的代码、硬件、机械图纸与培训资料全部开源。你的作品将被整个 RoboMaster 社区阅读、引用、点 Star——这是比简历更有说服力的工程师名片。</p>
@@ -580,7 +714,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <!-- 培训 -->
     <div id="training" style="padding-top:90px">
       <div class="sec-head reveal">
-        <div><div class="wp">WAYPOINT 05-C // TRAINING</div><h2>系统化新生培训</h2><div class="en">Training Program</div></div>
+        <div><div class="wp">WAYPOINT 07-C // TRAINING</div><h2>系统化新生培训</h2><div class="en">Training Program</div></div>
         <div class="nums">20 + EPS<br>03 TRACKS</div>
       </div>
       <div class="grid g3">
@@ -592,11 +726,11 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </section>
 
-<!-- ================= 06 航线 · 入队之路 ================= -->
+<!-- ================= 08 航线 · 入队之路 ================= -->
 <section id="path">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 06 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
+      <div><div class="wp">WAYPOINT 08 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
       <div class="nums">09 - 10 MON<br>11 RDC</div>
     </div>
     <div class="steps" id="recruitment-path" aria-live="polite"></div>
@@ -619,18 +753,18 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="faq" style="padding-top:40px">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 06-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
+      <div><div class="wp">WAYPOINT 08-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
       <div class="nums">Q & A<br>05 LOGS</div>
     </div>
     <div id="faq-list"><details class="reveal" data-faq-details><summary>招新信息正在载入</summary><p>如未自动显示，请加入 QQ 招新群 581184202 或邮件咨询。</p></details></div>
   </div>
 </section>
 
-<!-- ================= 07 跃迁 · 加入我们 ================= -->
+<!-- ================= 09 跃迁 · 加入我们 ================= -->
 <section id="join">
   <div class="wrap">
     <div class="sec-head reveal" style="justify-content:center;text-align:center">
-      <div><div class="wp">WAYPOINT 07 // THE JUMP</div><h2>新舰起航，缺你不可</h2><div class="en">Join Us · RM2027</div></div>
+      <div><div class="wp">WAYPOINT 09 // THE JUMP</div><h2>新舰起航，缺你不可</h2><div class="en">Join Us · RM2027</div></div>
     </div>
     <div class="bh-stage reveal">
       <div class="bh">
@@ -843,9 +977,32 @@ function initFaqAnimations(){
   });
 }
 
+/* ============ 视频门面：点击后才注入 B 站播放器，无 JS 时原生跳转 ============ */
+function initVideoFacades(){
+  document.querySelectorAll('a[data-video-embed]').forEach(function(facade){
+    facade.addEventListener('click', function(event){
+      /* 保留 Ctrl/Cmd/Shift 点击在新标签页打开视频页的原生行为 */
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      var iframe = document.createElement('iframe');
+      iframe.className = 'video-frame';
+      iframe.src = facade.dataset.videoEmbed;
+      iframe.title = facade.dataset.videoTitle || 'RoboMaster 官方视频';
+      iframe.setAttribute('allowfullscreen', 'true');
+      iframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      iframe.tabIndex = -1;
+      facade.replaceWith(iframe);
+      /* 键盘激活后焦点移交播放器，不回退到 body */
+      iframe.focus();
+    });
+  });
+}
+
 renderRecruitment();
 initNavigation();
 initFaqAnimations();
+initVideoFacades();
 
 /* ============ HUD 速度表（须先于 initWarp 声明） ============ */
 var velVal = document.getElementById('vel-val');
