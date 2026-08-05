@@ -319,6 +319,12 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   .reveal,.card:hover,.lpanel:hover,.btn:hover,.repo:hover,.bh-cta .jump:hover{opacity:1;transform:none}
   .planet-card:hover .planet{transform:none}
 }
+@media(max-width:720px),(hover:none),(pointer:coarse){
+  nav{backdrop-filter:none;background:rgba(4,6,14,.94)}
+  #nebula-field{filter:none;mix-blend-mode:normal;opacity:.58}
+  .mouse-warp-canvas{display:none}
+  .card,.lpanel{backdrop-filter:none}
+}
 @media(max-width:600px){
   .video-teaser{min-height:270px;padding:24px}.video-teaser p{font-size:13px}
   .recruit-status{padding:20px}.action-row{margin-top:18px}
@@ -633,6 +639,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 </footer>
 
 <script src="data/recruitment.js"></script>
+<script src="assets/performance.js"></script>
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
@@ -641,7 +648,53 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 (function(){
 "use strict";
 var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var isMobile = window.innerWidth < 720;
+function createCurrentPerformanceProfile(){
+  return window.ENTERPRIZE_PERFORMANCE.createPerformanceProfile({
+    surface: 'home',
+    width: window.innerWidth,
+    height: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemory: navigator.deviceMemory,
+    reducedMotion: reduced,
+  });
+}
+var performanceProfile = createCurrentPerformanceProfile();
+var initialPerformanceProfile = performanceProfile;
+var isMobile = performanceProfile.isMobile;
+var animationScheduler = window.ENTERPRIZE_PERFORMANCE.createAnimationScheduler({
+  targetFps: performanceProfile.targetFps || 30,
+});
+function refreshPerformanceProfile(){
+  var requestedProfile = createCurrentPerformanceProfile();
+  var canUseDesktopEffects = initialPerformanceProfile.enableSmoothScroll;
+  performanceProfile = Object.freeze(Object.assign({}, requestedProfile, {
+    targetFps: Math.min(requestedProfile.targetFps || 30, initialPerformanceProfile.targetFps || 30),
+    pixelRatio: Math.min(requestedProfile.pixelRatio, initialPerformanceProfile.pixelRatio),
+    particleScale: Math.min(requestedProfile.particleScale, initialPerformanceProfile.particleScale),
+    enableMouseWarp: requestedProfile.enableMouseWarp && initialPerformanceProfile.enableMouseWarp,
+    enableHoloLighting: requestedProfile.enableHoloLighting && initialPerformanceProfile.enableHoloLighting,
+    enableSmoothScroll: requestedProfile.enableSmoothScroll && canUseDesktopEffects,
+    enableScrollAnimations: requestedProfile.enableScrollAnimations && initialPerformanceProfile.enableScrollAnimations,
+  }));
+  isMobile = performanceProfile.isMobile;
+  animationScheduler.setTargetFps(performanceProfile.targetFps || 30);
+  if (lenis) {
+    if (performanceProfile.enableSmoothScroll) lenis.start();
+    else lenis.stop();
+  }
+  document.querySelectorAll('[data-holo-ready]').forEach(function(element){
+    element.classList.toggle('holo-surface',performanceProfile.enableHoloLighting);
+  });
+  if (window.ScrollTrigger && ScrollTrigger.getAll) {
+    ScrollTrigger.getAll().forEach(function(trigger){
+      if (performanceProfile.enableScrollAnimations) trigger.enable(false, true);
+      else trigger.disable(false);
+    });
+  }
+  return performanceProfile;
+}
+window.addEventListener('resize', refreshPerformanceProfile, {passive:true});
 
 function escapeHtml(value){
   return String(value).replace(/[&<>'"]/g, function(character){
@@ -725,16 +778,18 @@ function spawn(anywhere){
   return { x: Math.cos(a)*r, y: Math.sin(a)*r,
            z: anywhere ? -Math.random()*900 : -900 - Math.random()*100 };
 }
-if (!reduced && window.THREE) (function initWarp(){
+if (performanceProfile.enableWebGL && window.THREE) (function initWarp(){
   var canvas = document.getElementById('warp');
-  var renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:false});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  var renderer = null;
+  try { renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:false}); }
+  catch (error) { canvas.remove(); return; }
+  renderer.setPixelRatio(performanceProfile.pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, .1, 2000);
   camera.position.z = 1;
 
-  var N = isMobile ? 500 : 1300;
+  var N = Math.max(240, Math.round((isMobile ? 500 : 1300) * performanceProfile.particleScale));
   var stars = [], pos = new Float32Array(N * 6), i;
   for (i = 0; i < N; i++) stars.push(spawn(true));
   var geo = new THREE.BufferGeometry();
@@ -754,7 +809,7 @@ if (!reduced && window.THREE) (function initWarp(){
   var roundSprite = new THREE.CanvasTexture(spriteCanvas);
 
   var dustGeo = new THREE.BufferGeometry();
-  var dn = isMobile ? 200 : 500, dp = new Float32Array(dn*3);
+  var dn = Math.max(80, Math.round((isMobile ? 200 : 500) * performanceProfile.particleScale)), dp = new Float32Array(dn*3);
   for (var j = 0; j < dn; j++){
     var a2 = Math.random()*Math.PI*2, r2 = 60+Math.random()*500;
     dp[j*3]=Math.cos(a2)*r2; dp[j*3+1]=Math.sin(a2)*r2; dp[j*3+2]=-300-Math.random()*900;
@@ -767,7 +822,7 @@ if (!reduced && window.THREE) (function initWarp(){
 
   // 闪烁星尘层（缓慢自转 + 呼吸明暗）
   var twGeo = new THREE.BufferGeometry();
-  var tn = isMobile ? 120 : 260, tp = new Float32Array(tn*3);
+  var tn = Math.max(60, Math.round((isMobile ? 120 : 260) * performanceProfile.particleScale)), tp = new Float32Array(tn*3);
   for (var t2 = 0; t2 < tn; t2++){
     var a3 = Math.random()*Math.PI*2, r3 = 40+Math.random()*420;
     tp[t2*3]=Math.cos(a3)*r3; tp[t2*3+1]=Math.sin(a3)*r3; tp[t2*3+2]=-150-Math.random()*800;
@@ -780,7 +835,7 @@ if (!reduced && window.THREE) (function initWarp(){
 
   // 随机流星粒子
   var meteors = [];
-  var METEOR_MAX = isMobile ? 2 : 4;
+  var METEOR_MAX = isMobile || performanceProfile.isLowPower ? 0 : 4;
   function spawnMeteor(){
     var mGeo = new THREE.BufferGeometry();
     var mp = new Float32Array(6);
@@ -798,19 +853,19 @@ if (!reduced && window.THREE) (function initWarp(){
   var mouseX = 0, mouseY = 0;
   window.addEventListener('pointermove', function(e){
     mouseX = (e.clientX/window.innerWidth - .5); mouseY = (e.clientY/window.innerHeight - .5);
-  });
+  }, {passive:true});
 
   var BASE = 1.05, MAXV = 14, elapsed = 0, meteorTimer = 0;
-  function frame(){
-    elapsed += .016;
-    warpSpeed += (Math.min(targetSpeed + boost, 1) - warpSpeed) * .045;
+  function frame(now, delta){
+    elapsed += .016 * delta;
+    warpSpeed += (Math.min(targetSpeed + boost, 1) - warpSpeed) * (1-Math.pow(.955,delta));
     var visualWarp = Math.max(warpSpeed, heroWarp, photoWarp);
     fieldMotion = visualWarp;
     var v = BASE + visualWarp * MAXV;
     var stretch = 2 + visualWarp * 112;
     for (var i = 0; i < N; i++){
       var s = stars[i];
-      s.z += v;
+      s.z += v*delta;
       if (s.z > 60) { var ns = spawn(false); s.x=ns.x; s.y=ns.y; s.z=ns.z; }
       var o = i*6;
       pos[o]=s.x; pos[o+1]=s.y; pos[o+2]=s.z;
@@ -820,25 +875,25 @@ if (!reduced && window.THREE) (function initWarp(){
 
     // 圆形星尘同样沿 Z 轴前进；远处小而慢、接近镜头后更快更亮。
     for (var dj=0; dj<dn; dj++){
-      var doff=dj*3; dp[doff+2]+=v*.22;
+      var doff=dj*3; dp[doff+2]+=v*.22*delta;
       if(dp[doff+2]>60){var da=Math.random()*Math.PI*2, dr=60+Math.random()*500;
         dp[doff]=Math.cos(da)*dr;dp[doff+1]=Math.sin(da)*dr;dp[doff+2]=-950-Math.random()*400;}
     }
     for (var tj=0; tj<tn; tj++){
-      var toff=tj*3; tp[toff+2]+=v*.16;
+      var toff=tj*3; tp[toff+2]+=v*.16*delta;
       if(tp[toff+2]>60){var ta=Math.random()*Math.PI*2, tr=40+Math.random()*420;
         tp[toff]=Math.cos(ta)*tr;tp[toff+1]=Math.sin(ta)*tr;tp[toff+2]=-900-Math.random()*350;}
     }
     dustGeo.attributes.position.needsUpdate=true;twGeo.attributes.position.needsUpdate=true;
 
     // 静止时仍有极慢旋转和呼吸闪烁。
-    dust.rotation.z += .0004;
-    twinkles.rotation.z -= .0007;
+    dust.rotation.z += .0004*delta;
+    twinkles.rotation.z -= .0007*delta;
     twMat.opacity = .35 + .3 * (Math.sin(elapsed*1.7)*.5+.5);
     dustMat.opacity = .45 + .25 * (Math.sin(elapsed*1.1+2)*.5+.5);
 
     // 随机流星
-    meteorTimer -= .016;
+    meteorTimer -= .016*delta;
     if (meteorTimer <= 0 && meteors.length < METEOR_MAX){
       spawnMeteor();
       meteorTimer = 1.5 + Math.random()*4;
@@ -846,9 +901,9 @@ if (!reduced && window.THREE) (function initWarp(){
     for (var mi = meteors.length-1; mi >= 0; mi--){
       var m = meteors[mi];
       var mp2 = m.line.geometry.attributes.position.array;
-      mp2[0]+=m.dx; mp2[1]+=m.dy; mp2[3]+=m.dx; mp2[4]+=m.dy;
+      mp2[0]+=m.dx*delta; mp2[1]+=m.dy*delta; mp2[3]+=m.dx*delta; mp2[4]+=m.dy*delta;
       m.line.geometry.attributes.position.needsUpdate = true;
-      m.life -= .012;
+      m.life -= .012*delta;
       m.line.material.opacity = Math.max(m.life, 0) * .9;
       if (m.life <= 0){
         scene.remove(m.line);
@@ -858,37 +913,48 @@ if (!reduced && window.THREE) (function initWarp(){
     }
 
     camera.fov = 60 + visualWarp * 42;
-    camera.position.x += (mouseX*30 + Math.sin(elapsed*.3)*4 - camera.position.x) * .03;
-    camera.position.y += (-mouseY*30 + Math.cos(elapsed*.23)*3 - camera.position.y) * .03;
+    var cameraEase = 1-Math.pow(.97,delta);
+    camera.position.x += (mouseX*30 + Math.sin(elapsed*.3)*4 - camera.position.x) * cameraEase;
+    camera.position.y += (-mouseY*30 + Math.cos(elapsed*.23)*3 - camera.position.y) * cameraEase;
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
     updateHUD(visualWarp);
-    requestAnimationFrame(frame);
   }
-  frame();
+  animationScheduler.add(frame);
   window.addEventListener('resize', function(){
+    var currentProfile = refreshPerformanceProfile();
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(currentProfile.pixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  }, {passive:true});
 })();
 
 /* ============ 2. Lenis + GSAP ============ */
 var lenis = null;
-if (!reduced && window.Lenis){
+if (performanceProfile.enableSmoothScroll && window.Lenis){
   lenis = new Lenis({ duration: 1.15, smoothWheel: true });
-  var rafL = function(t){ lenis.raf(t); requestAnimationFrame(rafL); };
-  requestAnimationFrame(rafL);
+  animationScheduler.add(function(t){ lenis.raf(t); });
 }
-var lastY = window.scrollY, lastT = performance.now();
-function pollScroll(){
-  var now = performance.now(), y = window.scrollY;
-  var dt = Math.max(now - lastT, 16);
-  targetSpeed += (Math.min(Math.abs(y - lastY)/dt/2.2, 1) - targetSpeed) * .12;
-  lastY = y; lastT = now;
-  requestAnimationFrame(pollScroll);
+var lastY = window.scrollY, lastT = performance.now(), scrollSample = null;
+function captureScrollSpeed(){
+  scrollSample = Object.freeze({y:window.scrollY,time:performance.now()});
 }
-if (!reduced) pollScroll();
+function updateScrollSpeed(now,delta){
+  if (!scrollSample) {
+    targetSpeed *= Math.pow(.9,delta);
+    return;
+  }
+  var sample = scrollSample;
+  var dt = Math.min(Math.max(sample.time-lastT,16),100);
+  var target = Math.min(Math.abs(sample.y-lastY)/dt/2.2,1);
+  targetSpeed += (target-targetSpeed)*(1-Math.pow(.88,delta));
+  lastY=sample.y; lastT=sample.time; scrollSample=null;
+}
+if (!reduced) {
+  window.addEventListener('scroll',captureScrollSpeed,{passive:true});
+  animationScheduler.add(updateScrollSpeed);
+}
 
 document.querySelectorAll('a[href^="#"]').forEach(function(a){
   a.addEventListener('click', function(e){
@@ -896,7 +962,7 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
     var t = document.querySelector(a.getAttribute('href'));
     if (!t) return;
     e.preventDefault();
-    if (lenis) lenis.scrollTo(t, {offset: -70});
+    if (lenis && performanceProfile.enableSmoothScroll) lenis.scrollTo(t, {offset: -70});
     else t.scrollIntoView({behavior:reduced ? 'auto' : 'smooth'});
   });
 });
@@ -908,11 +974,11 @@ function setHeroWarp(value){ heroWarp = Math.max(0, Math.min(value, 1)); }
 function initMouseWarp(){
   var canvas = document.getElementById('mouse-warp-canvas');
   var hero = document.getElementById('hero');
-  if (!canvas || !hero || reduced) return;
+  if (!canvas || !hero || !performanceProfile.enableMouseWarp) return;
   var ctx = canvas.getContext('2d'), width = 0, height = 0, dpr = 1;
   var target = {x:.58, y:.44}, focus = {x:.58, y:.44};
-  var roll = -.22, rollTarget = -.22, nextRollAt = 0;
-  var rays = Array.from({length:window.innerWidth < 720 ? 24 : 42}, function(_, i){
+  var roll = -.22, rollTarget = -.22, nextRollAt = 0, isHeroVisible = true;
+  var rays = Array.from({length:Math.round((window.innerWidth < 720 ? 24 : 42)*performanceProfile.particleScale)}, function(_, i){
     return {angle:Math.random()*Math.PI*2, depth:Math.random(), speed:.0038+Math.random()*.0058,
       tail:.045+Math.random()*.11, width:.35+Math.random()*1.05,
       twist:(Math.random()-.5)*.48, warm:i%9 === 0};
@@ -920,7 +986,7 @@ function initMouseWarp(){
   function resize(){
     var rect = canvas.getBoundingClientRect();
     width = rect.width; height = rect.height;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = createCurrentPerformanceProfile().pixelRatio;
     canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
@@ -938,22 +1004,24 @@ function initMouseWarp(){
   hero.addEventListener('pointermove', setTarget, {passive:true});
   hero.addEventListener('pointerleave', function(){ target.x=.58; target.y=.44; }, {passive:true});
   window.addEventListener('resize', resize, {passive:true});
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function(entries){ isHeroVisible=entries[0].isIntersecting; }).observe(hero);
+  }
   resize();
-  function draw(now){
-    var rect = hero.getBoundingClientRect();
-    if (rect.bottom > 0 && rect.top < window.innerHeight && width && height){
+  function draw(now, delta){
+    if (performanceProfile.enableMouseWarp && isHeroVisible && width && height){
       if (now > nextRollAt){
         rollTarget = -.62 + Math.random()*1.24;
         nextRollAt = now + 2600 + Math.random()*3400;
       }
-      roll += (rollTarget-roll)*.0045;
-      focus.x += (target.x-focus.x)*.11;
-      focus.y += (target.y-focus.y)*.11;
+      roll += (rollTarget-roll)*(1-Math.pow(.9955,delta));
+      focus.x += (target.x-focus.x)*(1-Math.pow(.89,delta));
+      focus.y += (target.y-focus.y)*(1-Math.pow(.89,delta));
       var cx = focus.x*width, cy = focus.y*height;
       var transitionBoost = 1 + Math.min(photoWarp, .38)*1.25;
       ctx.clearRect(0,0,width,height);
       rays.forEach(function(ray){
-        ray.depth += ray.speed*transitionBoost;
+        ray.depth += ray.speed*transitionBoost*delta;
         if (ray.depth > 1){
           ray.depth -= 1; ray.angle += (Math.random()-.5)*.34; ray.twist = (Math.random()-.5)*.48;
         }
@@ -984,16 +1052,15 @@ function initMouseWarp(){
       glow.addColorStop(0,'rgba(188,244,255,.16)'); glow.addColorStop(.16,'rgba(111,220,246,.055)'); glow.addColorStop(1,'rgba(111,220,246,0)');
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx,cy,62,0,Math.PI*2); ctx.fill();
     }
-    requestAnimationFrame(draw);
   }
-  requestAnimationFrame(draw);
+  animationScheduler.add(draw);
 }
 
 /* 程序化银河：圆形云气、圆形软光晕和星点沿倾斜银河带无限循环，不依赖任何背景图片。 */
 function initNebulaField(){
   var canvas = document.getElementById('nebula-field');
-  if (!canvas || reduced) return;
-  var ctx = canvas.getContext('2d'), width = 0, height = 0, dpr = 1, last = 0;
+  if (!canvas || !performanceProfile.enableNebula) return;
+  var ctx = canvas.getContext('2d'), width = 0, height = 0, dpr = 1;
   var target = {x:.57,y:.43}, focus = {x:.57,y:.43}, tilt = -.19, wander = 0, nextWander = 0;
   var palette = ['47,176,222','79,118,232','125,91,208'];
   function makeMote(initial, cloud){
@@ -1003,11 +1070,11 @@ function initNebulaField(){
       alpha:(cloud ? .030+Math.random()*.035 : .11+Math.random()*.32),
       phase:Math.random()*Math.PI*2, color:palette[Math.floor(Math.random()*palette.length)]};
   }
-  var clouds = Array.from({length:window.innerWidth < 720 ? 36 : 68}, function(){ return makeMote(true,true); });
-  var motes = Array.from({length:window.innerWidth < 720 ? 115 : 260}, function(){ return makeMote(true,false); });
+  var clouds = Array.from({length:Math.max(20,Math.round((window.innerWidth < 720 ? 36 : 68)*performanceProfile.particleScale))}, function(){ return makeMote(true,true); });
+  var motes = Array.from({length:Math.max(64,Math.round((window.innerWidth < 720 ? 115 : 260)*performanceProfile.particleScale))}, function(){ return makeMote(true,false); });
   function resize(){
     var rect = canvas.getBoundingClientRect(); width=rect.width; height=rect.height;
-    dpr=Math.min(window.devicePixelRatio||1,2); canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
+    dpr=createCurrentPerformanceProfile().pixelRatio; canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
   function setTarget(e){
@@ -1024,12 +1091,12 @@ function initNebulaField(){
   }
   window.addEventListener('pointermove',setTarget,{passive:true});
   window.addEventListener('resize',resize,{passive:true}); resize();
-  function draw(now){
-    var delta=last ? Math.min((now-last)/16.67,2.1) : 1; last=now;
+  function draw(now,delta){
     if (width && height){
       if (now>nextWander){wander=-.16+Math.random()*.32;nextWander=now+4800+Math.random()*5200;}
-      focus.x+=(target.x-focus.x)*.055; focus.y+=(target.y-focus.y)*.055;
-      tilt+=((-.19+wander+(focus.x-.5)*.19-(focus.y-.45)*.09)-tilt)*.006;
+      var focusEase=1-Math.pow(.945,delta), tiltEase=1-Math.pow(.994,delta);
+      focus.x+=(target.x-focus.x)*focusEase; focus.y+=(target.y-focus.y)*focusEase;
+      tilt+=((-.19+wander+(focus.x-.5)*.19-(focus.y-.45)*.09)-tilt)*tiltEase;
       var sharedSpeed=.55+fieldMotion*2.25;
       ctx.clearRect(0,0,width,height); ctx.save();
       ctx.translate(width*.5,height*.5);ctx.rotate(tilt);ctx.translate(-width*.5,-height*.5);
@@ -1055,23 +1122,26 @@ function initNebulaField(){
       });
       ctx.restore();
     }
-    requestAnimationFrame(draw);
   }
-  requestAnimationFrame(draw);
+  animationScheduler.add(draw);
 }
 
 /* 全页全息受光：鼠标是唯一冷光源，面板边缘按与光源的相对位置变化。 */
 function initHoloLighting(){
-  if (reduced) return;
+  if (!performanceProfile.enableHoloLighting) return;
   var targets=Array.prototype.slice.call(document.querySelectorAll('nav,.card,.lpanel,.btn'));
   if (!targets.length) return;
-  targets.forEach(function(el){el.classList.add('holo-surface');});
-  var light={x:window.innerWidth*.57,y:window.innerHeight*.42}, queued=false;
+  targets.forEach(function(el){el.dataset.holoReady='';el.classList.add('holo-surface');});
+  var light={x:window.innerWidth*.57,y:window.innerHeight*.42}, isDirty=true;
   function update(){
-    queued=false;
-    targets.forEach(function(el){
-      var rect=el.getBoundingClientRect();
-      if(rect.bottom < -80 || rect.top > window.innerHeight+80 || rect.right < -80 || rect.left > window.innerWidth+80) return;
+    if (!performanceProfile.enableHoloLighting || !isDirty) return;
+    isDirty=false;
+    var visibleTargets=targets.map(function(el){return {el:el,rect:el.getBoundingClientRect()};}).filter(function(item){
+      var rect=item.rect;
+      return rect.bottom >= -80 && rect.top <= window.innerHeight+80 && rect.right >= -80 && rect.left <= window.innerWidth+80;
+    });
+    visibleTargets.forEach(function(item){
+      var el=item.el,rect=item.rect;
       var x=light.x-rect.left, y=light.y-rect.top;
       var nearX=Math.max(rect.left,Math.min(light.x,rect.right));
       var nearY=Math.max(rect.top,Math.min(light.y,rect.bottom));
@@ -1087,25 +1157,35 @@ function initHoloLighting(){
       el.style.setProperty('--holo-shadow-y',(dy/length*cast).toFixed(2)+'px');
     });
   }
-  function queue(){if(!queued){queued=true;requestAnimationFrame(update);}}
+  function queue(){isDirty=true;}
   window.addEventListener('pointermove',function(e){light.x=e.clientX;light.y=e.clientY;queue();},{passive:true});
   window.addEventListener('scroll',queue,{passive:true});
   window.addEventListener('resize',queue,{passive:true});
-  queue();
+  animationScheduler.add(update);
 }
 
 initNebulaField();
 initMouseWarp();
 initHoloLighting();
+if (!reduced) animationScheduler.start();
 
-if (window.gsap && !reduced){
+if (window.gsap && performanceProfile.enableScrollAnimations){
   gsap.registerPlugin(ScrollTrigger);
   if (lenis) lenis.on('scroll', ScrollTrigger.update);
 
-  document.querySelectorAll('.reveal').forEach(function(el){
-    gsap.to(el, {opacity:1, y:0, duration:1, ease:'power3.out',
-      scrollTrigger:{trigger:el, start:'top 88%', once:true}});
-  });
+  var revealElements=Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if ('IntersectionObserver' in window) {
+    var revealObserver=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if (!entry.isIntersecting) return;
+        revealObserver.unobserve(entry.target);
+        gsap.to(entry.target,{opacity:1,y:0,duration:1,ease:'power3.out'});
+      });
+    },{rootMargin:'0px 0px -12% 0px'});
+    revealElements.forEach(function(el){revealObserver.observe(el);});
+  } else {
+    revealElements.forEach(function(el){gsap.to(el,{opacity:1,y:0,duration:1,ease:'power3.out'});});
+  }
 
   // 航点里程碑加速
   [['#about',.8],['#honors',1.4],['#depts',.9],['#tech',1.0],['#join',2.2]].forEach(function(pair){
@@ -1147,18 +1227,20 @@ if (window.gsap && !reduced){
     scrollTrigger:{trigger:'#banner', start:'bottom 75%', end:'bottom 30%', scrub:true}});
 } else {
   document.querySelectorAll('.reveal').forEach(function(el){ el.style.opacity=1; el.style.transform='none'; });
+  if (window.ScrollTrigger) ScrollTrigger.disable(true,true);
+  if (window.gsap && window.gsap.ticker) gsap.ticker.sleep();
 }
 
 /* ============ 3. 跃迁按钮 ============ */
 document.getElementById('jump-btn').addEventListener('click', function(){
-  if (reduced || !window.gsap) { document.querySelector('#interest-actions').scrollIntoView({behavior:reduced ? 'auto' : 'smooth'}); return; }
+  if (!performanceProfile.enableScrollAnimations || !window.gsap) { document.querySelector('#interest-actions').scrollIntoView({behavior:reduced ? 'auto' : 'smooth'}); return; }
   var obj = {b:0};
   var tl = gsap.timeline();
   tl.to(obj, {b:3.2, duration:.9, ease:'power2.in', onUpdate:function(){ boost = obj.b; }})
     .to('#flash', {opacity:1, duration:.28, ease:'power1.in'}, '-=.25')
     .add(function(){
       var actions = document.querySelector('#interest-actions');
-      if (lenis) lenis.scrollTo(actions, {offset:-100, immediate:true});
+      if (lenis && performanceProfile.enableSmoothScroll) lenis.scrollTo(actions, {offset:-100, immediate:true});
       else actions.scrollIntoView();
       boost = 0;
     })

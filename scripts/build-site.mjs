@@ -15,6 +15,7 @@ const individualAssets = [
   'assets/arena-fleet-web.jpg',
   'assets/wheel-leg-4-web.jpg',
   'assets/radar-teaser.png',
+  'assets/performance.js',
 ];
 
 await rm(output, { recursive: true, force: true });

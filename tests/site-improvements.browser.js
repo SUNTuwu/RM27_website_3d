@@ -97,6 +97,7 @@ async function openPage(browser, path, options = {}) {
     await archiveNavToggle.click()
     assert.equal(await archiveNavToggle.getAttribute('aria-expanded'), 'true')
     await archive.setViewportSize({ width: 900, height: 844 })
+    await archive.waitForFunction(() => document.querySelector('#archive-nav-toggle')?.getAttribute('aria-expanded') === 'false')
     assert.equal(await archiveNavToggle.getAttribute('aria-expanded'), 'false')
 
     const noScriptArchive = await browser.newPage({ viewport: { width: 375, height: 844 }, javaScriptEnabled: false })
@@ -121,6 +122,144 @@ async function openPage(browser, path, options = {}) {
     await delayedMetricsPage.waitForFunction(() => document.activeElement?.matches('[data-details-index="24"]'))
     assert.equal(await rebuiltOpener.evaluate((element) => document.activeElement === element), true)
     await delayedMetricsPage.close()
+
+    const motionHomepage = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'no-preference',
+    })
+    await motionHomepage.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' })
+    const desktopMotion = await motionHomepage.evaluate(() => window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots())
+    assert.equal(desktopMotion.length, 1)
+    assert.equal(desktopMotion[0].isRunning, true)
+    assert.equal(desktopMotion[0].pendingFrameCount, 1)
+    assert.ok(desktopMotion[0].callbackCount >= 5)
+
+    await motionHomepage.setViewportSize({ width: 3840, height: 2160 })
+    await motionHomepage.waitForFunction(() => {
+      const canvas = document.querySelector('#warp')
+      return !canvas || canvas.width * canvas.height <= 3_000_001
+    })
+    const resizedDesktopMotion = await motionHomepage.evaluate(() => ({
+      scheduler: window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0],
+      canvas: (() => {
+        const element = document.querySelector('#warp')
+        return element ? { physicalPixels: element.width * element.height } : null
+      })(),
+    }))
+    assert.equal(resizedDesktopMotion.scheduler.targetFps, 60)
+    if (resizedDesktopMotion.canvas) {
+      assert.ok(resizedDesktopMotion.canvas.physicalPixels <= 3_000_001)
+    }
+
+    await motionHomepage.setViewportSize({ width: 720, height: 900 })
+    await motionHomepage.waitForFunction(() =>
+      window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0].targetFps === 30
+    )
+    const breakpointMotion = await motionHomepage.evaluate(() => window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0])
+    assert.equal(breakpointMotion.targetFps, 30)
+    const nativeAnchorFallback = await motionHomepage.evaluate(() => {
+      const originalScrollIntoView = Element.prototype.scrollIntoView
+      let callCount = 0
+      Element.prototype.scrollIntoView = function scrollIntoView(options) {
+        callCount += 1
+        return originalScrollIntoView.call(this, options)
+      }
+      document.querySelector('a[href="#about"]')?.click()
+      Element.prototype.scrollIntoView = originalScrollIntoView
+      return callCount
+    })
+    assert.equal(nativeAnchorFallback, 1)
+
+    await motionHomepage.setViewportSize({ width: 1440, height: 900 })
+    await motionHomepage.waitForFunction(() =>
+      window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0].targetFps === 60 &&
+      document.querySelectorAll('.holo-surface').length > 0
+    )
+
+    await motionHomepage.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+    const pausedMotion = await motionHomepage.evaluate(() => window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0])
+    assert.equal(pausedMotion.isRunning, false)
+    assert.equal(pausedMotion.pendingFrameCount, 0)
+    await motionHomepage.waitForTimeout(150)
+    const hiddenMotion = await motionHomepage.evaluate(() => window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0])
+    assert.equal(hiddenMotion.tickCount, pausedMotion.tickCount)
+    await motionHomepage.close()
+
+    const mobileMotionHomepage = await browser.newPage({
+      viewport: { width: 375, height: 844 },
+      deviceScaleFactor: 3,
+      hasTouch: true,
+      reducedMotion: 'no-preference',
+    })
+    await mobileMotionHomepage.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' })
+    const mobileMotionState = await mobileMotionHomepage.evaluate(() => ({
+      scheduler: window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0],
+      canvases: [...document.querySelectorAll('canvas')].map((canvas) => ({
+        id: canvas.id,
+        physicalWidth: canvas.width,
+        cssWidth: canvas.getBoundingClientRect().width,
+      })),
+      holoSurfaces: document.querySelectorAll('.holo-surface').length,
+    }))
+    assert.equal(mobileMotionState.scheduler.targetFps, 30)
+    assert.equal(mobileMotionState.scheduler.callbackCount, 3)
+    assert.equal(mobileMotionState.holoSurfaces, 0)
+    for (const canvas of mobileMotionState.canvases.filter((item) => item.id !== 'mouse-warp-canvas')) {
+      assert.ok(canvas.physicalWidth <= Math.ceil(canvas.cssWidth), `${canvas.id} must use at most 1x mobile DPR`)
+    }
+    await mobileMotionHomepage.setViewportSize({ width: 1440, height: 900 })
+    await mobileMotionHomepage.waitForTimeout(100)
+    const promotedMobileState = await mobileMotionHomepage.evaluate(() => ({
+      scheduler: window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0],
+      holoSurfaces: document.querySelectorAll('.holo-surface').length,
+    }))
+    assert.equal(promotedMobileState.scheduler.targetFps, 30)
+    assert.equal(promotedMobileState.scheduler.callbackCount, 3)
+    assert.equal(promotedMobileState.holoSurfaces, 0)
+    await mobileMotionHomepage.close()
+
+    const motionArchive = await browser.newPage({
+      viewport: { width: 375, height: 844 },
+      deviceScaleFactor: 3,
+      hasTouch: true,
+      reducedMotion: 'no-preference',
+    })
+    await motionArchive.goto(`${baseUrl}/open-source.html`, { waitUntil: 'networkidle' })
+    const archiveMotionState = await motionArchive.evaluate(() => ({
+      scheduler: window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0],
+      canvas: (() => {
+        const element = document.querySelector('#warp')
+        return element ? {
+          physicalWidth: element.width,
+          cssWidth: element.getBoundingClientRect().width,
+        } : null
+      })(),
+    }))
+    assert.equal(archiveMotionState.scheduler.targetFps, 30)
+    assert.equal(archiveMotionState.scheduler.callbackCount, archiveMotionState.canvas ? 1 : 0)
+    if (archiveMotionState.canvas) {
+      assert.ok(archiveMotionState.canvas.physicalWidth <= Math.ceil(archiveMotionState.canvas.cssWidth))
+    }
+    await motionArchive.close()
+
+    const noWebGlBrowser = await chromium.launch({ args: ['--disable-webgl', '--disable-gpu'] })
+    try {
+      const noWebGlPage = await noWebGlBrowser.newPage({
+        viewport: { width: 375, height: 844 },
+        hasTouch: true,
+        reducedMotion: 'no-preference',
+      })
+      await noWebGlPage.goto(`${baseUrl}/open-source.html`, { waitUntil: 'networkidle' })
+      const fallbackState = await noWebGlPage.evaluate(() => ({
+        hasWarpCanvas: Boolean(document.querySelector('#warp')),
+        scheduler: window.ENTERPRIZE_PERFORMANCE.getSchedulerSnapshots()[0],
+      }))
+      assert.equal(fallbackState.hasWarpCanvas, false)
+      assert.equal(fallbackState.scheduler.callbackCount, 0)
+      await noWebGlPage.close()
+    } finally {
+      await noWebGlBrowser.close()
+    }
 
     console.log('site improvement browser checks passed')
   } finally {
