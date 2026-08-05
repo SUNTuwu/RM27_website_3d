@@ -9,6 +9,30 @@
 <meta property="og:description" content="把工程，留给下一位。探索 ENTERPRIZE 历年公开的机器人代码、硬件、机械与培训资料。">
 <meta property="og:image" content="assets/logo.png">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="ENTERPRIZE · HKUST RoboMaster">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ENTERPRIZE · 开源档案库">
+<meta name="twitter:description" content="RM2018—RM2025 共 32 项开源项目索引，支持搜索、排序、筛选与可分享的项目详情链接。">
+<meta name="theme-color" content="#04060e">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="apple-touch-icon" href="assets/logo.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "ENTERPRIZE · 开源档案库",
+  "description": "香港科技大学 RoboMaster 战队 ENTERPRIZE 的 32 项开源项目档案，涵盖功率、视觉、机械、嵌入式与培训资料。",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "ENTERPRIZE · HKUST RoboMaster Team"
+  },
+  "about": {
+    "@type": "SportsTeam",
+    "name": "ENTERPRIZE · HKUST RoboMaster Team"
+  }
+}
+</script>
 <style>
 :root{--bg:#04060e;--card:rgba(140,180,220,.055);--line:rgba(120,180,220,.16);--cyan:#46b8c8;--cyan2:#7fd4e0;--gold:#f5a623;--gold2:#ffd166;--purple:#9a8fb8;--pink:#d889a7;--green:#6fa08f;--blue:#7d9cbd;--txt:#e8edf7;--dim:#8ea0c0;--mono:ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--txt);font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;overflow-x:hidden}a{color:var(--cyan2);text-decoration:none}a:hover{text-decoration:underline}::selection{background:rgba(70,184,200,.4)}
@@ -135,15 +159,33 @@ section{padding:86px 0;border-top:1px solid rgba(120,180,220,.1)}.section-head{d
     grid.querySelectorAll('[data-citations]').forEach(function(element){updateMetric(element,metricValue(projectByIndex[element.closest('[data-project-index]').dataset.projectIndex],'citations'));});
   }
   var activeDialogIndex=null;
+  function projectHash(project){return '#project-'+project.index;}
+  function syncDialogHash(project){
+    if(!history.replaceState)return;
+    history.replaceState(null,'',projectHash(project));
+  }
+  function clearDialogHash(){
+    if(!history.replaceState||!/^#project-\d+$/.test(location.hash))return;
+    history.replaceState(null,'',location.pathname+location.search);
+  }
+  function renderDialogBody(project){
+    var tags=(project.tags||[]).map(function(tag){return '<span class="tag">'+escapeHtml(tag)+'</span>';}).join('');
+    var links=projectLinks(project)||'<span class="source status">'+escapeHtml(project.status||'暂无外部来源')+'</span>';
+    document.getElementById('project-dialog-body').innerHTML='<p>'+escapeHtml(project.summary)+'</p><h3>项目标签</h3><div class="tags">'+tags+'</div><h3>公开状态</h3><p>'+escapeHtml(project.status||'已收录；具体附件与许可请以原始页面为准。')+'</p><h3>动态指标</h3><p data-dialog-metrics>GitHub Stars：'+formatMetric(metricValue(project,'stars'))+' · 论坛被引用：'+formatMetric(metricValue(project,'citations'))+'</p><div class="dialog-links">'+links+'<button class="details-button" type="button" data-copy-project-link="'+project.index+'">复制项目链接</button></div>';
+  }
+  function refreshOpenDialogMetrics(){
+    if(!projectDialog.open||activeDialogIndex==null)return;
+    var project=projectByIndex[activeDialogIndex];
+    if(project)renderDialogBody(project);
+  }
   function renderDetails(project){
     var dialog=document.getElementById('project-dialog');
     activeDialogIndex=String(project.index);
     document.getElementById('project-dialog-index').textContent='INDEX '+String(project.index).padStart(2,'0')+' · '+project.season;
     document.getElementById('project-dialog-title').textContent=project.title;
-    var tags=(project.tags||[]).map(function(tag){return '<span class="tag">'+escapeHtml(tag)+'</span>';}).join('');
-    var links=projectLinks(project)||'<span class="source status">'+escapeHtml(project.status||'暂无外部来源')+'</span>';
-    document.getElementById('project-dialog-body').innerHTML='<p>'+escapeHtml(project.summary)+'</p><h3>项目标签</h3><div class="tags">'+tags+'</div><h3>公开状态</h3><p>'+escapeHtml(project.status||'已收录；具体附件与许可请以原始页面为准。')+'</p><h3>动态指标</h3><p>GitHub Stars：'+formatMetric(metricValue(project,'stars'))+' · 论坛被引用：'+formatMetric(metricValue(project,'citations'))+'</p><div class="dialog-links">'+links+'</div>';
+    renderDialogBody(project);
     dialog.showModal();
+    syncDialogHash(project);
   }
   applyArchiveState();
   var buttons=document.querySelectorAll('[data-filter]');
@@ -155,11 +197,33 @@ section{padding:86px 0;border-top:1px solid rgba(120,180,220,.1)}.section-head{d
   document.querySelector('[data-dialog-close]').addEventListener('click',function(){projectDialog.close();});
   projectDialog.addEventListener('click',function(event){if(event.target===event.currentTarget)event.currentTarget.close();});
   projectDialog.addEventListener('close',function(){
+    clearDialogHash();
     var opener=activeDialogIndex&&grid.querySelector('[data-details-index="'+activeDialogIndex+'"]');
     activeDialogIndex=null;
     if(opener)opener.focus();
   });
-  fetch('data/metrics.json',{cache:'no-cache'}).then(function(response){if(!response.ok)throw new Error('metrics unavailable');return response.json();}).then(function(data){metrics={repositories:data.github&&data.github.repositories||{},forumProjects:data.forum&&data.forum.projects||{}};document.querySelectorAll('[data-total-stars]').forEach(function(element){updateMetric(element,data.github&&data.github.totalTrackedStars);element.closest('.stat').dataset.state='ready';});document.querySelectorAll('[data-archive-citations]').forEach(function(element){updateMetric(element,data.forum&&data.forum.archive&&data.forum.archive.citations);element.closest('.stat').dataset.state='ready';});applyArchiveState();var status=document.getElementById('metrics-status');if(data.generatedAt){status.textContent='项目指标最近同步：'+new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(data.generatedAt))+' · 点击来源可核验原始数据。';}}).catch(function(){document.getElementById('metrics-status').textContent='项目指标暂时无法更新；页面保留静态项目索引，请以原始链接为准。';});
+  document.getElementById('project-dialog-body').addEventListener('click',function(event){
+    var button=event.target.closest('[data-copy-project-link]');
+    if(!button)return;
+    var url=location.origin+location.pathname+'#project-'+button.dataset.copyProjectLink;
+    var done=function(){button.textContent='已复制 · 粘贴即可分享';setTimeout(function(){button.textContent='复制项目链接';},2200);};
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(done,function(){window.prompt('请复制项目链接：',url);});
+    else window.prompt('请复制项目链接：',url);
+  });
+  function openProjectFromHash(){
+    var match=location.hash.match(/^#project-(\d+)$/);
+    if(!match)return;
+    var project=projectByIndex[match[1]];
+    if(!project)return;
+    if(projectDialog.open){
+      if(activeDialogIndex&&String(project.index)!==activeDialogIndex&&history.replaceState)history.replaceState(null,'','#project-'+activeDialogIndex);
+      return;
+    }
+    renderDetails(project);
+  }
+  window.addEventListener('hashchange',openProjectFromHash);
+  openProjectFromHash();
+  fetch('data/metrics.json',{cache:'no-cache'}).then(function(response){if(!response.ok)throw new Error('metrics unavailable');return response.json();}).then(function(data){metrics={repositories:data.github&&data.github.repositories||{},forumProjects:data.forum&&data.forum.projects||{}};document.querySelectorAll('[data-total-stars]').forEach(function(element){updateMetric(element,data.github&&data.github.totalTrackedStars);element.closest('.stat').dataset.state='ready';});document.querySelectorAll('[data-archive-citations]').forEach(function(element){updateMetric(element,data.forum&&data.forum.archive&&data.forum.archive.citations);element.closest('.stat').dataset.state='ready';});applyArchiveState();refreshOpenDialogMetrics();var status=document.getElementById('metrics-status');if(data.generatedAt){status.textContent='项目指标最近同步：'+new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'short'}).format(new Date(data.generatedAt))+' · 点击来源可核验原始数据。';}}).catch(function(){document.getElementById('metrics-status').textContent='项目指标暂时无法更新；页面保留静态项目索引，请以原始链接为准。';});
   document.addEventListener('click',function(event){var link=event.target.closest('[data-warp-link]');if(!link||navigating||event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();var destination=link.href;if(reduced){window.location.assign(destination);return;}navigating=true;targetBoost=1;document.body.classList.add('is-warping');setTimeout(function(){window.location.assign(destination);},880);});
 })();
 </script>

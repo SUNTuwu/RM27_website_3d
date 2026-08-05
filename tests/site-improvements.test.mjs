@@ -56,3 +56,39 @@ test('improvement roadmap records scope and acceptance criteria', async () => {
   assert.match(roadmap, /无障碍/)
   assert.match(roadmap, /验收/)
 })
+
+test('pages publish share metadata and structured data', async () => {
+  const [homepage, archive] = await Promise.all([
+    readSource('index.html'),
+    readSource('open-source.html'),
+  ])
+
+  const extractJsonLd = (page) => {
+    const match = page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)
+    assert.ok(match, 'JSON-LD block must exist')
+    return JSON.parse(match[1])
+  }
+
+  for (const page of [homepage, archive]) {
+    assert.match(page, /<link rel="icon"[^>]*assets\/logo\.png/)
+    assert.match(page, /<link rel="apple-touch-icon"/)
+    assert.match(page, /name="theme-color"/)
+    assert.match(page, /property="og:site_name"/)
+    assert.match(page, /property="og:locale"/)
+    assert.match(page, /name="twitter:card"/)
+    assert.equal(extractJsonLd(page)['@context'], 'https://schema.org')
+  }
+
+  assert.equal(extractJsonLd(homepage)['@type'], 'SportsTeam')
+  assert.equal(extractJsonLd(archive)['@type'], 'CollectionPage')
+})
+
+test('archive project details are shareable deep links', async () => {
+  const archive = await readSource('open-source.html')
+
+  assert.match(archive, /#project-/)
+  assert.match(archive, /data-copy-project-link/)
+  assert.match(archive, /openProjectFromHash/)
+  assert.match(archive, /hashchange/)
+  assert.match(archive, /replaceState/)
+})

@@ -261,6 +261,40 @@ async function openPage(browser, path, options = {}) {
       await noWebGlBrowser.close()
     }
 
+    const deepLinkContext = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+      permissions: ['clipboard-read', 'clipboard-write'],
+    })
+    const deepLinkPage = await deepLinkContext.newPage()
+    await deepLinkPage.goto(`${baseUrl}/open-source.html#project-24`, { waitUntil: 'networkidle' })
+    assert.equal(await deepLinkPage.locator('#project-dialog').evaluate((dialog) => dialog.open), true)
+    assert.match(await deepLinkPage.locator('#project-dialog-title').textContent(), /无线 JLink/)
+    assert.equal(await deepLinkPage.evaluate(() => location.hash), '#project-24')
+    assert.match(await deepLinkPage.locator('[data-dialog-metrics]').textContent(), /Stars：\d/)
+
+    await deepLinkPage.evaluate(() => { location.hash = '#project-10' })
+    assert.equal(await deepLinkPage.evaluate(() => location.hash), '#project-24')
+    assert.match(await deepLinkPage.locator('#project-dialog-title').textContent(), /无线 JLink/)
+
+    await deepLinkPage.keyboard.press('Escape')
+    assert.equal(await deepLinkPage.locator('#project-dialog').evaluate((dialog) => dialog.open), false)
+    assert.equal(await deepLinkPage.evaluate(() => location.hash), '')
+
+    await deepLinkPage.locator('[data-details-index="24"]').click()
+    assert.equal(await deepLinkPage.evaluate(() => location.hash), '#project-24')
+    await deepLinkPage.locator('[data-copy-project-link]').click()
+    await deepLinkPage.waitForFunction(() =>
+      document.querySelector('[data-copy-project-link]')?.textContent.includes('已复制')
+    )
+    const copiedLink = await deepLinkPage.evaluate(() => navigator.clipboard.readText())
+    assert.match(copiedLink, /open-source\.html#project-24$/)
+
+    const unknownLinkPage = await deepLinkContext.newPage()
+    await unknownLinkPage.goto(`${baseUrl}/open-source.html#project-999`, { waitUntil: 'networkidle' })
+    assert.equal(await unknownLinkPage.locator('#project-dialog').evaluate((dialog) => dialog.open), false)
+    await deepLinkContext.close()
+
     console.log('site improvement browser checks passed')
   } finally {
     await browser.close()
