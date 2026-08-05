@@ -31,6 +31,14 @@ async function openPage(browser, path, options = {}) {
     await homepage.keyboard.press('Enter')
     assert.equal(await homepage.evaluate(() => location.hash), '#main-content')
     assert.equal(await homepage.evaluate(() => document.activeElement.id), 'main-content')
+
+    // reduced-motion 下 FAQ 走原生瞬时开关，不进入动画态
+    const reducedFaq = homepage.locator('#faq-list details').first()
+    await reducedFaq.locator('summary').click()
+    assert.equal(await reducedFaq.evaluate((details) => details.open), true)
+    assert.equal(await reducedFaq.evaluate((details) => details.classList.contains('is-animating')), false)
+    await reducedFaq.locator('summary').click()
+    assert.equal(await reducedFaq.evaluate((details) => details.open), false)
     assert.deepEqual(homepageResult.errors, [])
 
     const mobileResult = await openPage(browser, '/index.html', {
@@ -133,6 +141,28 @@ async function openPage(browser, path, options = {}) {
     assert.equal(desktopMotion[0].isRunning, true)
     assert.equal(desktopMotion[0].pendingFrameCount, 1)
     assert.ok(desktopMotion[0].callbackCount >= 5)
+
+    // FAQ 科幻开关动效：点击展开 → 高度动画结束 → 点击收起；Enter 键同样可用
+    const faqDetails = motionHomepage.locator('#faq-list details').first()
+    await faqDetails.locator('summary').click()
+    assert.equal(await faqDetails.evaluate((details) => details.open), true)
+    await motionHomepage.waitForFunction(() => {
+      const details = document.querySelector('#faq-list details')
+      return details && !details.classList.contains('is-animating')
+    })
+    assert.equal(await faqDetails.locator('p').evaluate((body) => getComputedStyle(body).animationName), 'faq-boot')
+    const faqBodyHeight = await faqDetails.locator('p').evaluate((body) => body.getBoundingClientRect().height)
+    assert.ok(faqBodyHeight > 10, 'expanded faq answer should be visible')
+    await faqDetails.locator('summary').click()
+    await motionHomepage.waitForFunction(() => !document.querySelector('#faq-list details').open)
+    assert.equal(await faqDetails.evaluate((details) => details.open), false)
+
+    await faqDetails.locator('summary').press('Enter')
+    await motionHomepage.waitForFunction(() => document.querySelector('#faq-list details').open)
+    await motionHomepage.waitForFunction(() => !document.querySelector('#faq-list details').classList.contains('is-animating'))
+    assert.ok((await faqDetails.locator('p').evaluate((body) => body.getBoundingClientRect().height)) > 10)
+    await faqDetails.locator('summary').press('Enter')
+    await motionHomepage.waitForFunction(() => !document.querySelector('#faq-list details').open)
 
     await motionHomepage.setViewportSize({ width: 3840, height: 2160 })
     await motionHomepage.waitForFunction(() => {
@@ -240,6 +270,22 @@ async function openPage(browser, path, options = {}) {
     if (archiveMotionState.canvas) {
       assert.ok(archiveMotionState.canvas.physicalWidth <= Math.ceil(archiveMotionState.canvas.cssWidth))
     }
+
+    // 详情对话框：跃迁式打开 + 动画化关闭；筛选标签：充能扫光
+    await motionArchive.locator('[data-details-index="24"]').click()
+    const motionDialog = motionArchive.locator('#project-dialog')
+    await motionArchive.waitForFunction(() => document.getElementById('project-dialog').open)
+    assert.equal(await motionDialog.evaluate((dialog) => dialog.open), true)
+    assert.equal(await motionDialog.evaluate((dialog) => getComputedStyle(dialog).animationName), 'dialog-warp-in')
+    assert.equal(await motionDialog.evaluate((dialog) => getComputedStyle(dialog, '::before').animationName), 'dialog-scan')
+    await motionArchive.locator('[data-dialog-close]').click()
+    await motionArchive.waitForFunction(() => !document.getElementById('project-dialog').open)
+    assert.equal(await motionDialog.evaluate((dialog) => dialog.classList.contains('is-closing')), false)
+
+    const visionFilter = motionArchive.locator('[data-filter="vision"]')
+    await visionFilter.click()
+    assert.equal(await visionFilter.evaluate((button) => button.classList.contains('active')), true)
+    assert.equal(await visionFilter.evaluate((button) => getComputedStyle(button, '::after').animationName), 'filter-charge')
     await motionArchive.close()
 
     const noWebGlBrowser = await chromium.launch({ args: ['--disable-webgl', '--disable-gpu'] })

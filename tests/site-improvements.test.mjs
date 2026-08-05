@@ -92,3 +92,28 @@ test('archive project details are shareable deep links', async () => {
   assert.match(archive, /hashchange/)
   assert.match(archive, /replaceState/)
 })
+
+test('interactive tags ship sci-fi open and close animations', async () => {
+  const [homepage, archive] = await Promise.all([
+    readSource('index.html'),
+    readSource('open-source.html'),
+  ])
+
+  // 首页 FAQ 折叠面板：科幻样式钩子 + WAAPI 双向高度动画 + reduced-motion 原生回退
+  assert.match(homepage, /initFaqAnimations/)
+  assert.match(homepage, /@keyframes faq-scan/)
+  assert.match(homepage, /@keyframes faq-boot/)
+  assert.match(homepage, /@keyframes faq-line/)
+  assert.match(homepage, /summary::after/)
+  assert.match(homepage, /is-animating/)
+  assert.match(homepage, /if \(reduced\) return/)
+
+  // 档案页：筛选标签充能扫光、项目标签辉光、详情对话框跃迁开/关
+  assert.match(archive, /@keyframes filter-charge/)
+  assert.match(archive, /@keyframes dialog-warp-in/)
+  assert.match(archive, /@keyframes dialog-scan/)
+  assert.match(archive, /@keyframes backdrop-fade/)
+  assert.match(archive, /closeProjectDialog/)
+  assert.match(archive, /addEventListener\('cancel'/)
+  assert.match(archive, /\.filter::after,\.project-dialog\[open\]/)
+})

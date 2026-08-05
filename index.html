@@ -289,11 +289,28 @@ nav.holo-surface::after{inset:0;border-radius:0}
 .step p{font-size:13.5px;color:var(--dim)}
 
 /* ===== FAQ ===== */
-details{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:0 12px 12px 0;
-  padding:16px 22px;margin-bottom:12px}
-summary{cursor:pointer;font-weight:700;font-size:15.5px}
-summary::marker{color:var(--cyan)}
+details{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:0 12px 12px 0;
+  padding:16px 22px;margin-bottom:12px;transition:border-color .4s ease,box-shadow .45s ease,background .4s ease}
+details[data-faq-details][open]{border-color:rgba(127,212,224,.55);border-left-color:var(--cyan2);
+  background:linear-gradient(150deg,rgba(70,184,200,.10),var(--card) 45%);box-shadow:0 0 28px rgba(112,224,255,.14),inset 0 0 34px rgba(112,224,255,.05)}
+details[data-faq-details]::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;
+  background:linear-gradient(180deg,transparent 8%,rgba(127,212,224,.14) 50%,transparent 92%)}
+details[data-faq-details][open]::before{animation:faq-scan .85s cubic-bezier(.22,1,.36,1)}
+@keyframes faq-scan{0%{opacity:1;transform:translateY(-101%)}100%{opacity:0;transform:translateY(101%)}}
+summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:14px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"[+]";flex:none;font:700 12px var(--mono);letter-spacing:1px;color:var(--cyan);text-shadow:0 0 10px rgba(127,212,224,.55);
+  transition:transform .45s cubic-bezier(.22,1,.36,1),color .35s ease,text-shadow .35s ease}
+details[open] summary::after{transform:rotate(135deg);color:var(--gold2);text-shadow:0 0 14px rgba(227,193,136,.85)}
 details p{margin-top:10px;color:#c0cce2;font-size:14px}
+details[data-faq-details] p{position:relative;margin:0;padding-top:12px;box-sizing:border-box}
+details[data-faq-details] p::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,var(--cyan2),rgba(127,212,224,.12) 70%,transparent);transform:scaleX(0);transform-origin:left}
+details[data-faq-details][open] p{animation:faq-boot .5s ease-out}
+details[data-faq-details][open] p::before{animation:faq-line .55s .08s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes faq-boot{0%{opacity:0}14%{opacity:.8}28%{opacity:.25}44%{opacity:.95}60%{opacity:.6}100%{opacity:1}}
+@keyframes faq-line{to{transform:scaleX(1)}}
+details[data-faq-details].is-animating p{overflow:hidden}
 
 /* ===== 跃迁黑洞 ===== */
 #join{overflow:hidden}
@@ -782,8 +799,53 @@ function initNavigation(){
   window.addEventListener('resize', function(){ if (window.innerWidth > 1100) setOpen(false); }, {passive:true});
 }
 
+/* FAQ 折叠面板：拦截 summary 点击，用 WAAPI 驱动高度/透明度过渡；
+   reduced-motion 或不支持 WAAPI 时保持原生瞬时开关（无 JS 同样可用）。 */
+function initFaqAnimations(){
+  document.querySelectorAll('details[data-faq-details]').forEach(function(details){
+    var summary = details.querySelector('summary');
+    var body = details.querySelector('p');
+    if (!summary || !body || typeof body.animate !== 'function') return;
+    var current = null;
+    var generation = 0;
+    var expanded = details.open;
+    function animatePanel(from, to, onFinish, fade){
+      generation += 1;
+      var token = generation;
+      if (current) current.cancel();
+      details.classList.add('is-animating');
+      /* 展开时只动高度，把透明度交给 faq-boot 全息开机闪效；收起时才叠加淡出 */
+      var frames = fade
+        ? [{height: from + 'px', opacity: 1}, {height: to + 'px', opacity: 0}]
+        : [{height: from + 'px'}, {height: to + 'px'}];
+      var animation = body.animate(frames, {duration: 430, easing: 'cubic-bezier(.22,1,.36,1)'});
+      current = animation;
+      animation.onfinish = function(){
+        if (token !== generation) return;
+        current = null;
+        details.classList.remove('is-animating');
+        if (onFinish) onFinish();
+      };
+    }
+    summary.addEventListener('click', function(event){
+      if (reduced) return;
+      event.preventDefault();
+      var measured = body.getBoundingClientRect().height;
+      if (expanded){
+        expanded = false;
+        animatePanel(measured, 0, function(){ details.open = false; }, true);
+      } else {
+        expanded = true;
+        if (!details.open) details.open = true;
+        animatePanel(measured, body.scrollHeight, null, false);
+      }
+    });
+  });
+}
+
 renderRecruitment();
 initNavigation();
+initFaqAnimations();
 
 /* ============ HUD 速度表（须先于 initWarp 声明） ============ */
 var velVal = document.getElementById('vel-val');
