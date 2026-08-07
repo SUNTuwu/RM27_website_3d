@@ -37,7 +37,7 @@ export const VISUAL_CONFIG = {
   explore: {
     zoom: 1.6, // 点云整体放大倍率 (相机拉近)
     initialPitchDeg: 10, // 初始摄像机俯角 (度, 相对水平面向下)
-    autoRotateSpeed: 0.03, // 点云常态旋转速度 (弧度/秒, 实际由相机环绕实现)
+    autoRotateSpeed: 0.1, // 点云常态旋转速度 (弧度/秒, 实际由相机环绕实现)
     brandMark: {
       opacity: 0.15, // ASSEMBLE / EXPLORE 右侧 ENTERPRIZE 品牌图透明度 (0~1)
       colors: {
@@ -79,6 +79,7 @@ export const VISUAL_CONFIG = {
       duration: 2.0, // 过渡总时长 (秒)
       spinTurns: 0.5, // 两个模型同步自转圈数
       spinCompleteAt: 0.6, // 旋转在过渡进度达到该比例时完成
+      ringSpeedMultiplier: 8, // 切换旋转中点时背景环的峰值速度倍率
       maskFeather: 0.03, // 屏幕高度归一化后的蒙版柔边宽度
       maskGlowStrength: 2.5, // 蒙版边缘白色 HDR 高亮强度，由 Bloom 扩散成光晕
     },
@@ -163,8 +164,10 @@ export const VISUAL_CONFIG = {
   },
 
   timeline0: {
-    // SCAN 交接时 timeline_0 已提前播放的秒数。
-    timeOffsetSeconds: 0.5,
+    // SCAN 结束前多少秒启动 timeline_0；启动后始终按 1x 连续播放。
+    animateTimeOffset: 2.0,
+    // 相对于上述提前播放起点的相机接轨时刻；应不大于 animateTimeOffset。
+    cameraTimeOffset: 0.5,
     // SCAN 中相机从 orbit 姿态转向 timeline_0 起点的提前量 (秒): 视角转换比扫描线先开始。
     cameraLeadSeconds: 0.5,
     // Blender 导出的高强度聚光灯运行时缩放，不修改 glTF 源资产。

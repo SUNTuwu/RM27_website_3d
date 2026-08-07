@@ -182,6 +182,10 @@ async function boot() {
     exploreTransitioning = true;
     const trans = VISUAL_CONFIG.explore.switchTransition;
     const spin = trans.spinTurns * Math.PI * 2;
+    const ringSpeedMultiplier = Math.max(
+      Number(trans.ringSpeedMultiplier) || 1,
+      1,
+    );
     const outCloud = outgoing.cloud;
     const inCloud = incoming.cloud;
     const startRotation = outCloud.points.rotation.y;
@@ -226,6 +230,10 @@ async function boot() {
           k / Math.max(trans.spinCompleteAt, 0.001),
           1,
         );
+        const ringSpeedBlend = Math.sin(Math.PI * spinPhase);
+        backRing.setSpeedScale(
+          THREE.MathUtils.lerp(1, ringSpeedMultiplier, ringSpeedBlend),
+        );
         const rotation = startRotation + spin * easeInOutCubic(spinPhase);
         outCloud.points.rotation.y = rotation;
         inCloud.points.rotation.y = rotation;
@@ -240,6 +248,7 @@ async function boot() {
         inCloud.points.rotation.y = finalRotation;
         outCloud.resetScreenMask();
         inCloud.resetScreenMask();
+        backRing.setSpeedScale(1);
         switchTween = null;
         exploreTransitioning = false;
       },
@@ -273,11 +282,18 @@ async function boot() {
     velocityDecay: VISUAL_CONFIG.timeline0.scroll.velocityDecay,
     autoHoldSeconds: VISUAL_CONFIG.timeline0.scroll.autoHoldSeconds,
   });
-  const timelineStartOffset = THREE.MathUtils.clamp(
-    VISUAL_CONFIG.timeline0.timeOffsetSeconds,
+  const animateTimeOffset = THREE.MathUtils.clamp(
+    VISUAL_CONFIG.timeline0.animateTimeOffset,
     0,
     Math.min(SCAN_DURATION, timeline.clip.duration),
   );
+  const cameraTimeOffset = THREE.MathUtils.clamp(
+    VISUAL_CONFIG.timeline0.cameraTimeOffset,
+    0,
+    animateTimeOffset,
+  );
+  const timelinePreplayStart = SCAN_DURATION - animateTimeOffset;
+  const cameraAttachScanTime = timelinePreplayStart + cameraTimeOffset;
   const cameraLead = THREE.MathUtils.clamp(
     VISUAL_CONFIG.timeline0.cameraLeadSeconds ?? 0,
     0,
@@ -419,12 +435,16 @@ async function boot() {
     }
   }
 
-  // SCAN 相机混合: 实时 orbit 姿态 -> timeline_0 起点姿态, 旋转随权重淡出
-  const scanEndPos = new THREE.Vector3();
-  const scanEndQuat = new THREE.Quaternion();
+  // SCAN 相机混合: 先接入 cameraTimeOffset 姿态, 再贴合当前预设轨迹
+  const scanHandoffPos = new THREE.Vector3();
+  const scanHandoffQuat = new THREE.Quaternion();
+  const scanTrackPos = new THREE.Vector3();
+  const scanTrackQuat = new THREE.Quaternion();
   const scanOrbitPos = new THREE.Vector3();
   const scanOrbitQuat = new THREE.Quaternion();
   let scanBlend = 0;
+  let scanAttachedToTrack = false;
+  let timelineHandoffThisFrame = false;
 
   function startScan() {
     // SCAN 只针对场地点云: 隐藏所有 Explore 展示模型并立即换回场地
@@ -436,6 +456,7 @@ async function boot() {
       tweens.delete(switchTween);
       switchTween = null;
     }
+    backRing.setSpeedScale(1);
     exploreTransitioning = false;
     exploreModels.forEach((entry) => {
       entry.cloud.points.rotation.y = 0;
@@ -453,20 +474,30 @@ async function boot() {
       },
     });
 
-    const offsetProgress = timelineStartOffset / timeline.clip.duration;
-    // 先采样 offset 时刻的相机姿态作为飞行终点, 再回到 0 预推进
-    timeline.seekImmediate(offsetProgress);
-    const endPose = timeline.readCameraPose();
-    scanEndPos.copy(endPose.position);
-    scanEndQuat.copy(endPose.quaternion);
+    const cameraOffsetProgress = cameraTimeOffset / timeline.clip.duration;
+    // 接轨点从提前播放的第 0 秒计算，即 timeline_0 的 cameraTimeOffset 姿态。
+    timeline.seekImmediate(cameraOffsetProgress);
+    const handoffPose = timeline.readCameraPose();
+    scanHandoffPos.copy(handoffPose.position);
+    scanHandoffQuat.copy(handoffPose.quaternion);
     timeline.seekImmediate(0);
+    const initialTrackPose = timeline.readCameraPose();
+    scanTrackPos.copy(initialTrackPose.position);
+    scanTrackQuat.copy(initialTrackPose.quaternion);
+    scanAttachedToTrack = false;
 
     setState("scan");
 
     addTween({
       duration: SCAN_DURATION,
       onUpdate: (easedK, linearK) => {
-        scanBlend = easedK; // 相机继续使用缓动, timeline_0 使用下方独立的线性时间
+        const scanElapsed = linearK * SCAN_DURATION;
+        const cameraBlendK = THREE.MathUtils.clamp(
+          scanElapsed / Math.max(cameraAttachScanTime, 1e-3),
+          0,
+          1,
+        );
+        scanBlend = easeInOutCubic(cameraBlendK);
         viewOffsetX =
           (1 - easedK) * (window.innerWidth * VISUAL_CONFIG.explore.sideOffset); // 左偏构图平滑回中
         viewOffsetY =
@@ -487,9 +518,13 @@ async function boot() {
         // 播放头使用线性真实时间, 不跟随相机缓动减速或等待相机到位。
         const playhead = Math.max(
           0,
-          linearK * SCAN_DURATION - (SCAN_DURATION - timelineStartOffset),
+          scanElapsed - timelinePreplayStart,
         );
         timeline.seekImmediate(playhead / timeline.clip.duration);
+        const currentTrackPose = timeline.readCameraPose();
+        scanTrackPos.copy(currentTrackPose.position);
+        scanTrackQuat.copy(currentTrackPose.quaternion);
+        scanAttachedToTrack = scanElapsed >= cameraAttachScanTime;
       },
       onComplete: () => {
         viewOffsetX = 0;
@@ -497,8 +532,11 @@ async function boot() {
         freeCamera.clearViewOffset();
         scanPlane.constant = FAR_SCAN; // 实体全部显现
         cloud.points.visible = false; // 点云不回头, 省一次 draw
+        freeCamera.position.copy(scanTrackPos);
+        freeCamera.quaternion.copy(scanTrackQuat);
         // seekImmediate 会清零速度; 在交接帧恢复实时速度, 避免 timeline_0 顿一下。
         timeline.setAutoDrive(true, { immediate: true });
+        timelineHandoffThisFrame = true;
         setState("scrub");
       },
     });
@@ -711,12 +749,29 @@ async function boot() {
       orbit.update(delta);
     } else if (state === "scan") {
       orbit.update(delta); // 缓慢旋转保持, 随 scanBlend 淡出
-      scanOrbitPos.copy(freeCamera.position);
-      scanOrbitQuat.copy(freeCamera.quaternion);
-      freeCamera.position.lerpVectors(scanOrbitPos, scanEndPos, scanBlend);
-      freeCamera.quaternion.slerpQuaternions(scanOrbitQuat, scanEndQuat, scanBlend);
+      if (scanAttachedToTrack) {
+        freeCamera.position.copy(scanTrackPos);
+        freeCamera.quaternion.copy(scanTrackQuat);
+      } else {
+        scanOrbitPos.copy(freeCamera.position);
+        scanOrbitQuat.copy(freeCamera.quaternion);
+        freeCamera.position.lerpVectors(
+          scanOrbitPos,
+          scanHandoffPos,
+          scanBlend,
+        );
+        freeCamera.quaternion.slerpQuaternions(
+          scanOrbitQuat,
+          scanHandoffQuat,
+          scanBlend,
+        );
+      }
     } else if (state === "scrub") {
-      timeline.update(delta, !lookAround.isIdle);
+      if (timelineHandoffThisFrame) {
+        timelineHandoffThisFrame = false;
+      } else {
+        timeline.update(delta, !lookAround.isIdle);
+      }
       hud.setTimeline(timeline.progress);
       lookAround.update(delta, timeline.readCameraPose());
     }

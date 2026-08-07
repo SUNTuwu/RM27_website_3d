@@ -97,6 +97,7 @@ export function createBackRing({
   group.visible = false;
 
   let level = 0;
+  let speedScale = 1;
 
   return {
     group,
@@ -106,9 +107,12 @@ export function createBackRing({
       ticks.material.opacity = value * opacity;
       arcs.material.opacity = value * opacity;
     },
+    setSpeedScale(value) {
+      speedScale = Number.isFinite(value) ? Math.max(value, 0) : 1;
+    },
     update(delta) {
-      ticks.material.rotation += delta * tickSpeed;
-      arcs.material.rotation += delta * arcSpeed;
+      ticks.material.rotation += delta * tickSpeed * speedScale;
+      arcs.material.rotation += delta * arcSpeed * speedScale;
     },
   };
 }
