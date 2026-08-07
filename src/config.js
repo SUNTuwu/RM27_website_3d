@@ -38,7 +38,7 @@ export const VISUAL_CONFIG = {
         emissiveIntensityScale: 1,
         light: {
           color: 0xff294d,
-          intensity: 14,
+          intensity: 10,
           distance: 26,
           decay: 2,
           position: [11, 3, 7],
@@ -90,5 +90,23 @@ export const VISUAL_CONFIG = {
     cameraLeadSeconds: 0.5,
     // Blender 导出的高强度聚光灯运行时缩放，不修改 glTF 源资产。
     lightIntensityScale: 0.0004,
+    // 滚轮擦洗惯性: 灵敏度 / progress 追赶速度上限 (每秒) / 自动播放暂停与恢复缓入时长 (秒)
+    scroll: {
+      wheelScale: 0.00042,
+      maxRate: 0.22,
+      autoSuspendSeconds: 1.5,
+      autoResumeRampSeconds: 0.5,
+    },
+    // SCRUB 拖拽环视: 拖拽时过渡到绕场地中心斜向下环绕视角, 松手过渡回 timeline 姿态
+    lookAround: {
+      elevationDeg: 45, // 环绕时斜向下俯角
+      yawSpeed: 0.0032, // 水平拖动 -> 环绕角速度 (弧度/像素)
+      yawRange: 1.2, // 环绕角度范围 (弧度)
+      radiusMin: 12, // 环绕半径下限
+      radiusMax: 40, // 环绕半径上限 (半径取 timeline 相机到场地中心的水平距离, 钳制在此区间)
+      holdSeconds: 2, // 松手后无输入保持环视的时长, 之后才开始回中
+      blendInSpeed: 4, // 拖入环视的过渡速度
+      blendOutSpeed: 1.6, // 松手回中的过渡速度
+    },
   },
 };

@@ -11,6 +11,8 @@ export function createTimelineController({
   camera,
   wheelScale = 0.00042,
   maxRate = 0.22,
+  autoSuspendSeconds = 1.5,
+  autoResumeRampSeconds = 0.5,
 }) {
   const mixer = new THREE.AnimationMixer(root);
   const action = mixer.clipAction(clip);
@@ -21,6 +23,7 @@ export function createTimelineController({
   let target = 0;
   let autoDrive = false;
   let autoSuspend = 0;
+  let autoResumeElapsed = 0;
   const autoRate = 1 / clip.duration; // 实时速度自动推进
 
   const posePosition = new THREE.Vector3();
@@ -45,9 +48,9 @@ export function createTimelineController({
     },
     addWheel(deltaY) {
       target = THREE.MathUtils.clamp(target + deltaY * wheelScale, 0, 1);
-      if (deltaY < 0) {
-        autoSuspend = 1.5; // 用户主动回滚时暂停自动播放
-      }
+      // 任意方向滚动都暂停自动播放, 从最后一次滚动重新计时
+      autoSuspend = autoSuspendSeconds;
+      autoResumeElapsed = 0;
     },
     /** 直接定位到指定进度 (SCAN 期间预推进 / 起始 offset) */
     seekImmediate(value) {
@@ -55,20 +58,36 @@ export function createTimelineController({
       target = progress;
       applyTime();
     },
-    /** SCRUB 状态下自动推进进度条; 滚轮输入优先 (回滚暂停 1.5s) */
+    /** SCRUB 状态下自动推进进度条; 滚轮输入优先, 恢复时速度缓入 */
     setAutoDrive(value) {
       autoDrive = Boolean(value);
+      autoResumeElapsed = 0;
       if (!autoDrive) {
         autoSuspend = 0;
       }
     },
-    /** paused = 拖拽环视中: 自动推进与回滚暂停计时都冻结, 松手恢复 */
+    /** paused = 环视中: 自动推进与滚轮暂停计时都冻结, 回中后缓入恢复 */
     update(delta, paused = false) {
-      if (autoDrive && !paused) {
+      if (paused) {
+        autoResumeElapsed = 0;
+      } else if (autoDrive) {
         if (autoSuspend > 0) {
-          autoSuspend -= delta;
+          autoSuspend = Math.max(autoSuspend - delta, 0);
+          autoResumeElapsed = 0;
         } else if (target < 1) {
-          target = Math.min(target + autoRate * delta, 1);
+          autoResumeElapsed = Math.min(
+            autoResumeElapsed + delta,
+            autoResumeRampSeconds,
+          );
+          const resumeSpeed =
+            autoResumeRampSeconds > 0
+              ? THREE.MathUtils.smoothstep(
+                  autoResumeElapsed,
+                  0,
+                  autoResumeRampSeconds,
+                )
+              : 1;
+          target = Math.min(target + autoRate * resumeSpeed * delta, 1);
         }
       }
       const diff = target - progress;

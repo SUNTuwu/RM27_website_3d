@@ -106,7 +106,7 @@ export function createFocusController({ camera, robotRoot, scene }) {
     setOnModeChange(callback) {
       modeChangeCallback = callback;
     },
-    /** 进入聚焦: 调用前 main 已把自由相机对齐到 timeline 相机姿态 */
+    /** 进入聚焦: 捕获自由相机当前姿态，并以此作为过渡起点 */
     enter() {
       computeAnchorPose();
       startPos.copy(camera.position);

@@ -54,8 +54,12 @@ async function waitState(page, expected, timeout = 30_000) {
 
 try {
   // ---------------- 桌面端: 完整交互链路 ----------------
+  // SwiftShader 渲染慢, 用小视口换取帧率; 高度需 >= 760 避免触发移动端降级
+  const viewW = 1024;
+  const viewH = 768;
+  const edgeMargin = 40;
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: { width: viewW, height: viewH },
     deviceScaleFactor: 1,
   });
   const page = await context.newPage();
@@ -92,8 +96,8 @@ try {
   await page.screenshot({ path: path.join(outputDirectory, "01-explore.png") });
 
   // EXPLORE: 点击径向扩散
-  await page.mouse.move(720, 450);
-  await page.mouse.click(720, 450);
+  await page.mouse.move(viewW / 2, viewH / 2);
+  await page.mouse.click(viewW / 2, viewH / 2);
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(outputDirectory, "02-ripple.png") });
   failIf((await getState(page)) !== "explore", "click ripple keeps EXPLORE state");
@@ -123,16 +127,16 @@ try {
 
   // SCRUB -> FOCUS: 推进到机器人可见后点击
   let robotPos = await page.evaluate(() => window.__ENTERPRIZE_DEMO__.robotScreenPosition());
-  for (let attempt = 0; attempt < 12 && (robotPos.behind || robotPos.x < 60 || robotPos.x > 1380 || robotPos.y < 60 || robotPos.y > 840); attempt++) {
+  for (let attempt = 0; attempt < 12 && (robotPos.behind || robotPos.x < edgeMargin || robotPos.x > viewW - edgeMargin || robotPos.y < edgeMargin || robotPos.y > viewH - edgeMargin); attempt++) {
     await page.mouse.wheel(0, 900);
     await page.waitForTimeout(900);
     robotPos = await page.evaluate(() => window.__ENTERPRIZE_DEMO__.robotScreenPosition());
   }
   failIf(robotPos.behind, "robot anchor became visible in timeline camera");
   await page.mouse.click(robotPos.x, robotPos.y);
-  await waitState(page, "focus", 5_000);
+  await waitState(page, "focus", 20_000);
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.focusMode === "active", null, {
-    timeout: 8_000,
+    timeout: 30_000,
   });
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(outputDirectory, "05-focus.png") });
@@ -149,7 +153,7 @@ try {
   await page.waitForFunction(
     () => window.__ENTERPRIZE_DEMO__?.state === "scrub" && window.__ENTERPRIZE_DEMO__?.focusMode === "idle",
     null,
-    { timeout: 8_000 },
+    { timeout: 30_000 },
   );
   failIf(false, "wheel exits FOCUS back to SCRUB seamlessly");
 

@@ -10,6 +10,7 @@ import {
 import { createStage } from "./core/stage.js";
 import { FAR_SCAN, createPointCloud } from "./pointcloud/pointCloud.js";
 import { createTimelineController } from "./timeline/timelineController.js";
+import { createLookAroundController } from "./timeline/lookAroundController.js";
 import { createFocusController } from "./focus/focusController.js";
 import { createHud } from "./ui/hud.js";
 import { VISUAL_CONFIG } from "./config.js";
@@ -90,6 +91,11 @@ async function boot() {
     root: assets.timeline.scene,
     clip: report.timeline.sourceClips[0],
     camera: timelineCamera,
+    wheelScale: VISUAL_CONFIG.timeline0.scroll.wheelScale,
+    maxRate: VISUAL_CONFIG.timeline0.scroll.maxRate,
+    autoSuspendSeconds: VISUAL_CONFIG.timeline0.scroll.autoSuspendSeconds,
+    autoResumeRampSeconds:
+      VISUAL_CONFIG.timeline0.scroll.autoResumeRampSeconds,
   });
   const timelineStartOffset = THREE.MathUtils.clamp(
     VISUAL_CONFIG.timeline0.timeOffsetSeconds,
@@ -201,9 +207,22 @@ async function boot() {
   };
   orbit.update(0); // 初始取景
 
-  // ---------- 状态机 ----------
+  // ---------- SCRUB 环视子状态机 ----------
+  const lookPivot = cloud.center.clone();
+  lookPivot.y = 0;
+  const lookAround = createLookAroundController({
+    camera: freeCamera,
+    pivot: lookPivot,
+    config: VISUAL_CONFIG.timeline0.lookAround,
+  });
+
+  // ---------- 全局状态机 ----------
   let state = "boot";
   function setState(next) {
+    if (next !== state && (state === "scrub" || next === "scrub")) {
+      // 子状态结束时只交出相机控制权，不改写当前姿态。
+      lookAround.reset();
+    }
     state = next;
     hud.setState(next);
     focus.setHighlightTarget(next === "scrub" || next === "focus" ? 1 : 0);
@@ -211,13 +230,6 @@ async function boot() {
       timeline.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
     }
   }
-
-  // SCRUB 拖拽环视偏移 (叠加在 timeline 相机姿态上, 松手慢速回中)
-  let lookYaw = 0;
-  let lookPitch = 0;
-  let scrubDragging = false;
-  const lookEuler = new THREE.Euler(0, 0, 0, "YXZ");
-  const lookQuat = new THREE.Quaternion();
 
   // SCAN 相机混合: 实时 orbit 姿态 -> timeline_0 起点姿态, 旋转随权重淡出
   const scanEndPos = new THREE.Vector3();
@@ -271,14 +283,8 @@ async function boot() {
     if (state !== "scrub") {
       return;
     }
-    scrubDragging = false;
-    lookYaw = 0;
-    lookPitch = 0;
-    const pose = timeline.readCameraPose();
-    freeCamera.position.copy(pose.position);
-    freeCamera.quaternion.copy(pose.quaternion);
     setState("focus");
-    focus.enter();
+    focus.enter(); // 从环视或 timeline 的当前画面姿态进入
   }
 
   function exitFocus() {
@@ -318,7 +324,7 @@ async function boot() {
         cloud.addClick(clickPoint, clockElapsed());
       }
     } else if (state === "scrub") {
-      raycaster.setFromCamera(pointerNdc, timelineCamera);
+      raycaster.setFromCamera(pointerNdc, freeCamera);
       if (raycaster.intersectObject(focus.proxy, false).length > 0) {
         enterFocus();
       }
@@ -335,7 +341,7 @@ async function boot() {
     if (state === "focus") {
       focus.startDrag();
     } else if (state === "scrub") {
-      scrubDragging = true;
+      lookAround.startDrag();
     }
   });
 
@@ -352,17 +358,18 @@ async function boot() {
       orbit.drag(dx, dy);
     } else if (state === "focus") {
       focus.drag(dx, dy);
-    } else if (state === "scrub" && scrubDragging) {
-      // SCRUB 拖拽环视: 叠加在 timeline 相机姿态上的 yaw/pitch 偏移
-      lookYaw = THREE.MathUtils.clamp(lookYaw - dx * 0.0032, -1.2, 1.2);
-      lookPitch = THREE.MathUtils.clamp(lookPitch - dy * 0.0032, -0.7, 0.7);
+    } else if (state === "scrub") {
+      lookAround.drag(dx);
     }
   });
 
   canvas.addEventListener("pointerup", (event) => {
     pointer.down = false;
-    scrubDragging = false;
-    focus.endDrag();
+    if (state === "focus") {
+      focus.endDrag();
+    } else if (state === "scrub") {
+      lookAround.endDrag();
+    }
     const isClick =
       pointer.moved < 6 && performance.now() - pointer.time < 500;
     if (isClick) {
@@ -380,7 +387,10 @@ async function boot() {
         }
       } else if (state === "scrub") {
         event.preventDefault();
-        timeline.addWheel(event.deltaY);
+        // 环视状态机交回相机控制权后才恢复滚轮。
+        if (lookAround.isIdle) {
+          timeline.addWheel(event.deltaY);
+        }
       } else if (state === "focus") {
         event.preventDefault();
         exitFocus();
@@ -435,20 +445,9 @@ async function boot() {
       freeCamera.position.lerpVectors(scanOrbitPos, scanEndPos, scanBlend);
       freeCamera.quaternion.slerpQuaternions(scanOrbitQuat, scanEndQuat, scanBlend);
     } else if (state === "scrub") {
-      timeline.update(delta, scrubDragging);
+      timeline.update(delta, !lookAround.isIdle);
       hud.setTimeline(timeline.progress);
-      // 视角 = timeline 相机姿态 + 拖拽环视偏移 (无 END 锁定, 滚轮随时回拨)
-      const pose = timeline.readCameraPose();
-      freeCamera.position.copy(pose.position);
-      lookQuat.setFromEuler(lookEuler.set(lookPitch, lookYaw, 0));
-      freeCamera.quaternion.copy(pose.quaternion).multiply(lookQuat);
-    }
-
-    // 环视偏移松手慢速回中
-    if (!scrubDragging && (lookYaw !== 0 || lookPitch !== 0)) {
-      const recenter = 1 - Math.exp(-delta * 1.6);
-      lookYaw -= lookYaw * recenter;
-      lookPitch -= lookPitch * recenter;
+      lookAround.update(delta, timeline.readCameraPose());
     }
 
     stage.render(freeCamera, delta);
@@ -488,6 +487,9 @@ async function boot() {
     },
     get focusMode() {
       return focus.mode;
+    },
+    get lookAroundMode() {
+      return lookAround.mode;
     },
     get debugTweens() {
       return tweens.size;
