@@ -5,8 +5,42 @@
  * 颜色使用 0xRRGGBB，位置使用 Three.js 的 [x, y, z] 米制坐标。
  */
 export const VISUAL_CONFIG = {
+  // 点云阶段背景装饰环 (仿 Endfield lore 三层结构: 细圆 + 刻度环 + 反向厚弧):
+  // ASSEMBLE 渐显进入, 进入 SCAN 渐隐退出, 期间各层缓慢旋转
+  backRing: {
+    sizeScale: 1.2, // 外径 = 点云包围盒最长边 * sizeScale
+    opacity: 0.4,
+    tickSpeed: 0.05, // 刻度环角速度 (弧度/秒)
+    arcSpeed: -0.035, // 厚弧环角速度 (反向)
+    fadeInSeconds: 1.6,
+    fadeOutSeconds: 0.9,
+    // 绘制参数: 半径均为 0~1 (相对贴图外缘, 1 = 最外圈), 线宽为贴图像素 (1024px 画布)
+    solid: {
+      radius: 0.75, // 细圆半径
+      width: 2, // 细圆线宽
+      alpha: 0.55,
+    },
+    ticks: {
+      outer: 0.94, // 刻度外端半径
+      length: 0.04, // 刻度长度 (径向)
+      width: 2, // 刻度环粗细
+      alpha: 0.85,
+    },
+    arcs: {
+      inner: 0.82, // 反向厚弧内径
+      outer: 0.88, // 反向厚弧外径
+      alpha: 0.2,
+    },
+  },
+
+  // EXPLORE 环绕视角与多模型切换
+  explore: {
+    zoom: 1.5, // 点云整体放大倍率 (相机拉近)
+    robotFitScale: 0.4, // ROBOT_1 点云最长边 = 场地点云最长边 * 此系数
+  },
+
   pointCloud: {
-    count: 100_000,
+    count: 50_000,
     size: 2.1,
     glow: {
       // 点颜色越亮，越容易超过 bloom.threshold 并产生光晕。
@@ -14,7 +48,7 @@ export const VISUAL_CONFIG = {
       brightnessMax: 0.5,
       // 单个点从实心核心到透明边缘的半径，取值范围为 0 到 0.5。
       coreRadius: 0.1,
-      edgeRadius: 0.3,
+      edgeRadius: 0.2,
       alphaCutoff: 0.012,
       // alphaCutoff: 0.005,
       // 扫描线经过点云时的额外前沿光晕；颜色为线性 RGB。

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" data-name="图层 1" xmlns="http://www.w3.org/2000/svg" width="1080.32" height="1080.32" viewBox="0 0 1080.32 1080.32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #fff;
+        stroke-dasharray: 2.89 22.8 0;
+        stroke-miterlimit: 10;
+        stroke-width: 1.6px;
+      }
+    </style>
+  </defs>
+  <path class="cls-1" d="M540.16,1080.16C241.95,1080.16.16,838.42.16,540.13S241.95.16,540.16.16s540,241.79,540,539.97-241.79,540.03-540,540.03Z"/>
+</svg>

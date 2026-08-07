@@ -120,12 +120,21 @@ body {
 .masthead__title {
   font-family: var(--font-en);
   font-weight: 400;
-  font-size: clamp(30px, 4.2vw, 54px);
+  font-size: clamp(52px, 7.2vw, 104px);
   line-height: 1.05;
   color: var(--ink);
   text-shadow:
     0 0 18px rgba(46, 155, 255, 0.35),
     0 0 42px rgba(46, 155, 255, 0.12);
+  transition: font-size 0.9s ease;
+}
+
+/* SCAN 起标题收缩回常规 HUD 尺寸 */
+#app[data-state="scan"] .masthead__title,
+#app[data-state="scrub"] .masthead__title,
+#app[data-state="focus"] .masthead__title,
+#app[data-state="end"] .masthead__title {
+  font-size: clamp(30px, 4.2vw, 54px);
 }
 
 .masthead__rule {
@@ -427,10 +436,148 @@ body {
   word-break: break-all;
 }
 
+/* ---------- Explore panel (点云模型切换) ---------- */
+
+.explore-panel {
+  position: absolute;
+  right: 64px;
+  top: 50%;
+  width: 380px;
+  text-align: right;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%) translateX(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease, visibility 0.6s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+#app[data-state="assemble"] .explore-panel,
+#app[data-state="explore"] .explore-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+.explore-panel__name {
+  font-family: var(--font-en);
+  font-weight: 400;
+  font-size: clamp(36px, 4vw, 60px);
+  line-height: 1.05;
+  color: var(--ink);
+  text-shadow:
+    0 0 18px rgba(46, 155, 255, 0.35),
+    0 0 42px rgba(46, 155, 255, 0.12);
+}
+
+.explore-panel__sub {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-en);
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 1px;
+}
+
+.explore-panel__switcher {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(20, 30, 48, 0.72) 0 6px,
+      rgba(8, 13, 22, 0.72) 6px 12px
+    );
+  backdrop-filter: blur(6px);
+}
+
+.explore-panel__arrow {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: #060a12;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.explore-panel__arrow svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.explore-panel__arrow:hover {
+  background: var(--cyan);
+  transform: scale(1.06);
+}
+
+.explore-panel__status {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.explore-panel__status em {
+  font-style: normal;
+  font-family: var(--font-en);
+  font-size: 11px;
+  color: var(--cyan);
+}
+
+.explore-panel__status b {
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.explore-panel__segments {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.explore-panel__segments i {
+  width: 46px;
+  height: 3px;
+  background: rgba(120, 160, 210, 0.22);
+  transition: background 0.3s ease;
+}
+
+.explore-panel__segments i.active {
+  background: linear-gradient(90deg, var(--red), var(--blue));
+  box-shadow: 0 0 10px rgba(46, 155, 255, 0.5);
+}
+
+.explore-panel__desc {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+}
+
 @media (max-width: 900px) {
   .masthead { top: 26px; left: 28px; }
   .state-chip { top: 26px; right: 28px; }
   .coordinate-readout { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
+  .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
 }

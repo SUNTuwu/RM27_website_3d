@@ -9,6 +9,7 @@ import {
 } from "./core/assetPipeline.js";
 import { createStage } from "./core/stage.js";
 import { FAR_SCAN, createPointCloud } from "./pointcloud/pointCloud.js";
+import { createBackRing } from "./pointcloud/backRing.js";
 import { createTimelineController } from "./timeline/timelineController.js";
 import { createLookAroundController } from "./timeline/lookAroundController.js";
 import { createFocusController } from "./focus/focusController.js";
@@ -78,6 +79,69 @@ async function boot() {
   stage.scene.add(assets.arena.scene);
   stage.scene.add(assets.robot.scene);
   stage.scene.add(cloud.points);
+
+  // ---------- 点云背景装饰环 (仿 Endfield lore 三层 HUD 环) ----------
+  // 面向相机的 sprite 组, 加色混合叠在点云后面; 点云阶段可见, SCAN 时渐隐
+  const backRingConfig = VISUAL_CONFIG.backRing;
+  const backRing = createBackRing(backRingConfig);
+  const backRingDiameter =
+    Math.max(cloud.extent.x, cloud.extent.y, cloud.extent.z) *
+    backRingConfig.sizeScale;
+  backRing.group.position.copy(cloud.center);
+  backRing.group.scale.set(backRingDiameter, backRingDiameter, 1);
+  stage.scene.add(backRing.group);
+
+  // ---------- EXPLORE 多模型点云 (左右切换) ----------
+  // 机器人点云归一化: 缩放到与场地点云接近的观感尺寸, 中心对齐场地中心
+  const robotCloud = createPointCloud(assets.robot.scene, VISUAL_CONFIG.pointCloud);
+  const arenaMaxExtent = Math.max(cloud.extent.x, cloud.extent.y, cloud.extent.z);
+  const robotMaxExtent = Math.max(
+    robotCloud.extent.x,
+    robotCloud.extent.y,
+    robotCloud.extent.z,
+  );
+  const robotFit =
+    (arenaMaxExtent * VISUAL_CONFIG.explore.robotFitScale) / robotMaxExtent;
+  robotCloud.points.scale.setScalar(robotFit);
+  robotCloud.points.position
+    .copy(cloud.center)
+    .sub(robotCloud.center.clone().multiplyScalar(robotFit));
+  robotCloud.points.visible = false;
+  robotCloud.setProgress(1); // 切换时直接呈现完整形态
+  stage.scene.add(robotCloud.points);
+
+  const exploreModels = [
+    {
+      name: "RMUC ARENA",
+      desc: "RMUC 标准赛场点云重建, 完整保留功能分区、增益点与掩体布局。",
+      cloud,
+    },
+    {
+      name: "ROBOT_1",
+      desc: "步兵机器人整机表面采样点云, 源自高精度 glTF 模型。",
+      cloud: robotCloud,
+    },
+  ];
+  let exploreModelIndex = 0;
+
+  function switchExploreModel(next) {
+    const total = exploreModels.length;
+    exploreModelIndex = ((next % total) + total) % total;
+    exploreModels.forEach((entry, index) => {
+      entry.cloud.points.visible = index === exploreModelIndex;
+    });
+    const active = exploreModels[exploreModelIndex];
+    hud.setExploreModel(exploreModelIndex, total, active.name, active.desc);
+  }
+
+  // ---------- EXPLORE 左偏构图 (点云移到屏幕左 1/3, SCAN 时回中) ----------
+  let viewOffsetX = 0;
+  function applyViewOffset() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    freeCamera.setViewOffset(w, h, viewOffsetX, 0, w, h);
+  }
+
   // 时间轴场景全程 visible: 预扫描期被裁剪平面隐藏, 材质与纹理随首批帧完成编译上传,
   // 避免 SCAN 切换时首次编译 dart/hit 材质 + 上传贴图造成的卡顿
   stage.scene.add(assets.timeline.scene);
@@ -179,9 +243,10 @@ async function boot() {
   orbitTarget.y += cloud.extent.y * 0.08;
   const orbit = {
     radius: THREE.MathUtils.clamp(
-      Math.max(cloud.extent.x, cloud.extent.z) * 1.02,
-      16,
-      42,
+      (Math.max(cloud.extent.x, cloud.extent.z) * 1.02) /
+        VISUAL_CONFIG.explore.zoom,
+      16 / VISUAL_CONFIG.explore.zoom,
+      42 / VISUAL_CONFIG.explore.zoom,
     ),
     theta: -0.85,
     phi: 1.12,
@@ -239,6 +304,21 @@ async function boot() {
   let scanBlend = 0;
 
   function startScan() {
+    // SCAN 只针对场地点云: 若正展示 ROBOT_1 则立即换回场地
+    robotCloud.points.visible = false;
+    cloud.points.visible = true;
+
+    // 背景装饰环渐隐退出, 结束后彻底隐藏 (不进入后续状态)
+    addTween({
+      duration: backRingConfig.fadeOutSeconds,
+      onUpdate: (k) => {
+        backRing.setLevel(1 - k);
+      },
+      onComplete: () => {
+        backRing.group.visible = false;
+      },
+    });
+
     const offsetProgress = timelineStartOffset / timeline.clip.duration;
     // 先采样 offset 时刻的相机姿态作为飞行终点, 再回到 0 预推进
     timeline.seekImmediate(offsetProgress);
@@ -253,6 +333,7 @@ async function boot() {
       duration: SCAN_DURATION,
       onUpdate: (k) => {
         scanBlend = k; // 相机混合全程推进, 比扫描线提前 cameraLead 秒起步
+        viewOffsetX = (1 - k) * (window.innerWidth / 6); // 左偏构图平滑回中
         const scanK = THREE.MathUtils.clamp(
           (k * SCAN_DURATION - cameraLead) / (SCAN_DURATION - cameraLead),
           0,
@@ -272,6 +353,8 @@ async function boot() {
         timeline.seekImmediate(playhead / timeline.clip.duration);
       },
       onComplete: () => {
+        viewOffsetX = 0;
+        freeCamera.clearViewOffset();
         scanPlane.constant = FAR_SCAN; // 实体全部显现
         cloud.points.visible = false; // 点云不回头, 省一次 draw
         setState("scrub");
@@ -315,13 +398,20 @@ async function boot() {
     if (state === "explore") {
       raycaster.setFromCamera(pointerNdc, freeCamera);
       if (raycaster.ray.intersectPlane(groundPlane, clickPoint)) {
-        clickPoint.x = THREE.MathUtils.clamp(clickPoint.x, minX, maxX);
-        clickPoint.z = THREE.MathUtils.clamp(
-          clickPoint.z,
-          cloud.bounds.min.z,
-          cloud.bounds.max.z,
+        // 激活模型的点云可能有缩放/平移 (ROBOT_1), 涟漪参数需要本地坐标
+        const active = exploreModels[exploreModelIndex].cloud;
+        const localPoint = active.points.worldToLocal(clickPoint.clone());
+        localPoint.x = THREE.MathUtils.clamp(
+          localPoint.x,
+          active.bounds.min.x,
+          active.bounds.max.x,
         );
-        cloud.addClick(clickPoint, clockElapsed());
+        localPoint.z = THREE.MathUtils.clamp(
+          localPoint.z,
+          active.bounds.min.z,
+          active.bounds.max.z,
+        );
+        active.addClick(localPoint, clockElapsed());
       }
     } else if (state === "scrub") {
       raycaster.setFromCamera(pointerNdc, freeCamera);
@@ -402,6 +492,23 @@ async function boot() {
     { passive: false },
   );
 
+  // EXPLORE 模型切换: 屏幕箭头按钮 + 键盘左右方向键
+  hud.setExploreSwitchHandler((step) => {
+    if (state === "explore") {
+      switchExploreModel(exploreModelIndex + step);
+    }
+  });
+  window.addEventListener("keydown", (event) => {
+    if (state !== "explore") {
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      switchExploreModel(exploreModelIndex - 1);
+    } else if (event.key === "ArrowRight") {
+      switchExploreModel(exploreModelIndex + 1);
+    }
+  });
+
   // ---------- 帧循环 ----------
   let elapsedNow = 0;
   const clockElapsed = () => elapsedNow;
@@ -413,6 +520,15 @@ async function boot() {
     elapsedNow = elapsed;
     updateTweens(delta);
     cloud.update(elapsed, stage.renderer.getPixelRatio());
+    if (robotCloud.points.visible) {
+      robotCloud.update(elapsed, stage.renderer.getPixelRatio());
+    }
+    if (backRing.group.visible) {
+      backRing.update(delta);
+    }
+    if (state === "assemble" || state === "explore" || state === "scan") {
+      applyViewOffset(); // 每帧应用, 跟随窗口尺寸变化
+    }
     focus.update(delta, elapsed);
 
     // 红蓝强调灯电平滑动: scan 时全开 (白色灯不参与)
@@ -468,6 +584,17 @@ async function boot() {
 
   hud.finishLoading();
   setState("assemble");
+  // 左偏构图: 点云移到屏幕左 1/3, 右侧面板展示模型名
+  viewOffsetX = window.innerWidth / 6;
+  switchExploreModel(0);
+  // 背景装饰环随 ASSEMBLE 渐显进入
+  backRing.group.visible = true;
+  addTween({
+    duration: backRingConfig.fadeInSeconds,
+    onUpdate: (k) => {
+      backRing.setLevel(k);
+    },
+  });
   addTween({
     duration: ASSEMBLE_DURATION,
     ease: (x) => x, // shader 内部已做逐点缓动, 进度线性推进

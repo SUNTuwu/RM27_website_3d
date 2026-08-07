@@ -47,6 +47,13 @@ export function createHud() {
   const errorScreen = document.querySelector("#error-screen");
   const errorMessage = document.querySelector("#error-message");
   const fpsReadout = document.querySelector("#fps-readout");
+  const exploreName = document.querySelector("#explore-name");
+  const exploreLabel = document.querySelector("#explore-label");
+  const exploreIndex = document.querySelector("#explore-index");
+  const exploreSegments = document.querySelector("#explore-segments");
+  const exploreDesc = document.querySelector("#explore-desc");
+  const explorePrev = document.querySelector("#explore-prev");
+  const exploreNext = document.querySelector("#explore-next");
 
   return {
     setState(state) {
@@ -76,6 +83,24 @@ export function createHud() {
       const percent = Math.round(progress * 100);
       timelineFill.style.width = `${percent}%`;
       timelinePct.textContent = `${String(percent).padStart(3, "0")}%`;
+    },
+    setExploreModel(index, total, name, desc) {
+      exploreName.textContent = name;
+      exploreLabel.textContent = name;
+      exploreIndex.textContent = `${index + 1} / ${total}`;
+      exploreDesc.textContent = desc ?? "";
+      exploreSegments.innerHTML = "";
+      for (let i = 0; i < total; i += 1) {
+        const seg = document.createElement("i");
+        if (i === index) {
+          seg.className = "active";
+        }
+        exploreSegments.appendChild(seg);
+      }
+    },
+    setExploreSwitchHandler(handler) {
+      explorePrev.addEventListener("click", () => handler(-1));
+      exploreNext.addEventListener("click", () => handler(1));
     },
     setFps(value) {
       fpsReadout.textContent = `${value} FPS`;
