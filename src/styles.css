@@ -1025,20 +1025,6 @@ body {
   letter-spacing: 1px;
 }
 
-.focus-panel__name-hatch {
-  flex: none;
-  width: 132px;
-  height: 14px;
-  align-self: center;
-  transform: skewX(-24deg);
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(127, 212, 255, 0.6) 0 3px,
-    transparent 3px 11px
-  );
-  box-shadow: 0 0 14px rgba(46, 155, 255, 0.25);
-}
-
 .focus-panel__rule {
   display: block;
   margin-top: 16px;

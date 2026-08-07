@@ -24,6 +24,9 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
+  preview: {
+    allowedHosts: [".trycloudflare.com"],
+  },
   build: {
     chunkSizeWarningLimit: 1500,
   },

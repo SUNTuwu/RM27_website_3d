@@ -683,6 +683,14 @@ async function boot() {
   const clickGuideProjected = new THREE.Vector3();
   let exploreLastClickAt = 0;
 
+  // SCRUB (overview) 机器人点击引导圈: 复用同一组件, 跟随机器人原点投影
+  const robotGuide = createPulseGuide({
+    size: clickGuideConfig.sizePx,
+    rhythmSeconds: clickGuideConfig.rhythmSeconds,
+    fadeSeconds: clickGuideConfig.fadeSeconds,
+  });
+  const robotGuideProjected = new THREE.Vector3();
+
   function handleClick(event) {
     pointerNdc.set(
       (event.clientX / window.innerWidth) * 2 - 1,
@@ -879,6 +887,27 @@ async function boot() {
       clickGuide.show();
     } else if (clickGuide.visible) {
       clickGuide.hide();
+    }
+
+    // 机器人点击引导圈: SCRUB 状态每帧跟随机器人原点投影, 相机背后或出屏即隐藏
+    if (state === "scrub") {
+      robotGuideProjected.copy(focus.anchor).project(freeCamera);
+      const guideX = ((robotGuideProjected.x + 1) / 2) * window.innerWidth;
+      const guideY = ((1 - robotGuideProjected.y) / 2) * window.innerHeight;
+      const guideOnScreen =
+        robotGuideProjected.z < 1 &&
+        guideX > 40 &&
+        guideX < window.innerWidth - 40 &&
+        guideY > 40 &&
+        guideY < window.innerHeight - 40;
+      if (guideOnScreen) {
+        robotGuide.setPosition(guideX, guideY);
+        robotGuide.show();
+      } else if (robotGuide.visible) {
+        robotGuide.hide();
+      }
+    } else if (robotGuide.visible) {
+      robotGuide.hide();
     }
 
     // 红蓝强调灯电平滑动: scan 时全开 (白色灯不参与)
