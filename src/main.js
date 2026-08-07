@@ -27,6 +27,14 @@ function easeInOutCubic(x) {
 
 const hud = createHud();
 
+function releasePageScroll() {
+  document.documentElement.classList.remove("is-scroll-locked");
+}
+
+function lockPageScroll() {
+  document.documentElement.classList.add("is-scroll-locked");
+}
+
 const isMobileDevice =
   window.matchMedia("(pointer: coarse)").matches ||
   Math.min(window.innerWidth, window.innerHeight) < 760;
@@ -34,10 +42,12 @@ const isMobileDevice =
 if (isMobileDevice) {
   // 移动端降级: 不初始化 WebGL, 不下载 glTF
   hud.showMobile();
+  releasePageScroll();
 } else {
   boot().catch((error) => {
     console.error("[ENTERPRIZE] Boot failed", error);
     hud.showError(error);
+    releasePageScroll();
   });
 }
 
@@ -342,6 +352,7 @@ async function boot() {
     camera: freeCamera,
     robotRoot: assets.robot.scene,
     scene: stage.scene,
+    distance: VISUAL_CONFIG.focus.distance,
   });
 
   // 预扫描裁剪边界: 覆盖场地 + 时间轴 (飞镖) + 机器人全部内容
@@ -476,6 +487,25 @@ async function boot() {
     if (next === "scrub") {
       timeline.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
     }
+  }
+
+  function enterUnitArchive() {
+    if (state === "end") {
+      return;
+    }
+    timeline.setAutoDrive(false);
+    setState("end");
+    releasePageScroll();
+  }
+
+  function returnToTimeline() {
+    if (state !== "end") {
+      return;
+    }
+    window.scrollTo(0, 0);
+    lockPageScroll();
+    setState("scrub");
+    hud.setTimeline(timeline.progress);
   }
 
   // SCAN 相机混合: 先接入 cameraTimeOffset 姿态, 再贴合当前预设轨迹
@@ -613,15 +643,25 @@ async function boot() {
     focus.enter(); // 从环视或 timeline 的当前画面姿态进入
   }
 
+  const appElement = document.querySelector("#app");
+  const FOCUS_PANEL_FADE_MS = 500; // 与 CSS 面板淡出时长 (0.45s) 对齐
+  let focusExitTimer = null;
+
   function exitFocus() {
-    if (state !== "focus") {
+    if (state !== "focus" || focusExitTimer !== null) {
       return;
     }
-    focus.exit(timeline.readCameraPose()); // 回到冻结进度姿态
+    // 先收起信息栏与图片, 淡出完成后再移动相机
+    appElement.dataset.focusLeaving = "true";
+    focusExitTimer = window.setTimeout(() => {
+      focusExitTimer = null;
+      focus.exit(timeline.readCameraPose()); // 回到冻结进度姿态
+    }, FOCUS_PANEL_FADE_MS);
   }
 
   focus.setOnModeChange((mode, finished) => {
     if (mode === "idle" && finished === "exiting" && state === "focus") {
+      delete appElement.dataset.focusLeaving;
       setState("scrub");
     }
   });
@@ -734,6 +774,10 @@ async function boot() {
           requestScan();
         }
       } else if (state === "scrub") {
+        if (event.deltaY > 0 && lookAround.isIdle && timeline.isComplete) {
+          enterUnitArchive();
+          return;
+        }
         event.preventDefault();
         // 环视状态机交回相机控制权后才恢复滚轮。
         if (lookAround.isIdle) {
@@ -742,12 +786,25 @@ async function boot() {
       } else if (state === "focus") {
         event.preventDefault();
         exitFocus();
+      } else if (state === "end" && event.deltaY < 0 && window.scrollY <= 1) {
+        event.preventDefault();
+        returnToTimeline();
       } else if (state === "assemble" || state === "scan" || state === "boot") {
         event.preventDefault();
       }
       // end: 释放滚轮, 不再捕获
     },
     { passive: false },
+  );
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (state === "end" && window.scrollY <= 1) {
+        returnToTimeline();
+      }
+    },
+    { passive: true },
   );
 
   // EXPLORE 模型切换: 屏幕箭头按钮 + 键盘左右方向键 / 空格键

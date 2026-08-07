@@ -44,17 +44,32 @@
 html,
 body {
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-cn);
   -webkit-font-smoothing: antialiased;
 }
 
+html.is-scroll-locked,
+html.is-scroll-locked body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
 #app {
-  position: fixed;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
 }
 
 #scene-canvas {
@@ -250,8 +265,8 @@ body {
 }
 
 #app[data-state="end"] .state-chip__dot {
-  background: #37e08b;
-  box-shadow: 0 0 10px #37e08b;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
   animation: none;
 }
 
@@ -869,7 +884,7 @@ body {
     infinite;
 }
 
-/* ---------- Focus panel (FOCUS 兵种信息: 左侧兵种名 + 右侧图片卡) ---------- */
+/* ---------- Focus panel (FOCUS 兵种信息: 左侧贴边全高渐变图 + 右侧深空机能风文字) ---------- */
 /* 进入 FOCUS 时左右两块分别从屏幕两侧滑入; 退出时立即收回 (delay 只在 focus 态挂载) */
 
 .focus-panel {
@@ -881,23 +896,10 @@ body {
 
 .focus-panel__intro {
   position: absolute;
-  left: 64px;
-  top: 50%;
-  width: min(360px, 28vw);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-50%) translateX(-56px);
-  transition:
-    opacity 0.45s ease,
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.45s ease;
-}
-
-.focus-panel__media {
-  position: absolute;
   right: 64px;
   top: 50%;
-  width: min(480px, 36vw);
+  width: min(560px, 40vw);
+  text-align: right;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-50%) translateX(56px);
@@ -907,31 +909,84 @@ body {
     visibility 0.45s ease;
 }
 
-#app[data-state="focus"] .focus-panel__intro,
-#app[data-state="focus"] .focus-panel__media {
+/* 右上斜线底纹, 强化机能风层次 */
+.focus-panel__intro::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -38px;
+  right: -16px;
+  width: 260px;
+  height: 64px;
+  transform: skewX(-32deg);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(127, 212, 255, 0.12) 0 2px,
+    transparent 2px 12px
+  );
+  pointer-events: none;
+}
+
+.focus-panel__media {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(680px, 47vw);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-72px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.45s ease;
+}
+
+/* 上下暗角, 压住图片保证 masthead 与底部控件可读 */
+.focus-panel__media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 13, 0.78) 0%, rgba(5, 7, 13, 0) 26%),
+    linear-gradient(0deg, rgba(5, 7, 13, 0.92) 0%, rgba(5, 7, 13, 0) 36%);
+  /* 与图片同一水平渐隐, 否则暗角会在容器右边缘留下一条硬切竖线 */
+  -webkit-mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
+  mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
+  pointer-events: none;
+}
+
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__intro {
   opacity: 1;
   visibility: visible;
   transform: translateY(-50%) translateX(0);
   transition-delay: 0.5s, 0.5s, 0.5s;
 }
 
-#app[data-state="focus"] .focus-panel__media {
-  transition-delay: 0.65s, 0.65s, 0.65s; /* 右卡慢半拍, 跟随相机到位节奏 */
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__media {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition-delay: 0.65s, 0.65s, 0.65s; /* 图片慢半拍, 跟随相机到位节奏 */
 }
 
 .focus-panel__eyebrow {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   font-family: var(--font-en);
   font-size: 11px;
   color: var(--ink-dim);
   letter-spacing: 1px;
+  text-shadow: 0 1px 8px rgba(5, 7, 13, 0.9);
 }
 
 .focus-panel__eyebrow i {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 9px;
+  transform: skewX(-32deg);
   background: linear-gradient(135deg, var(--red) 0%, var(--blue) 100%);
   box-shadow: 0 0 10px rgba(46, 155, 255, 0.45);
 }
@@ -940,21 +995,68 @@ body {
   margin-top: 14px;
   font-family: var(--font-en);
   font-weight: 400;
-  font-size: clamp(44px, 5vw, 76px);
   line-height: 1.05;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+/* 深空机能风兵种名: 无衬底发光大字, 左侧接斜线阵列 */
+.focus-panel__name-flag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 0;
   color: var(--ink);
   text-shadow:
-    0 0 18px rgba(46, 155, 255, 0.35),
-    0 0 42px rgba(46, 155, 255, 0.12);
+    0 0 26px rgba(46, 155, 255, 0.42),
+    0 2px 14px rgba(5, 7, 13, 0.9);
+}
+
+.focus-panel__name-main {
+  font-size: clamp(88px, 10vw, 152px);
+  letter-spacing: 2px;
+}
+
+.focus-panel__name-index {
+  font-size: clamp(30px, 3.2vw, 48px);
+  color: var(--cyan);
+  letter-spacing: 1px;
+}
+
+.focus-panel__name-hatch {
+  flex: none;
+  width: 132px;
+  height: 14px;
+  align-self: center;
+  transform: skewX(-24deg);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(127, 212, 255, 0.6) 0 3px,
+    transparent 3px 11px
+  );
+  box-shadow: 0 0 14px rgba(46, 155, 255, 0.25);
 }
 
 .focus-panel__rule {
   display: block;
-  margin-top: 12px;
-  width: 96px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--red) 0%, var(--blue) 100%);
-  box-shadow: 0 0 12px rgba(46, 155, 255, 0.45);
+  margin-top: 16px;
+  margin-left: auto;
+  width: 252px;
+  height: 8px;
+  transform: skewX(-32deg);
+  /* 平行四边形分隔条: 左侧斜线阵列, 右侧红蓝渐变实体 */
+  background:
+    linear-gradient(90deg, var(--red) 0%, var(--blue) 100%) right 0 top 0 /
+      150px 100% no-repeat,
+    repeating-linear-gradient(
+        135deg,
+        rgba(127, 212, 255, 0.5) 0 2px,
+        transparent 2px 9px
+      )
+      left 0 top 0 / 88px 100% no-repeat;
+  box-shadow: 0 0 12px rgba(46, 155, 255, 0.35);
 }
 
 .focus-panel__cn {
@@ -962,6 +1064,7 @@ body {
   margin-top: 12px;
   font-size: 18px;
   color: var(--ink);
+  text-shadow: 0 1px 10px rgba(5, 7, 13, 0.9);
 }
 
 .focus-panel__desc {
@@ -969,14 +1072,17 @@ body {
   font-size: 13px;
   line-height: 1.9;
   color: var(--ink-dim);
+  text-shadow: 0 1px 8px rgba(5, 7, 13, 0.9);
 }
 
 .focus-panel__frame {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
+  position: absolute;
+  inset: 0;
   overflow: hidden;
+  /* 左侧贴屏幕边, 右侧渐隐到完全透明; 蒙版挂在 frame 上,
+     使 img 与 ::after 斜线切割带的右边缘统一渐隐 */
+  -webkit-mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
+  mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
 }
 
 .focus-panel__frame img {
@@ -988,56 +1094,74 @@ body {
   transition: opacity 0.35s ease;
 }
 
+/* 图片渐隐边界的竖向斜线切割带 */
+.focus-panel__frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 20%;
+  width: 96px;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(127, 212, 255, 0.26) 0 2px,
+    transparent 2px 14px
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    #000 22%,
+    #000 78%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    #000 22%,
+    #000 78%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
 .focus-panel__frame img.is-loading {
   opacity: 0;
 }
 
-.focus-panel__corner {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--cyan);
-}
-
-.focus-panel__corner--tl { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
-.focus-panel__corner--tr { top: 6px; right: 6px; border-left: 0; border-bottom: 0; border-color: var(--red); }
-.focus-panel__corner--bl { bottom: 6px; left: 6px; border-right: 0; border-top: 0; border-color: var(--red); }
-.focus-panel__corner--br { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
-
 .focus-panel__bar {
-  margin-top: 12px;
+  position: absolute;
+  z-index: 2;
+  left: 44px;
+  bottom: 108px;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(20, 30, 48, 0.72) 0 6px,
-      rgba(8, 13, 22, 0.72) 6px 12px
-    );
-  backdrop-filter: blur(6px);
+  align-items: stretch;
+  gap: 10px;
 }
 
 .focus-panel__arrow {
   flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: var(--ink);
-  color: #060a12;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(127, 212, 255, 0.4);
+  background: rgba(8, 13, 22, 0.72);
+  backdrop-filter: blur(8px);
+  color: var(--cyan);
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transform: skewX(-16deg);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   pointer-events: auto;
 }
 
 .focus-panel__arrow svg {
   width: 18px;
   height: 18px;
+  transform: skewX(16deg);
   fill: none;
   stroke: currentColor;
   stroke-width: 2.4;
@@ -1047,20 +1171,42 @@ body {
 
 .focus-panel__arrow:hover {
   background: var(--cyan);
-  transform: scale(1.06);
+  color: #060a12;
+  border-color: var(--cyan);
+  box-shadow: 0 0 16px rgba(127, 212, 255, 0.45);
 }
 
 .focus-panel__status {
-  flex: 1;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
+  min-width: 240px;
+  padding: 0 26px;
+  transform: skewX(-16deg);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  /* 斜切状态条: 深色玻璃底 + 右端斜线阵列 */
+  background:
+    repeating-linear-gradient(
+        135deg,
+        rgba(127, 212, 255, 0.16) 0 2px,
+        transparent 2px 10px
+      )
+      right 0 top 0 / 64px 100% no-repeat,
+    linear-gradient(
+      100deg,
+      rgba(10, 17, 30, 0.88) 0%,
+      rgba(6, 10, 18, 0.72) 100%
+    );
+  backdrop-filter: blur(8px);
   white-space: nowrap;
   overflow: hidden;
 }
 
 .focus-panel__status em {
+  display: inline-block;
+  transform: skewX(16deg);
   font-style: normal;
   font-family: var(--font-en);
   font-size: 11px;
@@ -1068,6 +1214,8 @@ body {
 }
 
 .focus-panel__status b {
+  display: inline-block;
+  transform: skewX(16deg);
   font-weight: 400;
   font-size: 14px;
   color: var(--ink);
@@ -1076,11 +1224,78 @@ body {
 }
 
 .focus-panel__slide-desc {
-  margin-top: 12px;
+  position: absolute;
+  z-index: 2;
+  left: 46px;
+  bottom: 56px;
+  width: calc(100% - 92px);
+  padding-left: 14px;
+  border-left: 2px solid rgba(46, 155, 255, 0.55);
   font-size: 12px;
   line-height: 1.8;
   color: var(--ink-dim);
   min-height: 2.6em;
+  text-shadow: 0 1px 6px rgba(5, 7, 13, 0.85);
+}
+
+/* ---------- Timeline end handoff ---------- */
+
+.timeline-end-cue {
+  position: absolute;
+  z-index: 45;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  min-height: 38px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-top: 1px solid rgba(224, 230, 226, 0.28);
+  background: rgba(2, 3, 4, 0.9);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(100%);
+  transition:
+    opacity 0.35s ease,
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.35s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+#app[data-state="scrub"][data-timeline-complete="true"] .timeline-end-cue,
+#app[data-state="end"] .timeline-end-cue {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+#app[data-state="scrub"][data-timeline-complete="true"] .hint-bar,
+#app[data-state="scrub"][data-timeline-complete="true"] .timeline-hud {
+  bottom: 52px;
+}
+
+#app[data-state="end"] .hint-bar {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.timeline-end-cue__en {
+  letter-spacing: 0;
+  white-space: nowrap;
+  font-family: var(--font-en);
+  font-size: 20px;
+  color: rgba(239, 243, 240, 0.88);
+}
+
+/* ---------- 2D content placeholder ---------- */
+
+.unit-site {
+  min-height: 100vh;
+  min-height: 100svh;
+  background: #000;
 }
 
 @media (max-width: 900px) {
@@ -1093,4 +1308,23 @@ body {
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
   .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
+
+  .timeline-end-cue {
+    left: 0;
+    right: 0;
+    min-height: 48px;
+    padding: 7px 18px;
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+
+}
+
+@media (max-width: 600px) {
+  .timeline-end-cue__en {
+    width: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+
 }

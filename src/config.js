@@ -65,8 +65,8 @@ export const VISUAL_CONFIG = {
       opacity: 0.15, // ASSEMBLE / EXPLORE 右侧 ENTERPRIZE 品牌图透明度 (0~1)
       colors: {
         start: "#ff2d4c6d", // 渐变起始色
-        middle: "#7270d886", // 渐变中间色
-        end: "#9cbfffff", // 渐变结束色; 三项设为相同值可显示纯色
+        middle: "#9c9ae586", // 渐变中间色
+        end: "#c3d7fcff", // 渐变结束色; 三项设为相同值可显示纯色
       },
       position: {
         rightVw: -18.0, // 距视口右侧的位置 (vw, 可设负值让背景超出画面)
@@ -113,6 +113,11 @@ export const VISUAL_CONFIG = {
       maskFeather: 0.03, // 屏幕高度归一化后的蒙版柔边宽度
       maskGlowStrength: 2.5, // 蒙版边缘白色 HDR 高亮强度，由 Bloom 扩散成光晕
     },
+  },
+
+  // FOCUS 兵种聚焦视角
+  focus: {
+    distance: 0.8, // 相机到机器人的水平距离 (米), 越小离机器人越近 (原 2.9)
   },
 
   pointCloud: {

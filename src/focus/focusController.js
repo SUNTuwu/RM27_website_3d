@@ -2,7 +2,6 @@ import * as THREE from "three";
 
 const ENTER_DURATION = 1.15;
 const EXIT_DURATION = 1.0;
-const FOCUS_DISTANCE = 2.9;
 const FOCUS_HEIGHT = 0.9;
 const RECENTER_RATE = 1.4; // 松手慢速回中速率
 const DRAG_SPEED = 0.0052;
@@ -17,7 +16,7 @@ function easeInOutCubic(x) {
  * active -> 拖拽围绕机器人观察, 松手弹簧回中
  * exit  -> 相机 tween 回 timeline_0 冻结进度的相机姿态
  */
-export function createFocusController({ camera, robotRoot, scene }) {
+export function createFocusController({ camera, robotRoot, scene, distance = 2.9 }) {
   const bounds = new THREE.Box3().setFromObject(robotRoot);
   const anchor = bounds.getCenter(new THREE.Vector3());
 
@@ -91,7 +90,7 @@ export function createFocusController({ camera, robotRoot, scene }) {
     horizontal.normalize();
     endPos
       .copy(anchor)
-      .addScaledVector(horizontal, FOCUS_DISTANCE)
+      .addScaledVector(horizontal, distance)
       .add(new THREE.Vector3(0, FOCUS_HEIGHT, 0));
     lookMatrix.lookAt(endPos, anchor, up);
     endQuat.setFromRotationMatrix(lookMatrix);

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="is-scroll-locked">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -84,7 +84,13 @@
           <span class="focus-panel__eyebrow">
             <i aria-hidden="true"></i>ROBOMASTER / UNIT ARCHIVE
           </span>
-          <h2 class="focus-panel__name">HERO</h2>
+          <h2 class="focus-panel__name">
+            <span class="focus-panel__name-flag">
+              <span class="focus-panel__name-main">HERO</span>
+              <span class="focus-panel__name-index">#01</span>
+            </span>
+            <span class="focus-panel__name-hatch" aria-hidden="true"></span>
+          </h2>
           <span class="focus-panel__rule" aria-hidden="true"></span>
           <span class="focus-panel__cn">英雄机器人</span>
           <p class="focus-panel__desc">
@@ -95,10 +101,6 @@
         <div class="focus-panel__media">
           <figure class="focus-panel__frame">
             <img id="focus-image" src="" alt="" />
-            <span class="focus-panel__corner focus-panel__corner--tl" aria-hidden="true"></span>
-            <span class="focus-panel__corner focus-panel__corner--tr" aria-hidden="true"></span>
-            <span class="focus-panel__corner focus-panel__corner--bl" aria-hidden="true"></span>
-            <span class="focus-panel__corner focus-panel__corner--br" aria-hidden="true"></span>
           </figure>
           <div class="focus-panel__bar">
             <button class="focus-panel__arrow" id="focus-prev" aria-label="上一张图片">
@@ -137,6 +139,10 @@
         </button>
       </div>
 
+      <div class="timeline-end-cue" id="timeline-end-cue" aria-hidden="true">
+        <span class="timeline-end-cue__en">SWIPE UP TO EXPLORE MORE ROBOT UNIT DETAILS</span>
+      </div>
+
       <div id="loading-screen" role="status" aria-live="polite">
         <p class="eyebrow">ENTERPRIZE / BOOT SEQUENCE</p>
         <h2 class="loading-screen__title">LOADING ARENA ASSETS</h2>
@@ -162,6 +168,8 @@
         <p id="error-message"></p>
       </div>
     </div>
+
+    <main class="unit-site" id="unit-site" aria-label="2D 网站内容预留"></main>
 
     <script type="module" src="/src/main.js"></script>
   </body>
