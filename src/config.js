@@ -35,8 +35,17 @@ export const VISUAL_CONFIG = {
 
   // EXPLORE 环绕视角与多模型切换
   explore: {
-    zoom: 1.5, // 点云整体放大倍率 (相机拉近)
-    robotFitScale: 0.4, // ROBOT_1 点云最长边 = 场地点云最长边 * 此系数
+    zoom: 1.6, // 点云整体放大倍率 (相机拉近)
+    // 左偏构图: 视口水平偏移 = sideOffset * 屏幕宽度 (像素偏移, 非点云位置)
+    // 1/6 ≈ 点云中心落在屏幕左 1/3 处; 想更靠左就调大 (如 0.25 → 中心在 25%)
+    sideOffset: 1 / 10,
+    // 各展示模型的归一化与涟漪参数; 新增机器人模型时在此补一条即可
+    // fitScale: 点云最长边 = 场地最长边 * fitScale
+    // rippleBoost: 涟漪波速/振幅倍率 (在按模型比例自动缩放的基础上再放大/缩小)
+    models: {
+      arena: { fitScale: 1, rippleBoost: 1 },
+      robot: { fitScale: 0.5, rippleBoost: 2 },
+    },
   },
 
   pointCloud: {

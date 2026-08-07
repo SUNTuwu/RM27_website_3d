@@ -31,7 +31,10 @@ export function createTimelineController({
   const scratchScale = new THREE.Vector3();
 
   function applyTime() {
-    mixer.setTime(THREE.MathUtils.clamp(progress, 0, 1) * clip.duration);
+    // action 是 LoopRepeat: time === duration 会回卷到第 0 帧,
+    // 满进度时钳在最后一帧之前, 保证尾帧停在最后一帧
+    const t = THREE.MathUtils.clamp(progress, 0, 1) * clip.duration;
+    mixer.setTime(Math.min(t, clip.duration - 1e-3));
   }
 
   return {

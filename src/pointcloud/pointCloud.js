@@ -22,6 +22,7 @@ const VERTEX_SHADER = /* glsl */ `
   uniform vec3 uScanGlowColor;
   uniform float uScanGlowStrength;
   uniform float uScanGlowFalloff;
+  uniform float uRippleScale;
   uniform vec4 uClicks[${MAX_RIPPLES}]; // xyz = 点击点, w = 点击时刻
 
   varying vec3 vColor;
@@ -40,10 +41,11 @@ const VERTEX_SHADER = /* glsl */ `
       float age = uTime - click.w;
       if (age > 0.0 && age < 2.2) {
         float d = distance(position, click.xyz);
-        float front = age * 10.0;
-        float band = exp(-pow((d - front) * 1.1, 2.0));
-        float amp = band * exp(-age * 1.6) * 1.1;
-        vec3 dir = normalize(position - click.xyz + vec3(0.0, 0.45, 0.0));
+        // 波速/波宽/振幅随模型尺寸缩放 (uRippleScale = 模型最长边 / 场地最长边)
+        float front = age * 10.0 * uRippleScale;
+        float band = exp(-pow((d - front) * 1.1 / uRippleScale, 2.0));
+        float amp = band * exp(-age * 1.6) * 1.1 * uRippleScale;
+        vec3 dir = normalize(position - click.xyz + vec3(0.0, 0.45 * uRippleScale, 0.0));
         ripple += dir * amp;
       }
     }
@@ -89,6 +91,7 @@ export function createPointCloud(
     count = VISUAL_CONFIG.pointCloud.count,
     size = VISUAL_CONFIG.pointCloud.size,
     glow = VISUAL_CONFIG.pointCloud.glow,
+    rippleScale = 1,
   } = {},
 ) {
   arenaRoot.updateMatrixWorld(true);
@@ -192,6 +195,7 @@ export function createPointCloud(
       },
       uAlphaCutoff: { value: glow.alphaCutoff },
       uClicks: { value: clickSlots },
+      uRippleScale: { value: rippleScale },
     },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -222,6 +226,9 @@ export function createPointCloud(
       const slot = clickSlots[clickCursor % MAX_RIPPLES];
       slot.set(worldPosition.x, worldPosition.y, worldPosition.z, time);
       clickCursor += 1;
+    },
+    setRippleScale(value) {
+      material.uniforms.uRippleScale.value = value;
     },
     update(elapsed, pixelRatio) {
       material.uniforms.uTime.value = elapsed;

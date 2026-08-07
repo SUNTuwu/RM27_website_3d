@@ -100,8 +100,14 @@ async function boot() {
     robotCloud.extent.y,
     robotCloud.extent.z,
   );
+  const robotModelConfig = VISUAL_CONFIG.explore.models.robot;
   const robotFit =
-    (arenaMaxExtent * VISUAL_CONFIG.explore.robotFitScale) / robotMaxExtent;
+    (arenaMaxExtent * robotModelConfig.fitScale) / robotMaxExtent;
+  // 涟漪波速/振幅按模型比例缩放, 否则小尺寸模型的波纹会瞬间炸穿
+  robotCloud.setRippleScale(
+    (robotMaxExtent / arenaMaxExtent) * robotModelConfig.rippleBoost,
+  );
+  cloud.setRippleScale(VISUAL_CONFIG.explore.models.arena.rippleBoost);
   robotCloud.points.scale.setScalar(robotFit);
   robotCloud.points.position
     .copy(cloud.center)
@@ -333,7 +339,8 @@ async function boot() {
       duration: SCAN_DURATION,
       onUpdate: (k) => {
         scanBlend = k; // 相机混合全程推进, 比扫描线提前 cameraLead 秒起步
-        viewOffsetX = (1 - k) * (window.innerWidth / 6); // 左偏构图平滑回中
+        viewOffsetX =
+          (1 - k) * (window.innerWidth * VISUAL_CONFIG.explore.sideOffset); // 左偏构图平滑回中
         const scanK = THREE.MathUtils.clamp(
           (k * SCAN_DURATION - cameraLead) / (SCAN_DURATION - cameraLead),
           0,
@@ -584,8 +591,8 @@ async function boot() {
 
   hud.finishLoading();
   setState("assemble");
-  // 左偏构图: 点云移到屏幕左 1/3, 右侧面板展示模型名
-  viewOffsetX = window.innerWidth / 6;
+  // 左偏构图: 点云按 sideOffset 比例左移, 右侧面板展示模型名
+  viewOffsetX = window.innerWidth * VISUAL_CONFIG.explore.sideOffset;
   switchExploreModel(0);
   // 背景装饰环随 ASSEMBLE 渐显进入
   backRing.group.visible = true;
