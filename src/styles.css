@@ -80,6 +80,74 @@ body {
     linear-gradient(180deg, rgba(2, 4, 9, 0.35) 0%, transparent 18%, transparent 82%, rgba(2, 4, 9, 0.45) 100%);
 }
 
+/* ASSEMBLE / EXPLORE 右侧品牌水印: 入场左滑, SCAN 起向右撤出 */
+.explore-brand-mark {
+  position: absolute;
+  top: var(--explore-brand-top, 50vh);
+  right: var(--explore-brand-right, 3.4vw);
+  width: clamp(
+    var(--explore-brand-min-width, 600px),
+    var(--explore-brand-width, 60vw),
+    var(--explore-brand-max-width, 1040px)
+  );
+  max-height: var(--explore-brand-max-height, 120vh);
+  aspect-ratio: 29 / 32;
+  overflow: hidden;
+  background: linear-gradient(
+    var(--explore-brand-gradient-angle, 135deg),
+    var(--explore-brand-color-start, #ff2d4d) 6%,
+    var(--explore-brand-color-middle, #d54488) 48%,
+    var(--explore-brand-color-end, #2e9bff) 94%
+  );
+  -webkit-mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  opacity: 0;
+  transform: translate3d(calc(100% + 80px), -50%, 0);
+  transition:
+    opacity 0.8s ease,
+    transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  user-select: none;
+  will-change: opacity, transform;
+}
+
+.explore-brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: -55%;
+  background: linear-gradient(
+    var(--explore-brand-gradient-angle, 135deg),
+    transparent 42%,
+    rgba(255, 255, 255, 0.9) 49%,
+    transparent 56%
+  );
+  transform: translate3d(45%, 45%, 0);
+  animation: brand-mark-rhythm
+    var(--explore-brand-rhythm-duration, 3.2s)
+    cubic-bezier(0.45, 0, 0.2, 1)
+    infinite;
+  will-change: transform;
+}
+
+#app[data-state="assemble"] .explore-brand-mark,
+#app[data-state="explore"] .explore-brand-mark {
+  opacity: var(--explore-brand-opacity, 0.16);
+  transform: translate3d(0, -50%, 0);
+}
+
+@keyframes brand-mark-rhythm {
+  0%,
+  18% {
+    transform: translate3d(45%, 45%, 0);
+  }
+
+  72%,
+  100% {
+    transform: translate3d(-45%, -45%, 0);
+  }
+}
+
 /* ---------- HUD frame ---------- */
 
 .frame {

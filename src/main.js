@@ -59,6 +59,7 @@ async function boot() {
     lightIntensityScale: VISUAL_CONFIG.timeline0.lightIntensityScale,
   });
   configureLoadedScene(assets.robot.scene, stage.renderer);
+  configureLoadedScene(assets.dart.scene, stage.renderer);
 
   // ---------- 点云 (场地实体表面采样) ----------
   const cloud = createPointCloud(assets.arena.scene, VISUAL_CONFIG.pointCloud);
@@ -93,7 +94,10 @@ async function boot() {
 
   // ---------- EXPLORE 多模型点云 (左右切换) ----------
   // 机器人点云归一化: 缩放到与场地点云接近的观感尺寸, 中心对齐场地中心
-  const robotCloud = createPointCloud(assets.robot.scene, VISUAL_CONFIG.pointCloud);
+  const robotCloud = createPointCloud(assets.robot.scene, {
+    ...VISUAL_CONFIG.pointCloud,
+    recenter: true, // 机器人网格原点不在几何中心, 重定位后绕自身中心旋转
+  });
   const arenaMaxExtent = Math.max(cloud.extent.x, cloud.extent.y, cloud.extent.z);
   const robotMaxExtent = Math.max(
     robotCloud.extent.x,
@@ -116,6 +120,29 @@ async function boot() {
   robotCloud.setProgress(1); // 切换时直接呈现完整形态
   stage.scene.add(robotCloud.points);
 
+  // 飞镖点云沿用机器人展示流程: 以自身中心旋转, 再归一化到场地点云尺度
+  const dartCloud = createPointCloud(assets.dart.scene, {
+    ...VISUAL_CONFIG.pointCloud,
+    recenter: true,
+  });
+  const dartMaxExtent = Math.max(
+    dartCloud.extent.x,
+    dartCloud.extent.y,
+    dartCloud.extent.z,
+  );
+  const dartModelConfig = VISUAL_CONFIG.explore.models.dart;
+  const dartFit = (arenaMaxExtent * dartModelConfig.fitScale) / dartMaxExtent;
+  dartCloud.setRippleScale(
+    (dartMaxExtent / arenaMaxExtent) * dartModelConfig.rippleBoost,
+  );
+  dartCloud.points.scale.setScalar(dartFit);
+  dartCloud.points.position
+    .copy(cloud.center)
+    .sub(dartCloud.center.clone().multiplyScalar(dartFit));
+  dartCloud.points.visible = false;
+  dartCloud.setProgress(1);
+  stage.scene.add(dartCloud.points);
+
   const exploreModels = [
     {
       name: "RMUC ARENA",
@@ -127,25 +154,105 @@ async function boot() {
       desc: "步兵机器人整机表面采样点云, 源自高精度 glTF 模型。",
       cloud: robotCloud,
     },
+    {
+      name: "DART",
+      desc: "飞镖弹体表面采样点云, 保留 glTF 导出的姿态与外形细节。",
+      cloud: dartCloud,
+    },
   ];
   let exploreModelIndex = 0;
+  let exploreTransitioning = false;
+  let switchTween = null;
 
   function switchExploreModel(next) {
+    if (exploreTransitioning) {
+      return;
+    }
     const total = exploreModels.length;
-    exploreModelIndex = ((next % total) + total) % total;
-    exploreModels.forEach((entry, index) => {
-      entry.cloud.points.visible = index === exploreModelIndex;
+    const nextIndex = ((next % total) + total) % total;
+    const outgoing = exploreModels[exploreModelIndex];
+    const incoming = exploreModels[nextIndex];
+    exploreModelIndex = nextIndex;
+    hud.setExploreModel(nextIndex, total, incoming.name, incoming.desc);
+    if (nextIndex === exploreModels.indexOf(outgoing)) {
+      return; // 初始化调用: 仅刷新 HUD
+    }
+
+    // 模型已在 boot 时采样完成；点击后同帧启用两套点云并执行屏幕蒙版交接。
+    exploreTransitioning = true;
+    const trans = VISUAL_CONFIG.explore.switchTransition;
+    const spin = trans.spinTurns * Math.PI * 2;
+    const outCloud = outgoing.cloud;
+    const inCloud = incoming.cloud;
+    const startRotation = outCloud.points.rotation.y;
+    const maskStart = -trans.maskFeather;
+    const maskEnd = 1 + trans.maskFeather;
+    outCloud.points.visible = true;
+    inCloud.points.visible = true;
+    outCloud.points.rotation.y = startRotation;
+    inCloud.points.rotation.y = startRotation;
+    outCloud.setScreenMask(
+      maskStart,
+      1,
+      trans.maskFeather,
+      trans.maskGlowStrength,
+    );
+    inCloud.setScreenMask(
+      maskStart,
+      -1,
+      trans.maskFeather,
+      trans.maskGlowStrength,
+    );
+
+    switchTween = addTween({
+      duration: trans.duration,
+      onUpdate: (_e, k) => {
+        const maskProgress = THREE.MathUtils.lerp(maskStart, maskEnd, k);
+        outCloud.setScreenMask(
+          maskProgress,
+          1,
+          trans.maskFeather,
+          trans.maskGlowStrength,
+        );
+        inCloud.setScreenMask(
+          maskProgress,
+          -1,
+          trans.maskFeather,
+          trans.maskGlowStrength,
+        );
+
+        // 两套点云共用同一加速/减速角度曲线，保持每一帧角速度一致。
+        const spinPhase = Math.min(
+          k / Math.max(trans.spinCompleteAt, 0.001),
+          1,
+        );
+        const rotation = startRotation + spin * easeInOutCubic(spinPhase);
+        outCloud.points.rotation.y = rotation;
+        inCloud.points.rotation.y = rotation;
+      },
+      onComplete: () => {
+        const finalRotation = THREE.MathUtils.euclideanModulo(
+          startRotation + spin,
+          Math.PI * 2,
+        );
+        outCloud.points.visible = false;
+        outCloud.points.rotation.y = finalRotation;
+        inCloud.points.rotation.y = finalRotation;
+        outCloud.resetScreenMask();
+        inCloud.resetScreenMask();
+        switchTween = null;
+        exploreTransitioning = false;
+      },
     });
-    const active = exploreModels[exploreModelIndex];
-    hud.setExploreModel(exploreModelIndex, total, active.name, active.desc);
   }
 
   // ---------- EXPLORE 左偏构图 (点云移到屏幕左 1/3, SCAN 时回中) ----------
   let viewOffsetX = 0;
+  let viewOffsetY = 0;
   function applyViewOffset() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    freeCamera.setViewOffset(w, h, viewOffsetX, 0, w, h);
+    freeCamera.setViewOffset(w, h, viewOffsetX, viewOffsetY, w, h);
   }
 
   // 时间轴场景全程 visible: 预扫描期被裁剪平面隐藏, 材质与纹理随首批帧完成编译上传,
@@ -309,9 +416,20 @@ async function boot() {
   let scanBlend = 0;
 
   function startScan() {
-    // SCAN 只针对场地点云: 若正展示 ROBOT_1 则立即换回场地
-    robotCloud.points.visible = false;
-    cloud.points.visible = true;
+    // SCAN 只针对场地点云: 隐藏所有 Explore 展示模型并立即换回场地
+    exploreModels.forEach((entry) => {
+      entry.cloud.points.visible = entry.cloud === cloud;
+    });
+    // 切换动画可能被 SCAN 打断: 取消补间并复位两个点云的旋转与蒙版 uniform
+    if (switchTween) {
+      tweens.delete(switchTween);
+      switchTween = null;
+    }
+    exploreTransitioning = false;
+    exploreModels.forEach((entry) => {
+      entry.cloud.points.rotation.y = 0;
+      entry.cloud.resetScreenMask();
+    });
 
     // 背景装饰环渐隐退出, 结束后彻底隐藏 (不进入后续状态)
     addTween({
@@ -340,6 +458,8 @@ async function boot() {
         scanBlend = k; // 相机混合全程推进, 比扫描线提前 cameraLead 秒起步
         viewOffsetX =
           (1 - k) * (window.innerWidth * VISUAL_CONFIG.explore.sideOffset); // 左偏构图平滑回中
+        viewOffsetY =
+          (1 - k) * (-window.innerHeight * VISUAL_CONFIG.explore.verticalOffset);
         const scanK = THREE.MathUtils.clamp(
           (k * SCAN_DURATION - cameraLead) / (SCAN_DURATION - cameraLead),
           0,
@@ -360,6 +480,7 @@ async function boot() {
       },
       onComplete: () => {
         viewOffsetX = 0;
+        viewOffsetY = 0;
         freeCamera.clearViewOffset();
         scanPlane.constant = FAR_SCAN; // 实体全部显现
         cloud.points.visible = false; // 点云不回头, 省一次 draw
@@ -402,6 +523,9 @@ async function boot() {
       -(event.clientY / window.innerHeight) * 2 + 1,
     );
     if (state === "explore") {
+      if (exploreTransitioning) {
+        return; // 切换动画期间禁用涟漪点击
+      }
       raycaster.setFromCamera(pointerNdc, freeCamera);
       if (raycaster.ray.intersectPlane(groundPlane, clickPoint)) {
         // 激活模型的点云可能有缩放/平移 (ROBOT_1), 涟漪参数需要本地坐标
@@ -498,7 +622,7 @@ async function boot() {
     { passive: false },
   );
 
-  // EXPLORE 模型切换: 屏幕箭头按钮 + 键盘左右方向键
+  // EXPLORE 模型切换: 屏幕箭头按钮 + 键盘左右方向键 / 空格键
   hud.setExploreSwitchHandler((step) => {
     if (state === "explore") {
       switchExploreModel(exploreModelIndex + step);
@@ -508,7 +632,12 @@ async function boot() {
     if (state !== "explore") {
       return;
     }
-    if (event.key === "ArrowLeft") {
+    if (event.code === "Space") {
+      event.preventDefault();
+      if (!event.repeat) {
+        switchExploreModel(exploreModelIndex - 1);
+      }
+    } else if (event.key === "ArrowLeft") {
       switchExploreModel(exploreModelIndex - 1);
     } else if (event.key === "ArrowRight") {
       switchExploreModel(exploreModelIndex + 1);
@@ -525,9 +654,14 @@ async function boot() {
   stage.start(({ delta, elapsed }) => {
     elapsedNow = elapsed;
     updateTweens(delta);
-    cloud.update(elapsed, stage.renderer.getPixelRatio());
+    const pointPixelRatio = stage.renderer.getPixelRatio();
+    const viewportHeight = stage.renderer.domElement.height;
+    cloud.update(elapsed, pointPixelRatio, viewportHeight);
     if (robotCloud.points.visible) {
-      robotCloud.update(elapsed, stage.renderer.getPixelRatio());
+      robotCloud.update(elapsed, pointPixelRatio, viewportHeight);
+    }
+    if (dartCloud.points.visible) {
+      dartCloud.update(elapsed, pointPixelRatio, viewportHeight);
     }
     if (backRing.group.visible) {
       backRing.update(delta);
@@ -592,6 +726,8 @@ async function boot() {
   setState("assemble");
   // 左偏构图: 点云按 sideOffset 比例左移, 右侧面板展示模型名
   viewOffsetX = window.innerWidth * VISUAL_CONFIG.explore.sideOffset;
+  // setViewOffset 的 y 与内容位移相反: 向下挪传负值
+  viewOffsetY = -window.innerHeight * VISUAL_CONFIG.explore.verticalOffset;
   switchExploreModel(0);
   // 背景装饰环随 ASSEMBLE 渐显进入
   backRing.group.visible = true;

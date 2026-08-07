@@ -70,14 +70,38 @@ const FRAGMENT_SHADER = /* glsl */ `
   varying float vAlpha;
   uniform vec2 uPointGlowRadii;
   uniform float uAlphaCutoff;
+  uniform float uMaskProgress; // 屏幕底部 0 -> 顶部 1, -1 表示未激活
+  uniform float uMaskDirection; // 1 = 保留上方, -1 = 保留下方
+  uniform float uMaskFeather;
+  uniform float uMaskGlowStrength;
+  uniform float uViewportHeight;
 
   void main() {
     vec2 uv = gl_PointCoord - 0.5;
     float d = length(uv);
     float disc = 1.0 - smoothstep(uPointGlowRadii.x, uPointGlowRadii.y, d);
-    float alpha = disc * vAlpha;
+    // gl_FragCoord 原点位于屏幕底部，蒙版不受模型自身坐标与旋转影响。
+    float screenY = clamp(gl_FragCoord.y / max(uViewportHeight, 1.0), 0.0, 1.0);
+    float maskStep = smoothstep(
+      uMaskProgress - uMaskFeather,
+      uMaskProgress + uMaskFeather,
+      screenY
+    );
+    float maskAlpha = mix(
+      1.0 - maskStep,
+      maskStep,
+      uMaskDirection * 0.5 + 0.5
+    );
+    // smoothstep 中点形成屏幕空间边缘峰值；HDR 白色交由 Bloom 扩散。
+    float maskEdge = 4.0 * maskStep * (1.0 - maskStep);
+    vec3 color = mix(
+      vColor,
+      vec3(1.0 + uMaskGlowStrength),
+      maskEdge
+    );
+    float alpha = disc * vAlpha * maskAlpha;
     if (alpha < uAlphaCutoff) discard;
-    gl_FragColor = vec4(vColor, alpha);
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
@@ -92,6 +116,7 @@ export function createPointCloud(
     size = VISUAL_CONFIG.pointCloud.size,
     glow = VISUAL_CONFIG.pointCloud.glow,
     rippleScale = 1,
+    recenter = false,
   } = {},
 ) {
   arenaRoot.updateMatrixWorld(true);
@@ -121,6 +146,9 @@ export function createPointCloud(
   const center = bounds.getCenter(new THREE.Vector3());
   const extent = bounds.getSize(new THREE.Vector3());
   const shellRadius = Math.max(extent.x, extent.y, extent.z) * 1.15;
+  // recenter: 采样坐标平移到包围盒中心, 使点云绕自身中心旋转 (否则绕世界原点公转)。
+  // 场地点云不能开: 扫描转场要求点位置与实体世界坐标对齐。
+  const pivot = recenter ? center.clone() : new THREE.Vector3();
 
   const sampler = new MeshSurfaceSampler(new THREE.Mesh(merged)).build();
 
@@ -133,18 +161,18 @@ export function createPointCloud(
 
   for (let i = 0; i < count; i++) {
     sampler.sample(target);
-    positions[i * 3] = target.x;
-    positions[i * 3 + 1] = target.y;
-    positions[i * 3 + 2] = target.z;
+    positions[i * 3] = target.x - pivot.x;
+    positions[i * 3 + 1] = target.y - pivot.y;
+    positions[i * 3 + 2] = target.z - pivot.z;
 
     // 初始位置: 视野四周的压扁球壳
     const u = Math.random() * 2 - 1;
     const phi = Math.random() * Math.PI * 2;
     const s = Math.sqrt(1 - u * u);
     const r = shellRadius * (0.9 + Math.random() * 0.7);
-    scatter[i * 3] = center.x + s * Math.cos(phi) * r;
-    scatter[i * 3 + 1] = center.y + u * r * 0.55 + extent.y * 0.25;
-    scatter[i * 3 + 2] = center.z + s * Math.sin(phi) * r;
+    scatter[i * 3] = center.x - pivot.x + s * Math.cos(phi) * r;
+    scatter[i * 3 + 1] = center.y - pivot.y + u * r * 0.55 + extent.y * 0.25;
+    scatter[i * 3 + 2] = center.z - pivot.z + s * Math.sin(phi) * r;
 
     delays[i] = Math.random();
     randoms[i] = Math.random();
@@ -166,6 +194,11 @@ export function createPointCloud(
       tints[i * 3 + 1] = 0.88 * brightness;
       tints[i * 3 + 2] = 1.0 * brightness;
     }
+  }
+
+  if (recenter) {
+    bounds.translate(pivot.clone().negate());
+    center.set(0, 0, 0);
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -196,6 +229,11 @@ export function createPointCloud(
       uAlphaCutoff: { value: glow.alphaCutoff },
       uClicks: { value: clickSlots },
       uRippleScale: { value: rippleScale },
+      uMaskProgress: { value: -1 },
+      uMaskDirection: { value: 1 },
+      uMaskFeather: { value: 0.025 },
+      uMaskGlowStrength: { value: 2.5 },
+      uViewportHeight: { value: 1 },
     },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
@@ -230,9 +268,26 @@ export function createPointCloud(
     setRippleScale(value) {
       material.uniforms.uRippleScale.value = value;
     },
-    update(elapsed, pixelRatio) {
+    /** 屏幕空间切换蒙版: progress 从屏幕底部扫到顶部。 */
+    setScreenMask(
+      progress,
+      direction,
+      feather = 0.025,
+      glowStrength = 2.5,
+    ) {
+      material.uniforms.uMaskProgress.value = progress;
+      material.uniforms.uMaskDirection.value = direction;
+      material.uniforms.uMaskFeather.value = Math.max(feather, 0.0001);
+      material.uniforms.uMaskGlowStrength.value = Math.max(glowStrength, 0);
+    },
+    resetScreenMask() {
+      material.uniforms.uMaskProgress.value = -1;
+      material.uniforms.uMaskDirection.value = 1;
+    },
+    update(elapsed, pixelRatio, viewportHeight = 1) {
       material.uniforms.uTime.value = elapsed;
       material.uniforms.uPixelRatio.value = pixelRatio;
+      material.uniforms.uViewportHeight.value = viewportHeight;
     },
     dispose() {
       geometry.dispose();

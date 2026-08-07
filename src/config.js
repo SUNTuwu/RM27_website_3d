@@ -9,7 +9,7 @@ export const VISUAL_CONFIG = {
   // ASSEMBLE 渐显进入, 进入 SCAN 渐隐退出, 期间各层缓慢旋转
   backRing: {
     sizeScale: 1.2, // 外径 = 点云包围盒最长边 * sizeScale
-    opacity: 0.4,
+    opacity: 0.2,
     tickSpeed: 0.05, // 刻度环角速度 (弧度/秒)
     arcSpeed: -0.035, // 厚弧环角速度 (反向)
     fadeInSeconds: 1.6,
@@ -36,25 +36,59 @@ export const VISUAL_CONFIG = {
   // EXPLORE 环绕视角与多模型切换
   explore: {
     zoom: 1.6, // 点云整体放大倍率 (相机拉近)
+    brandMark: {
+      opacity: 0.15, // ASSEMBLE / EXPLORE 右侧 ENTERPRIZE 品牌图透明度 (0~1)
+      colors: {
+        start: "#ff2d4c6d", // 渐变起始色
+        middle: "#7270d886", // 渐变中间色
+        end: "#9cbfffff", // 渐变结束色; 三项设为相同值可显示纯色
+      },
+      position: {
+        rightVw: -18.0, // 距视口右侧的位置 (vw, 可设负值让背景超出画面)
+        topVh: 80, // 图片中心的垂直位置 (vh)
+      },
+      size: {
+        widthVw: 60, // 首选宽度 (vw)
+        minWidthPx: 600, // 最小宽度 (px)
+        maxWidthPx: 1040, // 最大宽度 (px)
+        maxHeightVh: 120, // 最大高度 (vh)
+      },
+      rhythm: {
+        gradientAngleDeg: -45, // 红蓝渐变角度; 135deg 对应左上/右下 45° 斜向
+        durationSeconds: 3.2, // 单次向左上律动周期 (秒)
+      },
+    },
     // 左偏构图: 视口水平偏移 = sideOffset * 屏幕宽度 (像素偏移, 非点云位置)
     // 1/6 ≈ 点云中心落在屏幕左 1/3 处; 想更靠左就调大 (如 0.25 → 中心在 25%)
     sideOffset: 1 / 10,
+    // 上下偏移: 视口垂直偏移 = verticalOffset * 屏幕高度, 正值向下挪, 负值向上
+    // 1/10 = 点云中心从屏幕中央 (50%) 下移到 60% 高度处
+    verticalOffset: 1 / 30,
     // 各展示模型的归一化与涟漪参数; 新增机器人模型时在此补一条即可
     // fitScale: 点云最长边 = 场地最长边 * fitScale
     // rippleBoost: 涟漪波速/振幅倍率 (在按模型比例自动缩放的基础上再放大/缩小)
     models: {
       arena: { fitScale: 1, rippleBoost: 1 },
       robot: { fitScale: 0.5, rippleBoost: 2 },
+      dart: { fitScale: 0.7, rippleBoost: 2 },
+    },
+    // 切换动效: 双模型同步快速自转, 使用自下而上的屏幕空间蒙版交接
+    switchTransition: {
+      duration: 2.0, // 过渡总时长 (秒)
+      spinTurns: 0.5, // 两个模型同步自转圈数
+      spinCompleteAt: 0.6, // 旋转在过渡进度达到该比例时完成
+      maskFeather: 0.03, // 屏幕高度归一化后的蒙版柔边宽度
+      maskGlowStrength: 2.5, // 蒙版边缘白色 HDR 高亮强度，由 Bloom 扩散成光晕
     },
   },
 
   pointCloud: {
     count: 50_000,
-    size: 2.1,
+    size: 2.2,
     glow: {
       // 点颜色越亮，越容易超过 bloom.threshold 并产生光晕。
-      brightnessMin: 0.25,
-      brightnessMax: 0.5,
+      brightnessMin: 0.2,
+      brightnessMax: 0.7,
       // 单个点从实心核心到透明边缘的半径，取值范围为 0 到 0.5。
       coreRadius: 0.1,
       edgeRadius: 0.2,
@@ -69,9 +103,9 @@ export const VISUAL_CONFIG = {
 
   // UnrealBloomPass 是全场景后处理，也会影响场地红蓝自发光材质。
   bloom: {
-    strength: 0.5,
-    radius: 0.4,
-    threshold: 0.35,
+    strength: 0.1,
+    radius: 0.2,
+    threshold: 0.25,
   },
 
   arena: {
@@ -108,7 +142,7 @@ export const VISUAL_CONFIG = {
 
     lighting: {
       // 常态场地灯光总亮度；SCAN 时只有红蓝强调灯提升到 scanBrightness。
-      brightness: 0.2,
+      brightness: 0.1,
       scanBrightness: 1,
       transitionSpeed: 3,
       environmentIntensity: 1,

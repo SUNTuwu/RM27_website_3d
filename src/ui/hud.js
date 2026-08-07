@@ -1,3 +1,5 @@
+import { VISUAL_CONFIG } from "../config.js";
+
 const STATE_META = {
   boot: {
     index: "00",
@@ -33,6 +35,93 @@ const STATE_META = {
 
 export function createHud() {
   const app = document.querySelector("#app");
+  const brandMarkConfig = VISUAL_CONFIG.explore.brandMark;
+  const configuredBrandOpacity = Number(
+    brandMarkConfig.opacity,
+  );
+  const brandOpacity = Number.isFinite(configuredBrandOpacity)
+    ? Math.min(Math.max(configuredBrandOpacity, 0), 1)
+    : 0.16;
+  app.style.setProperty("--explore-brand-opacity", String(brandOpacity));
+
+  const setBrandColor = (property, value, fallback) => {
+    const resolvedValue =
+      typeof value === "string" && CSS.supports("color", value)
+        ? value
+        : fallback;
+    app.style.setProperty(property, resolvedValue);
+  };
+  setBrandColor(
+    "--explore-brand-color-start",
+    brandMarkConfig.colors?.start,
+    "#ff2d4d",
+  );
+  setBrandColor(
+    "--explore-brand-color-middle",
+    brandMarkConfig.colors?.middle,
+    "#d54488",
+  );
+  setBrandColor(
+    "--explore-brand-color-end",
+    brandMarkConfig.colors?.end,
+    "#2e9bff",
+  );
+
+  const setBrandDimension = (property, value, fallback, unit) => {
+    const numericValue = Number(value);
+    const resolvedValue = Number.isFinite(numericValue)
+      ? numericValue
+      : fallback;
+    app.style.setProperty(property, `${resolvedValue}${unit}`);
+  };
+  setBrandDimension(
+    "--explore-brand-right",
+    brandMarkConfig.position.rightVw,
+    3.4,
+    "vw",
+  );
+  setBrandDimension(
+    "--explore-brand-top",
+    brandMarkConfig.position.topVh,
+    50,
+    "vh",
+  );
+  setBrandDimension(
+    "--explore-brand-width",
+    brandMarkConfig.size.widthVw,
+    60,
+    "vw",
+  );
+  setBrandDimension(
+    "--explore-brand-min-width",
+    brandMarkConfig.size.minWidthPx,
+    600,
+    "px",
+  );
+  setBrandDimension(
+    "--explore-brand-max-width",
+    brandMarkConfig.size.maxWidthPx,
+    1040,
+    "px",
+  );
+  setBrandDimension(
+    "--explore-brand-max-height",
+    brandMarkConfig.size.maxHeightVh,
+    120,
+    "vh",
+  );
+  setBrandDimension(
+    "--explore-brand-gradient-angle",
+    brandMarkConfig.rhythm.gradientAngleDeg,
+    135,
+    "deg",
+  );
+  setBrandDimension(
+    "--explore-brand-rhythm-duration",
+    brandMarkConfig.rhythm.durationSeconds,
+    3.2,
+    "s",
+  );
   const stateIndex = document.querySelector("#state-index");
   const stateLabel = document.querySelector("#state-label");
   const hintText = document.querySelector("#hint-text");

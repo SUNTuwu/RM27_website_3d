@@ -5,6 +5,7 @@ const ASSET_MANIFEST = Object.freeze({
   arena: "models/arena/arena.gltf", // 场地几何 + rune 环循环动画 (2026-08-07 更新)
   timeline: "models/timeline_0/arena.gltf",
   robot: "models/robot_1/robot_1.gltf",
+  dart: "models/dart/dart.gltf",
 });
 
 export function assetUrl(relativePath) {
@@ -129,6 +130,7 @@ export function auditProjectAssets(assets) {
   const arenaStats = collectSceneStats(assets.arena.scene);
   const timelineStats = collectSceneStats(assets.timeline.scene);
   const robotStats = collectSceneStats(assets.robot.scene);
+  const dartStats = collectSceneStats(assets.dart.scene);
   const camera =
     assets.timeline.cameras[0] ??
     assets.timeline.scene.getObjectByProperty("isCamera", true) ??
@@ -155,11 +157,15 @@ export function auditProjectAssets(assets) {
   if (!robotStats.meshes.some((mesh) => mesh.name.startsWith("robot_"))) {
     issues.push("robot asset does not expose a robot_* mesh");
   }
+  if (dartStats.meshes.length === 0) {
+    issues.push("dart asset contains no renderable meshes");
+  }
 
   const allMaterials = new Set([
     ...arenaStats.materials,
     ...timelineStats.materials,
     ...robotStats.materials,
+    ...dartStats.materials,
   ]);
 
   return {
@@ -174,9 +180,13 @@ export function auditProjectAssets(assets) {
       sourceClips: assets.timeline.animations,
     },
     robot: robotStats,
+    dart: dartStats,
     totals: {
       meshes:
-        arenaStats.meshes.length + timelineStats.meshes.length + robotStats.meshes.length,
+        arenaStats.meshes.length +
+        timelineStats.meshes.length +
+        robotStats.meshes.length +
+        dartStats.meshes.length,
       materials: allMaterials.size,
       emissive: arenaStats.emissiveMaterials.length,
     },

@@ -7,6 +7,7 @@ const assetPaths = {
   arena: "assets/models/arena/arena.gltf",
   timeline: "assets/models/timeline_0/arena.gltf",
   robot: "assets/models/robot_1/robot_1.gltf",
+  dart: "assets/models/dart/dart.gltf",
 };
 const failures = [];
 
@@ -64,11 +65,13 @@ async function run() {
   const arena = await readGltf(assetPaths.arena);
   const timeline = await readGltf(assetPaths.timeline);
   const robot = await readGltf(assetPaths.robot);
+  const dart = await readGltf(assetPaths.dart);
 
   await Promise.all([
     validateExternalUris("arena", arena),
     validateExternalUris("timeline_0", timeline),
     validateExternalUris("robot_1", robot),
+    validateExternalUris("dart", dart),
   ]);
 
   const arenaNodeNames = new Set((arena.data.nodes ?? []).map((node) => node.name));
@@ -127,6 +130,9 @@ async function run() {
   const robotNode = (robot.data.nodes ?? []).find((node) => node.name?.startsWith("robot_"));
   check(Boolean(robotNode), "robot asset exposes a robot_* node");
 
+  const dartNode = (dart.data.nodes ?? []).find((node) => node.name === "dart");
+  check(Boolean(dartNode), "dart asset exposes the dart node");
+
   console.log("\nAsset summary");
   console.table({
     arena: {
@@ -146,6 +152,12 @@ async function run() {
       meshes: robot.data.meshes?.length ?? 0,
       materials: robot.data.materials?.length ?? 0,
       clips: robot.data.animations?.length ?? 0,
+    },
+    dart: {
+      nodes: dart.data.nodes?.length ?? 0,
+      meshes: dart.data.meshes?.length ?? 0,
+      materials: dart.data.materials?.length ?? 0,
+      clips: dart.data.animations?.length ?? 0,
     },
   });
 
