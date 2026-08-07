@@ -14,6 +14,7 @@ import { createTimelineController } from "./timeline/timelineController.js";
 import { createLookAroundController } from "./timeline/lookAroundController.js";
 import { createFocusController } from "./focus/focusController.js";
 import { createHud } from "./ui/hud.js";
+import { createPulseGuide } from "./ui/pulseGuide.js";
 import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
@@ -160,9 +161,11 @@ async function boot() {
       cloud: dartCloud,
     },
   ];
+  const ARENA_MODEL_INDEX = 0;
   let exploreModelIndex = 0;
   let exploreTransitioning = false;
   let switchTween = null;
+  let scanRequested = false;
 
   function switchExploreModel(next) {
     if (exploreTransitioning) {
@@ -251,6 +254,7 @@ async function boot() {
         backRing.setSpeedScale(1);
         switchTween = null;
         exploreTransitioning = false;
+        continueScanRequest();
       },
     });
   }
@@ -427,9 +431,15 @@ async function boot() {
       // 子状态结束时只交出相机控制权，不改写当前姿态。
       lookAround.reset();
     }
+    const prev = state;
     state = next;
     hud.setState(next);
     focus.setHighlightTarget(next === "scrub" || next === "focus" ? 1 : 0);
+    if (next === "explore") {
+      exploreLastClickAt = elapsedNow; // 进入 EXPLORE 重新计时闲置引导
+    } else if (prev === "explore") {
+      clickGuide.hide();
+    }
     if (next === "scrub") {
       timeline.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
     }
@@ -446,12 +456,32 @@ async function boot() {
   let scanAttachedToTrack = false;
   let timelineHandoffThisFrame = false;
 
-  function startScan() {
-    // SCAN 只针对场地点云: 隐藏所有 Explore 展示模型并立即换回场地
+  function requestScan() {
+    if (state !== "explore" || scanRequested) {
+      return;
+    }
+    scanRequested = true;
+    continueScanRequest();
+  }
+
+  function continueScanRequest() {
+    if (!scanRequested || state !== "explore" || exploreTransitioning) {
+      return;
+    }
+    if (exploreModelIndex !== ARENA_MODEL_INDEX) {
+      switchExploreModel(ARENA_MODEL_INDEX);
+      return;
+    }
+    beginScan();
+  }
+
+  function beginScan() {
+    scanRequested = false;
+    // Arena 蒙版切换已完成后才开始 SCAN 与相机变换。
     exploreModels.forEach((entry) => {
       entry.cloud.points.visible = entry.cloud === cloud;
     });
-    // 切换动画可能被 SCAN 打断: 取消补间并复位两个点云的旋转与蒙版 uniform
+    // 防御性清理切换状态，正常路径下此处已经没有活动补间。
     if (switchTween) {
       tweens.delete(switchTween);
       switchTween = null;
@@ -570,6 +600,16 @@ async function boot() {
   const clickPoint = new THREE.Vector3();
   const pointer = { down: false, x: 0, y: 0, moved: 0, time: 0 };
 
+  // EXPLORE 点击引导圈 (2D 通用组件): 无点击超时后出现, 指向点云中心屏幕投影
+  const clickGuideConfig = VISUAL_CONFIG.explore.clickGuide;
+  const clickGuide = createPulseGuide({
+    size: clickGuideConfig.sizePx,
+    rhythmSeconds: clickGuideConfig.rhythmSeconds,
+    fadeSeconds: clickGuideConfig.fadeSeconds,
+  });
+  const clickGuideProjected = new THREE.Vector3();
+  let exploreLastClickAt = 0;
+
   function handleClick(event) {
     pointerNdc.set(
       (event.clientX / window.innerWidth) * 2 - 1,
@@ -595,6 +635,8 @@ async function boot() {
           active.bounds.max.z,
         );
         active.addClick(localPoint, clockElapsed());
+        exploreLastClickAt = clockElapsed(); // 点击后重新计时并收起引导圈
+        clickGuide.hide();
       }
     } else if (state === "scrub") {
       raycaster.setFromCamera(pointerNdc, freeCamera);
@@ -656,7 +698,7 @@ async function boot() {
       if (state === "explore") {
         event.preventDefault();
         if (event.deltaY > 4) {
-          startScan();
+          requestScan();
         }
       } else if (state === "scrub") {
         event.preventDefault();
@@ -723,6 +765,22 @@ async function boot() {
       applyViewOffset(); // 每帧应用, 跟随窗口尺寸变化
     }
     focus.update(delta, elapsed);
+
+    // 点击引导圈: EXPLORE 闲置超时后跟随点云中心投影, 点击或离开状态即隐藏
+    if (
+      state === "explore" &&
+      !exploreTransitioning &&
+      elapsedNow - exploreLastClickAt >= clickGuideConfig.idleSeconds
+    ) {
+      clickGuideProjected.copy(orbitTarget).project(freeCamera);
+      clickGuide.setPosition(
+        ((clickGuideProjected.x + 1) / 2) * window.innerWidth,
+        ((1 - clickGuideProjected.y) / 2) * window.innerHeight,
+      );
+      clickGuide.show();
+    } else if (clickGuide.visible) {
+      clickGuide.hide();
+    }
 
     // 红蓝强调灯电平滑动: scan 时全开 (白色灯不参与)
     const lightTarget =

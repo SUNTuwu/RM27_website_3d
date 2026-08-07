@@ -35,6 +35,28 @@ export const VISUAL_CONFIG = {
 
   // EXPLORE 环绕视角与多模型切换
   explore: {
+    // EXPLORE 右侧滚动引导: 数道竖直白线依次流星下落 + 竖排英文 落下淡入/停顿/下落淡出, 共用同一周期循环
+    scrollCue: {
+      cycleSeconds: 8, // 整个周期时长 (秒), 流星与文字动画均以该周期循环
+      rightVw: 22.0, // 距视口右侧的位置 (vw), 33.3 ≈ 屏幕右侧 1/3 处, 线条自顶部垂下
+      lineWidthPx: 3, // 竖直白线宽度 (px)
+      lineOpacity: 0.0, // 竖直白线透明度 (0~1), 流星拖尾不受影响
+      lineCount: 3, // 竖直白线数量
+      lengthDecay: 0.82, // 相邻白线长度比例 (0~1), 左长右短逐渐变短; 1 = 等长
+      staggerSeconds: 0.5, // 相邻白线流星开始下落的间隔 (秒), 营造依次下落的韵律
+      meteorDurationSeconds: 2.5, // 单条流星从线顶落到线尾的时长 (秒), 加速下落
+      meteorLengthPx: 200, // 流星拖尾长度 (px)
+      text: "SCROLL TO EXPLORE MORE", // 竖排引导文字
+      textFontSizePx: 18, // 引导文字字号 (px)
+      textTopOffsetPx: 60, // 文字静止位置相对容器顶部的下移距离 (px)
+      textDelaySeconds: 1.5, // 文字相对周期起点的延迟 (秒), 比流星慢一拍
+      textFadeInSeconds: 1.2, // 文字自上方落下并淡入的时长 (秒)
+      textHoldSeconds: 3.0, // 淡入结束后的停顿时长 (秒)
+      textFadeOutSeconds: 0.9, // 文字向下移动并淡出的时长 (秒)
+      textDropInPx: 56, // 淡入起始位置的向上偏移 (px)
+      textDropOutPx: 88, // 淡出结束位置的向下偏移 (px)
+    },
+
     zoom: 1.6, // 点云整体放大倍率 (相机拉近)
     initialPitchDeg: 10, // 初始摄像机俯角 (度, 相对水平面向下)
     autoRotateSpeed: 0.1, // 点云常态旋转速度 (弧度/秒, 实际由相机环绕实现)
@@ -66,6 +88,13 @@ export const VISUAL_CONFIG = {
     // 上下偏移: 视口垂直偏移 = verticalOffset * 屏幕高度, 正值向下挪, 负值向上
     // 1/10 = 点云中心从屏幕中央 (50%) 下移到 60% 高度处
     verticalOffset: 1 / 30,
+    // 点击引导圈: EXPLORE 无点击 idleSeconds 秒后出现, 跟随点云中心屏幕投影
+    clickGuide: {
+      idleSeconds: 5, // 无点击多少秒后显示
+      sizePx: 120, // 外圈直径 (px)
+      rhythmSeconds: 1.6, // 单次收缩律动周期 (秒)
+      fadeSeconds: 0.45, // 出现/消失淡入淡出时长 (秒)
+    },
     // 各展示模型的归一化与涟漪参数; 新增机器人模型时在此补一条即可
     // fitScale: 点云最长边 = 场地最长边 * fitScale
     // rippleBoost: 涟漪波速/振幅倍率 (在按模型比例自动缩放的基础上再放大/缩小)
@@ -79,7 +108,7 @@ export const VISUAL_CONFIG = {
       duration: 2.0, // 过渡总时长 (秒)
       spinTurns: 0.5, // 两个模型同步自转圈数
       spinCompleteAt: 0.6, // 旋转在过渡进度达到该比例时完成
-      ringSpeedMultiplier: 8, // 切换旋转中点时背景环的峰值速度倍率
+      ringSpeedMultiplier: 40, // 切换旋转中点时背景环的峰值速度倍率
       maskFeather: 0.03, // 屏幕高度归一化后的蒙版柔边宽度
       maskGlowStrength: 2.5, // 蒙版边缘白色 HDR 高亮强度，由 Bloom 扩散成光晕
     },

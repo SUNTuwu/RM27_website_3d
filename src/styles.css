@@ -398,6 +398,156 @@ body {
   user-select: none;
 }
 
+/* ---------- 键盘提示 (EXPLORE 左下角, 可点击切换) ---------- */
+
+.key-hints {
+  position: absolute;
+  left: 44px;
+  bottom: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+#app[data-state="explore"] .key-hints {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.key-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.key-hint__key {
+  font-family: var(--font-en);
+  font-size: 10px;
+  color: var(--ink);
+  padding: 6px 12px;
+  border: 1px solid rgba(233, 241, 255, 0.75);
+  background: rgba(233, 241, 255, 0.03);
+  box-shadow: inset 0 0 8px rgba(233, 241, 255, 0.05);
+  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease,
+    background 0.2s ease, transform 0.1s ease;
+}
+
+.key-hint:hover .key-hint__key {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow:
+    inset 0 0 8px rgba(127, 212, 255, 0.12),
+    0 0 10px rgba(127, 212, 255, 0.25);
+}
+
+.key-hint:active .key-hint__key {
+  transform: translateY(1px);
+  background: rgba(233, 241, 255, 0.12);
+}
+
+/* SPACE 主键: 3 倍尺寸 */
+.key-hint--space .key-hint__key {
+  font-size: 30px;
+  padding: 16px 30px;
+}
+
+.key-hint--space .key-hint__action {
+  font-size: 14px;
+}
+
+.key-hint__action {
+  font-size: 12px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+/* ---------- 点击引导圈 (2D 通用组件) ---------- */
+
+.pulse-guide {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--pulse-guide-size, 120px);
+  height: var(--pulse-guide-size, 120px);
+  margin-left: calc(var(--pulse-guide-size, 120px) / -2);
+  margin-top: calc(var(--pulse-guide-size, 120px) / -2);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--pulse-guide-fade, 0.45s) ease,
+    visibility var(--pulse-guide-fade, 0.45s) ease;
+  will-change: transform;
+}
+
+.pulse-guide.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.pulse-guide__ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(233, 241, 255, 0.9);
+  border-radius: 50%;
+  box-shadow:
+    0 0 14px rgba(127, 212, 255, 0.3),
+    inset 0 0 14px rgba(127, 212, 255, 0.15);
+  opacity: 0;
+  transform: scale(1);
+  animation: pulse-guide-shrink
+    var(--pulse-guide-rhythm, 1.6s)
+    cubic-bezier(0.5, 0.05, 0.3, 1)
+    infinite;
+  will-change: transform, opacity;
+}
+
+.pulse-guide__ring--beat {
+  animation-delay: calc(var(--pulse-guide-rhythm, 1.6s) / 2);
+}
+
+.pulse-guide__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 10px rgba(127, 212, 255, 0.85);
+  animation: pulse-guide-core var(--pulse-guide-rhythm, 1.6s) ease-in-out infinite;
+}
+
+/* 韵律: 快速收缩 -> 到位停顿 -> 淡出归零, 双环错半拍形成连续心跳节奏 */
+@keyframes pulse-guide-shrink {
+  0% { transform: scale(1); opacity: 0; }
+  12% { opacity: 0.95; }
+  58% { transform: scale(0.32); opacity: 0.95; }
+  74%, 100% { transform: scale(0.26); opacity: 0; }
+}
+
+@keyframes pulse-guide-core {
+  0%, 100% { transform: scale(1); }
+  55% { transform: scale(1.45); }
+}
+
 /* ---------- Loading ---------- */
 
 #loading-screen {
@@ -641,10 +791,89 @@ body {
   color: var(--ink-dim);
 }
 
+/* ---------- Scroll cue (EXPLORE 右侧流星白线 + 竖排引导文字) ---------- */
+/* 动画关键帧由 hud.js 依据 VISUAL_CONFIG.explore.scrollCue 动态生成 */
+
+.scroll-cue {
+  position: absolute;
+  top: 0;
+  right: var(--scroll-cue-right, 33.3vw);
+  height: min(62vh, 540px);
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+#app[data-state="explore"] .scroll-cue {
+  opacity: 1;
+  visibility: visible;
+}
+
+.scroll-cue__lines {
+  display: flex;
+  gap: 10px;
+  height: 100%;
+}
+
+.scroll-cue__lines i {
+  position: relative;
+  width: var(--scroll-cue-line-width, 3px);
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, var(--scroll-cue-line-opacity, 0.14)),
+    rgba(255, 255, 255, var(--scroll-cue-line-opacity, 0.14)) 84%,
+    transparent
+  );
+}
+
+.scroll-cue__lines i::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: calc(-1 * var(--scroll-cue-meteor-length, 110px));
+  width: 100%;
+  height: var(--scroll-cue-meteor-length, 110px);
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.95));
+  opacity: 0;
+  will-change: top, opacity;
+}
+
+/* 动画只在 EXPLORE 状态挂载: 进入该状态时从 0 相位启动, 保证流星先落、文字慢一拍 */
+#app[data-state="explore"] .scroll-cue__lines i::before {
+  animation: scroll-cue-meteor var(--scroll-cue-cycle, 10s)
+    cubic-bezier(0.55, 0.08, 0.82, 0.45) var(--scroll-cue-delay, 0s) infinite;
+}
+
+.scroll-cue__text {
+  writing-mode: vertical-rl;
+  font-family: var(--font-en);
+  font-size: var(--scroll-cue-font-size, 20px);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(233, 241, 255, 0.85);
+  white-space: nowrap;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+#app[data-state="explore"] .scroll-cue__text {
+  animation: scroll-cue-text var(--scroll-cue-cycle, 10s) ease-in-out 0s
+    infinite;
+}
+
 @media (max-width: 900px) {
   .masthead { top: 26px; left: 28px; }
   .state-chip { top: 26px; right: 28px; }
   .coordinate-readout { display: none; }
+  .key-hints { display: none; }
+  .scroll-cue { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
   .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
