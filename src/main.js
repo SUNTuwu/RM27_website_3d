@@ -353,6 +353,17 @@ async function boot() {
   // ---------- EXPLORE 环绕视角 ----------
   const orbitTarget = cloud.center.clone();
   orbitTarget.y += cloud.extent.y * 0.08;
+  const configuredInitialPitch = Number(
+    VISUAL_CONFIG.explore.initialPitchDeg,
+  );
+  const initialPitchDeg = Number.isFinite(configuredInitialPitch)
+    ? configuredInitialPitch
+    : 35;
+  const initialOrbitPhi = THREE.MathUtils.clamp(
+    Math.PI / 2 - THREE.MathUtils.degToRad(initialPitchDeg),
+    0.55,
+    1.45,
+  );
   const orbit = {
     radius: THREE.MathUtils.clamp(
       (Math.max(cloud.extent.x, cloud.extent.z) * 1.02) /
@@ -361,15 +372,15 @@ async function boot() {
       42 / VISUAL_CONFIG.explore.zoom,
     ),
     theta: -0.85,
-    phi: 1.12,
+    phi: initialOrbitPhi,
     thetaT: -0.85,
-    phiT: 1.12,
+    phiT: initialOrbitPhi,
     drag(dx, dy) {
       this.thetaT -= dx * 0.0042;
       this.phiT = THREE.MathUtils.clamp(this.phiT - dy * 0.0042, 0.55, 1.45);
     },
     update(delta) {
-      this.thetaT += delta * 0.02; // 缓慢自转
+      this.thetaT += delta * VISUAL_CONFIG.explore.autoRotateSpeed;
       const k = 1 - Math.exp(-delta * 7);
       this.theta += (this.thetaT - this.theta) * k;
       this.phi += (this.phiT - this.phi) * k;
@@ -454,14 +465,16 @@ async function boot() {
 
     addTween({
       duration: SCAN_DURATION,
-      onUpdate: (k) => {
-        scanBlend = k; // 相机混合全程推进, 比扫描线提前 cameraLead 秒起步
+      onUpdate: (easedK, linearK) => {
+        scanBlend = easedK; // 相机继续使用缓动, timeline_0 使用下方独立的线性时间
         viewOffsetX =
-          (1 - k) * (window.innerWidth * VISUAL_CONFIG.explore.sideOffset); // 左偏构图平滑回中
+          (1 - easedK) * (window.innerWidth * VISUAL_CONFIG.explore.sideOffset); // 左偏构图平滑回中
         viewOffsetY =
-          (1 - k) * (-window.innerHeight * VISUAL_CONFIG.explore.verticalOffset);
+          (1 - easedK) *
+          (-window.innerHeight * VISUAL_CONFIG.explore.verticalOffset);
         const scanK = THREE.MathUtils.clamp(
-          (k * SCAN_DURATION - cameraLead) / (SCAN_DURATION - cameraLead),
+          (easedK * SCAN_DURATION - cameraLead) /
+            (SCAN_DURATION - cameraLead),
           0,
           1,
         );
@@ -471,10 +484,10 @@ async function boot() {
           scanPlane.constant = scanX;
           cloud.setScanX(scanX);
         }
-        // 提前播放: SCAN 末段实时推进 timeline_0, 交接时已播放配置的 offset。
+        // 播放头使用线性真实时间, 不跟随相机缓动减速或等待相机到位。
         const playhead = Math.max(
           0,
-          k * SCAN_DURATION - (SCAN_DURATION - timelineStartOffset),
+          linearK * SCAN_DURATION - (SCAN_DURATION - timelineStartOffset),
         );
         timeline.seekImmediate(playhead / timeline.clip.duration);
       },
@@ -484,6 +497,8 @@ async function boot() {
         freeCamera.clearViewOffset();
         scanPlane.constant = FAR_SCAN; // 实体全部显现
         cloud.points.visible = false; // 点云不回头, 省一次 draw
+        // seekImmediate 会清零速度; 在交接帧恢复实时速度, 避免 timeline_0 顿一下。
+        timeline.setAutoDrive(true, { immediate: true });
         setState("scrub");
       },
     });

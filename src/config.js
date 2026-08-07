@@ -10,8 +10,8 @@ export const VISUAL_CONFIG = {
   backRing: {
     sizeScale: 1.2, // 外径 = 点云包围盒最长边 * sizeScale
     opacity: 0.2,
-    tickSpeed: 0.05, // 刻度环角速度 (弧度/秒)
-    arcSpeed: -0.035, // 厚弧环角速度 (反向)
+    tickSpeed: 0.075, // 刻度环角速度 (弧度/秒)
+    arcSpeed: -0.0525, // 厚弧环角速度 (反向)
     fadeInSeconds: 1.6,
     fadeOutSeconds: 0.9,
     // 绘制参数: 半径均为 0~1 (相对贴图外缘, 1 = 最外圈), 线宽为贴图像素 (1024px 画布)
@@ -36,6 +36,8 @@ export const VISUAL_CONFIG = {
   // EXPLORE 环绕视角与多模型切换
   explore: {
     zoom: 1.6, // 点云整体放大倍率 (相机拉近)
+    initialPitchDeg: 10, // 初始摄像机俯角 (度, 相对水平面向下)
+    autoRotateSpeed: 0.03, // 点云常态旋转速度 (弧度/秒, 实际由相机环绕实现)
     brandMark: {
       opacity: 0.15, // ASSEMBLE / EXPLORE 右侧 ENTERPRIZE 品牌图透明度 (0~1)
       colors: {

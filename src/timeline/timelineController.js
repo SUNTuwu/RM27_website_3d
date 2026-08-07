@@ -65,11 +65,14 @@ export function createTimelineController({
       velocity = 0;
       applyTime();
     },
-    /** SCRUB 状态下自动推进进度条; 滚轮脉冲会盖过自动速度, 衰减后恢复 */
-    setAutoDrive(value) {
+    /** SCRUB 状态下自动推进进度条; immediate 用于从 SCAN 无减速连续交接 */
+    setAutoDrive(value, { immediate = false } = {}) {
       autoDrive = Boolean(value);
       if (!autoDrive) {
         autoHold = 0;
+      } else if (immediate) {
+        autoHold = 0;
+        velocity = autoRate;
       }
     },
     /** paused = 环视中: 速度与进度都冻结, 回中后从冻结处继续 */
