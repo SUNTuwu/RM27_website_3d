@@ -93,11 +93,8 @@ export function createLookAroundController({ camera, pivot, config }) {
       if (!dragging) {
         return;
       }
-      yaw = THREE.MathUtils.clamp(
-        yaw - deltaX * config.yawSpeed,
-        -config.yawRange,
-        config.yawRange,
-      );
+      // 水平无限制环绕, 方向与 FOCUS 拖拽一致
+      yaw += deltaX * config.yawSpeed;
     },
     endDrag() {
       dragging = false;

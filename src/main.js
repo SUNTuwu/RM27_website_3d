@@ -440,7 +440,7 @@ async function boot() {
     thetaT: -0.85,
     phiT: initialOrbitPhi,
     drag(dx, dy) {
-      this.thetaT -= dx * 0.0042;
+      this.thetaT += dx * 0.0042; // 与 FOCUS 的 applyAxisAngle(up, -dx) 手感一致
       this.phiT = THREE.MathUtils.clamp(this.phiT - dy * 0.0042, 0.55, 1.45);
     },
     update(delta) {

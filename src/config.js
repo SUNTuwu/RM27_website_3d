@@ -39,7 +39,7 @@ export const VISUAL_CONFIG = {
     scrollCue: {
       cycleSeconds: 8, // 整个周期时长 (秒), 流星与文字动画均以该周期循环
       beginTimeOffsetSeconds: 8, // 进入 EXPLORE 后延迟多久引导才开始出现 (秒), 出现时流星从 0 相位开始下落
-      rightVw: 22.0, // 距视口右侧的位置 (vw), 33.3 ≈ 屏幕右侧 1/3 处, 线条自顶部垂下
+      rightVw: 25.0, // 距视口右侧的位置 (vw), 33.3 ≈ 屏幕右侧 1/3 处, 线条自顶部垂下
       lineWidthPx: 3, // 竖直白线宽度 (px)
       lineOpacity: 0.0, // 竖直白线透明度 (0~1), 流星拖尾不受影响
       lineCount: 3, // 竖直白线数量
@@ -219,7 +219,6 @@ export const VISUAL_CONFIG = {
     lookAround: {
       elevationDeg: 45, // 环绕时斜向下俯角
       yawSpeed: 0.0032, // 水平拖动 -> 环绕角速度 (弧度/像素)
-      yawRange: 1.2, // 环绕角度范围 (弧度)
       radiusMin: 12, // 环绕半径下限
       radiusMax: 40, // 环绕半径上限 (半径取 timeline 相机到场地中心的水平距离, 钳制在此区间)
       holdSeconds: 2, // 松手后无输入保持环视的时长, 之后才开始回中
