@@ -1,0 +1,21 @@
+{
+  "name": "enterprize-rm-website",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "validate:assets": "node scripts/validate-assets.mjs",
+    "verify:visual": "node scripts/verify-visual.mjs",
+    "check": "npm run validate:assets && npm run build"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.62.1",
+    "vite": "^8.2.1"
+  }
+}

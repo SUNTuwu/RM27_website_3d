@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ENTERPRIZE RoboMaster 招新 3D 交互演示" />
+    <meta name="theme-color" content="#05070d" />
+    <link rel="icon" href="data:," />
+    <title>ENTERPRIZE / ROBOMASTER</title>
+  </head>
+  <body>
+    <div id="app" data-state="boot">
+      <canvas id="scene-canvas" aria-label="ENTERPRIZE 3D 场地"></canvas>
+      <div class="vignette" aria-hidden="true"></div>
+
+      <div class="frame" aria-hidden="true">
+        <span class="frame__corner frame__corner--tl"></span>
+        <span class="frame__corner frame__corner--tr"></span>
+        <span class="frame__corner frame__corner--bl"></span>
+        <span class="frame__corner frame__corner--br"></span>
+      </div>
+
+      <header class="masthead">
+        <span class="masthead__eyebrow">ROBOMASTER 机甲大师 · 招新演示</span>
+        <h1 class="masthead__title">ENTERPRIZE</h1>
+        <span class="masthead__rule" aria-hidden="true"></span>
+      </header>
+
+      <div class="state-chip" aria-label="当前阶段">
+        <span class="state-chip__dot" aria-hidden="true"></span>
+        <span class="state-chip__index" id="state-index">00</span>
+        <span class="state-chip__label" id="state-label">BOOT SEQUENCE</span>
+      </div>
+
+      <div class="hint-bar" id="hint-bar" aria-live="polite">
+        <span class="hint-bar__pulse" aria-hidden="true"></span>
+        <span id="hint-text">INITIALIZING RENDERER…</span>
+      </div>
+
+      <section class="timeline-hud" id="timeline-hud" aria-label="主时间轴进度" hidden>
+        <div class="timeline-hud__head">
+          <span>TIMELINE_0</span>
+          <span id="timeline-pct">000%</span>
+        </div>
+        <div class="timeline-track">
+          <span class="timeline-track__base" aria-hidden="true"></span>
+          <span class="timeline-track__fill" id="timeline-fill" aria-hidden="true"></span>
+          <span class="timeline-marker" style="left: 0.7%" aria-hidden="true">
+            <i></i>DART
+          </span>
+          <span class="timeline-marker" style="left: 52.5%" aria-hidden="true">
+            <i></i>HIT
+          </span>
+        </div>
+      </section>
+
+      <div class="coordinate-readout" aria-hidden="true">
+        <span>SYS / GLTF 2.0</span>
+        <span>Y-UP / METRIC</span>
+        <span id="fps-readout">-- FPS</span>
+      </div>
+
+      <div id="loading-screen" role="status" aria-live="polite">
+        <p class="eyebrow">ENTERPRIZE / BOOT SEQUENCE</p>
+        <h2 class="loading-screen__title">LOADING ARENA ASSETS</h2>
+        <p class="loading-screen__sub">场地资产加载中 · 请勿刷新</p>
+        <div class="loading-bar" aria-hidden="true">
+          <span id="loading-bar-fill"></span>
+        </div>
+        <div class="loading-meta">
+          <span id="loading-detail">Renderer initialization</span>
+          <strong id="loading-percent">000%</strong>
+        </div>
+      </div>
+
+      <div id="mobile-screen" hidden>
+        <p class="eyebrow">ENTERPRIZE / ROBOMASTER</p>
+        <h2>完整 3D 演示需要桌面设备</h2>
+        <p class="mobile-screen__en">PLEASE VISIT ON DESKTOP FOR THE FULL 3D EXPERIENCE</p>
+      </div>
+
+      <div id="error-screen" role="alert" hidden>
+        <span class="eyebrow">PIPELINE INTERRUPTED</span>
+        <h2>资产载入失败</h2>
+        <p id="error-message"></p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

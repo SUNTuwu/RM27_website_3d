@@ -1,0 +1,225 @@
+import { existsSync } from "node:fs";
+import { mkdir, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright-core";
+
+const targetUrl = process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
+const outputDirectory =
+  process.env.ENTERPRIZE_VERIFY_DIR ?? path.join(os.tmpdir(), "enterprize-demo-verification");
+const edgeCandidates = [
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+];
+const executablePath = edgeCandidates.find(existsSync);
+
+if (!executablePath) {
+  throw new Error("Microsoft Edge was not found for Playwright verification");
+}
+
+await mkdir(outputDirectory, { recursive: true });
+
+const browser = await chromium.launch({
+  executablePath,
+  headless: true,
+  args: ["--enable-webgl", "--ignore-gpu-blocklist", "--use-angle=swiftshader"],
+});
+
+const failures = [];
+function failIf(condition, message) {
+  if (condition) {
+    failures.push(message);
+    console.error(`[fail] ${message}`);
+  } else {
+    console.log(`[ok] ${message}`);
+  }
+}
+
+async function getState(page) {
+  return page.evaluate(() => window.__ENTERPRIZE_DEMO__?.state);
+}
+
+async function getProgress(page) {
+  return page.evaluate(() => window.__ENTERPRIZE_DEMO__?.timelineProgress ?? 0);
+}
+
+async function waitState(page, expected, timeout = 30_000) {
+  await page.waitForFunction(
+    (wanted) => window.__ENTERPRIZE_DEMO__?.state === wanted,
+    expected,
+    { timeout },
+  );
+}
+
+try {
+  // ---------------- 桌面端: 完整交互链路 ----------------
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 1,
+  });
+  const page = await context.newPage();
+  const consoleErrors = [];
+  const pageErrors = [];
+  const failedRequests = [];
+  const modelResponses = [];
+
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("requestfailed", (request) => {
+    failedRequests.push(`${request.method()} ${request.url()}`);
+  });
+  page.on("response", (response) => {
+    if (response.url().includes("/assets/models/")) {
+      modelResponses.push({ status: response.status(), url: response.url() });
+    }
+  });
+
+  await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
+    timeout: 60_000,
+  });
+  console.log("[ok] demo booted");
+
+  // BOOT -> ASSEMBLE -> EXPLORE
+  await waitState(page, "explore", 30_000);
+  failIf(false, "state reached EXPLORE (point cloud assembled)");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(outputDirectory, "01-explore.png") });
+
+  // EXPLORE: 点击径向扩散
+  await page.mouse.move(720, 450);
+  await page.mouse.click(720, 450);
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(outputDirectory, "02-ripple.png") });
+  failIf((await getState(page)) !== "explore", "click ripple keeps EXPLORE state");
+
+  // EXPLORE -> SCAN -> SCRUB
+  await page.mouse.wheel(0, 600);
+  await waitState(page, "scan", 10_000);
+  await page.waitForTimeout(1_600);
+  await page.screenshot({ path: path.join(outputDirectory, "03-scan-mid.png") });
+  await waitState(page, "scrub", 45_000);
+  failIf(false, "SCAN transition completed into SCRUB");
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(outputDirectory, "04-scrub-start.png") });
+
+  // SCRUB: 自动推进 (无滚轮输入)
+  const progressBefore = await getProgress(page);
+  await page.waitForTimeout(6_000);
+  const progressAfter = await getProgress(page);
+  failIf(progressAfter <= progressBefore + 0.05, "auto-drive pushes timeline without wheel input");
+
+  // SCRUB: 滚轮回滚
+  const progressPeak = await getProgress(page);
+  await page.mouse.wheel(0, -3000);
+  await page.waitForTimeout(2_000);
+  const progressRewound = await getProgress(page);
+  failIf(progressRewound >= progressPeak, "wheel rewind pulls timeline backward");
+
+  // SCRUB -> FOCUS: 推进到机器人可见后点击
+  let robotPos = await page.evaluate(() => window.__ENTERPRIZE_DEMO__.robotScreenPosition());
+  for (let attempt = 0; attempt < 12 && (robotPos.behind || robotPos.x < 60 || robotPos.x > 1380 || robotPos.y < 60 || robotPos.y > 840); attempt++) {
+    await page.mouse.wheel(0, 900);
+    await page.waitForTimeout(900);
+    robotPos = await page.evaluate(() => window.__ENTERPRIZE_DEMO__.robotScreenPosition());
+  }
+  failIf(robotPos.behind, "robot anchor became visible in timeline camera");
+  await page.mouse.click(robotPos.x, robotPos.y);
+  await waitState(page, "focus", 5_000);
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.focusMode === "active", null, {
+    timeout: 8_000,
+  });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(outputDirectory, "05-focus.png") });
+  failIf(false, "FOCUS state active around robot");
+
+  // FOCUS: 拖拽观察 + 滚轮退出
+  await page.mouse.move(robotPos.x, robotPos.y);
+  await page.mouse.down();
+  await page.mouse.move(robotPos.x + 220, robotPos.y - 60, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(outputDirectory, "06-focus-drag.png") });
+  await page.mouse.wheel(0, 300);
+  await page.waitForFunction(
+    () => window.__ENTERPRIZE_DEMO__?.state === "scrub" && window.__ENTERPRIZE_DEMO__?.focusMode === "idle",
+    null,
+    { timeout: 8_000 },
+  );
+  failIf(false, "wheel exits FOCUS back to SCRUB seamlessly");
+
+  // SCRUB 满进度 (无 END 锁定) + 滚轮回拨
+  for (let attempt = 0; attempt < 60 && (await getProgress(page)) < 0.98; attempt++) {
+    await page.mouse.wheel(0, 2400);
+    await page.waitForTimeout(400);
+  }
+  const fullProgress = await getProgress(page);
+  failIf(fullProgress < 0.98, "timeline reaches full progress");
+  failIf((await getState(page)) !== "scrub", "state stays SCRUB at 100% (no END lock)");
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(outputDirectory, "07-full-progress.png") });
+  await page.mouse.wheel(0, -2400);
+  await page.waitForTimeout(1_200);
+  const rewoundProgress = await getProgress(page);
+  failIf(rewoundProgress >= fullProgress, "wheel rewind works at 100% progress");
+
+  // 运行时断言
+  failIf(consoleErrors.length > 0, `no console errors: ${consoleErrors.join(" | ")}`);
+  failIf(pageErrors.length > 0, `no page errors: ${pageErrors.join(" | ")}`);
+  failIf(failedRequests.length > 0, `no failed requests: ${failedRequests.join(" | ")}`);
+  failIf(
+    modelResponses.some((response) => response.status !== 200),
+    "all model resources return HTTP 200",
+  );
+  failIf(modelResponses.length < 9, `model resources observed: ${modelResponses.length} >= 9`);
+  const pointCount = await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.pointCount ?? 0);
+  failIf(pointCount < 100000, `point cloud count ${pointCount} >= 100k`);
+
+  // 截图非空启发式: 3D 画面 PNG 应远大于纯色图
+  for (const name of ["01-explore.png", "04-scrub-start.png", "05-focus.png"]) {
+    const details = await stat(path.join(outputDirectory, name));
+    failIf(details.size < 40_000, `${name} looks non-blank (${details.size} bytes)`);
+  }
+
+  await context.close();
+
+  // ---------------- 移动端: 降级 ----------------
+  const mobileContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
+  const mobilePage = await mobileContext.newPage();
+  const mobileModelRequests = [];
+  mobilePage.on("response", (response) => {
+    if (response.url().includes("/assets/models/")) {
+      mobileModelRequests.push(response.url());
+    }
+  });
+  await mobilePage.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await mobilePage.waitForTimeout(2_500);
+  const mobileVisible = await mobilePage.evaluate(() => {
+    const screen = document.querySelector("#mobile-screen");
+    return screen && !screen.hidden;
+  });
+  failIf(!mobileVisible, "mobile fallback screen is shown");
+  failIf(mobileModelRequests.length > 0, "mobile fallback downloads no glTF assets");
+  const demoHandle = await mobilePage.evaluate(() => window.__ENTERPRIZE_DEMO__);
+  failIf(demoHandle !== undefined, "mobile fallback does not boot the 3D demo");
+  await mobilePage.screenshot({ path: path.join(outputDirectory, "08-mobile.png") });
+  await mobileContext.close();
+} finally {
+  await browser.close();
+}
+
+console.log(`\nScreenshots: ${outputDirectory}`);
+if (failures.length) {
+  throw new Error(`Visual verification failed:\n${failures.join("\n")}`);
+}
+console.log("\nDemo E2E verification passed.");
