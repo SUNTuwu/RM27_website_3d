@@ -133,12 +133,13 @@ export const VISUAL_CONFIG = {
     cameraLeadSeconds: 0.5,
     // Blender 导出的高强度聚光灯运行时缩放，不修改 glTF 源资产。
     lightIntensityScale: 0.0004,
-    // 滚轮擦洗惯性: 灵敏度 / progress 追赶速度上限 (每秒) / 自动播放暂停与恢复缓入时长 (秒)
     scroll: {
-      wheelScale: 0.00042,
-      maxRate: 0.22,
-      autoSuspendSeconds: 1.5,
-      autoResumeRampSeconds: 0.5,
+      // 滚轮控制进度速度 (progress/秒), 不是进度数值:
+      // 一次滚动 = 一次速度脉冲, 松手后按 velocityDecay 衰减回自动播放速度
+      wheelImpulse: 0.0012, // 每单位 deltaY 的速度增量
+      maxRate: 0.22, // 速度上限 (双向)
+      velocityDecay: 3, // 速度回稳衰减常数 (越大回稳越快)
+      autoHoldSeconds: 1.5, // 滚动后自动播放基线的暂停时长 (回退不被自动播放吞掉)
     },
     // SCRUB 拖拽环视: 拖拽时过渡到绕场地中心斜向下环绕视角, 松手过渡回 timeline 姿态
     lookAround: {

@@ -161,11 +161,10 @@ async function boot() {
     root: assets.timeline.scene,
     clip: report.timeline.sourceClips[0],
     camera: timelineCamera,
-    wheelScale: VISUAL_CONFIG.timeline0.scroll.wheelScale,
+    wheelImpulse: VISUAL_CONFIG.timeline0.scroll.wheelImpulse,
     maxRate: VISUAL_CONFIG.timeline0.scroll.maxRate,
-    autoSuspendSeconds: VISUAL_CONFIG.timeline0.scroll.autoSuspendSeconds,
-    autoResumeRampSeconds:
-      VISUAL_CONFIG.timeline0.scroll.autoResumeRampSeconds,
+    velocityDecay: VISUAL_CONFIG.timeline0.scroll.velocityDecay,
+    autoHoldSeconds: VISUAL_CONFIG.timeline0.scroll.autoHoldSeconds,
   });
   const timelineStartOffset = THREE.MathUtils.clamp(
     VISUAL_CONFIG.timeline0.timeOffsetSeconds,
@@ -618,6 +617,9 @@ async function boot() {
     },
     get timelineProgress() {
       return timeline.progress;
+    },
+    get debugTimelineVelocity() {
+      return timeline.velocity;
     },
     get focusMode() {
       return focus.mode;

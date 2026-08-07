@@ -2,17 +2,18 @@ import * as THREE from "three";
 
 /**
  * 主时间轴控制器: 滚轮擦洗 timeline_0。
- * targetProgress 累积滚轮输入, progress 以最大速率追赶 -> "scroll 速度有最大限制"。
+ * 滚轮控制的是进度速度而不是进度数值: 一次滚动给速度一个脉冲,
+ * 松手后速度指数衰减回自动播放基线 (autoDrive 开启时) 或 0。
  * FOCUS 期间不调用 update, 时间轴冻结在当前进度 ("timeline_0 动画不变")。
  */
 export function createTimelineController({
   root,
   clip,
   camera,
-  wheelScale = 0.00042,
+  wheelImpulse = 0.0012,
   maxRate = 0.22,
-  autoSuspendSeconds = 1.5,
-  autoResumeRampSeconds = 0.5,
+  velocityDecay = 3,
+  autoHoldSeconds = 1.5,
 }) {
   const mixer = new THREE.AnimationMixer(root);
   const action = mixer.clipAction(clip);
@@ -20,10 +21,9 @@ export function createTimelineController({
   mixer.setTime(0);
 
   let progress = 0;
-  let target = 0;
+  let velocity = 0; // progress / 秒
   let autoDrive = false;
-  let autoSuspend = 0;
-  let autoResumeElapsed = 0;
+  let autoHold = 0; // 滚动后自动播放基线的暂停剩余时间
   const autoRate = 1 / clip.duration; // 实时速度自动推进
 
   const posePosition = new THREE.Vector3();
@@ -43,63 +43,50 @@ export function createTimelineController({
     get progress() {
       return progress;
     },
-    get target() {
-      return target;
+    get velocity() {
+      return velocity;
     },
     get isComplete() {
-      return progress >= 0.999 && target >= 1;
+      return progress >= 0.999 && velocity >= 0;
     },
     addWheel(deltaY) {
-      target = THREE.MathUtils.clamp(target + deltaY * wheelScale, 0, 1);
-      // 任意方向滚动都暂停自动播放, 从最后一次滚动重新计时
-      autoSuspend = autoSuspendSeconds;
-      autoResumeElapsed = 0;
+      // 滚轮推的是速度: 一次滚动 = 一次速度脉冲, 双向都受 maxRate 限制
+      velocity = THREE.MathUtils.clamp(
+        velocity + deltaY * wheelImpulse,
+        -maxRate,
+        maxRate,
+      );
+      // 滚动期间暂停自动播放基线, 否则回退脉冲会被正向基线立刻吞掉
+      autoHold = autoHoldSeconds;
     },
     /** 直接定位到指定进度 (SCAN 期间预推进 / 起始 offset) */
     seekImmediate(value) {
       progress = THREE.MathUtils.clamp(value, 0, 1);
-      target = progress;
+      velocity = 0;
       applyTime();
     },
-    /** SCRUB 状态下自动推进进度条; 滚轮输入优先, 恢复时速度缓入 */
+    /** SCRUB 状态下自动推进进度条; 滚轮脉冲会盖过自动速度, 衰减后恢复 */
     setAutoDrive(value) {
       autoDrive = Boolean(value);
-      autoResumeElapsed = 0;
       if (!autoDrive) {
-        autoSuspend = 0;
+        autoHold = 0;
       }
     },
-    /** paused = 环视中: 自动推进与滚轮暂停计时都冻结, 回中后缓入恢复 */
+    /** paused = 环视中: 速度与进度都冻结, 回中后从冻结处继续 */
     update(delta, paused = false) {
       if (paused) {
-        autoResumeElapsed = 0;
-      } else if (autoDrive) {
-        if (autoSuspend > 0) {
-          autoSuspend = Math.max(autoSuspend - delta, 0);
-          autoResumeElapsed = 0;
-        } else if (target < 1) {
-          autoResumeElapsed = Math.min(
-            autoResumeElapsed + delta,
-            autoResumeRampSeconds,
-          );
-          const resumeSpeed =
-            autoResumeRampSeconds > 0
-              ? THREE.MathUtils.smoothstep(
-                  autoResumeElapsed,
-                  0,
-                  autoResumeRampSeconds,
-                )
-              : 1;
-          target = Math.min(target + autoRate * resumeSpeed * delta, 1);
-        }
-      }
-      const diff = target - progress;
-      if (diff === 0) {
         return;
       }
-      const step = THREE.MathUtils.clamp(diff, -maxRate * delta, maxRate * delta);
-      progress += step;
-      applyTime();
+      autoHold = Math.max(autoHold - delta, 0);
+      // 速度向基线 (自动播放速度 / 0) 指数衰减; 滚动后基线暂停 autoHoldSeconds
+      const baseline = autoDrive && autoHold <= 0 ? autoRate : 0;
+      velocity +=
+        (baseline - velocity) * (1 - Math.exp(-delta * velocityDecay));
+      const next = THREE.MathUtils.clamp(progress + velocity * delta, 0, 1);
+      if (next !== progress) {
+        progress = next;
+        applyTime();
+      }
     },
     /** 读取主相机在当前进度的世界姿态 (SCAN 对接目标 / FOCUS 退出回飞终点) */
     readCameraPose() {
