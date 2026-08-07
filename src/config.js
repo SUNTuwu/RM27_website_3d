@@ -38,6 +38,7 @@ export const VISUAL_CONFIG = {
     // EXPLORE 右侧滚动引导: 数道竖直白线依次流星下落 + 竖排英文 落下淡入/停顿/下落淡出, 共用同一周期循环
     scrollCue: {
       cycleSeconds: 8, // 整个周期时长 (秒), 流星与文字动画均以该周期循环
+      beginTimeOffsetSeconds: 8, // 进入 EXPLORE 后延迟多久引导才开始出现 (秒), 出现时流星从 0 相位开始下落
       rightVw: 22.0, // 距视口右侧的位置 (vw), 33.3 ≈ 屏幕右侧 1/3 处, 线条自顶部垂下
       lineWidthPx: 3, // 竖直白线宽度 (px)
       lineOpacity: 0.0, // 竖直白线透明度 (0~1), 流星拖尾不受影响

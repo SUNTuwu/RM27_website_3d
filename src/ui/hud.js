@@ -129,10 +129,11 @@ export function createHud() {
     const cue = document.querySelector("#scroll-cue");
     const linesBox = document.querySelector("#scroll-cue-lines");
     const textEl = document.querySelector("#scroll-cue-text");
-    if (!cue || !linesBox) return;
+    if (!cue || !linesBox) return 0;
     const cfg = VISUAL_CONFIG.explore.scrollCue ?? {};
     const num = (value, fallback) =>
       Number.isFinite(Number(value)) ? Number(value) : fallback;
+    const beginTimeOffset = Math.max(num(cfg.beginTimeOffsetSeconds, 3), 0);
     const cycle = Math.max(num(cfg.cycleSeconds, 10), 0.1);
     const meteorDuration = Math.max(num(cfg.meteorDurationSeconds, 1.7), 0.1);
     const meteorLength = Math.max(num(cfg.meteorLengthPx, 110), 10);
@@ -203,8 +204,11 @@ export function createHud() {
       );
       linesBox.appendChild(line);
     }
+    return beginTimeOffset;
   };
-  setupScrollCue();
+  const scrollCueEl = document.querySelector("#scroll-cue");
+  const scrollCueBeginOffset = setupScrollCue();
+  let scrollCueTimer = null;
 
   const stateIndex = document.querySelector("#state-index");
   const stateLabel = document.querySelector("#state-label");
@@ -227,6 +231,12 @@ export function createHud() {
   const exploreDesc = document.querySelector("#explore-desc");
   const explorePrev = document.querySelector("#explore-prev");
   const exploreNext = document.querySelector("#explore-next");
+  const focusImage = document.querySelector("#focus-image");
+  const focusIndex = document.querySelector("#focus-index");
+  const focusTitle = document.querySelector("#focus-title");
+  const focusSlideDesc = document.querySelector("#focus-slide-desc");
+  const focusPrev = document.querySelector("#focus-prev");
+  const focusNext = document.querySelector("#focus-next");
   const keyPrev = document.querySelector("#key-prev");
   const keySpace = document.querySelector("#key-space");
   const keyNext = document.querySelector("#key-next");
@@ -242,6 +252,20 @@ export function createHud() {
       stateLabel.textContent = meta.label;
       hintText.innerHTML = meta.hint;
       timelineHud.hidden = !(state === "scrub" || state === "focus");
+      // 滚动引导: 进入 EXPLORE 后延迟 beginTimeOffsetSeconds 再激活 (出现时动画从 0 相位启动)
+      if (scrollCueEl) {
+        if (scrollCueTimer) {
+          clearTimeout(scrollCueTimer);
+          scrollCueTimer = null;
+        }
+        scrollCueEl.classList.remove("is-active");
+        if (state === "explore") {
+          scrollCueTimer = setTimeout(() => {
+            scrollCueTimer = null;
+            scrollCueEl.classList.add("is-active");
+          }, scrollCueBeginOffset * 1000);
+        }
+      }
     },
     setLoading(ratio, detail) {
       const percent = Math.round(Math.min(ratio, 1) * 100);
@@ -288,6 +312,28 @@ export function createHud() {
         event.currentTarget.blur();
       });
       keyNext.addEventListener("click", (event) => {
+        handler(1);
+        event.currentTarget.blur();
+      });
+    },
+    /** FOCUS 右侧图片卡: 更新图片 / 序号 / 标题 / 简介, 图片切换时淡出淡入 */
+    setFocusMedia(index, total, slide) {
+      focusIndex.textContent = `${String(index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
+      focusTitle.textContent = slide.title ?? "";
+      focusSlideDesc.textContent = slide.desc ?? "";
+      if (focusImage.getAttribute("src") !== slide.image) {
+        focusImage.classList.add("is-loading");
+        focusImage.onload = () => focusImage.classList.remove("is-loading");
+        focusImage.src = slide.image;
+      }
+      focusImage.alt = slide.title ?? "";
+    },
+    setFocusSwitchHandler(handler) {
+      focusPrev.addEventListener("click", (event) => {
+        handler(-1);
+        event.currentTarget.blur();
+      });
+      focusNext.addEventListener("click", (event) => {
         handler(1);
         event.currentTarget.blur();
       });

@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 import {
   auditProjectAssets,
+  assetUrl,
   configureLoadedScene,
   loadProjectAssets,
 } from "./core/assetPipeline.js";
@@ -166,6 +167,38 @@ async function boot() {
   let exploreTransitioning = false;
   let switchTween = null;
   let scanRequested = false;
+
+  // ---------- FOCUS 右侧图片卡 (兵种档案幻灯片) ----------
+  const focusSlides = [
+    {
+      image: assetUrl("images/hero/wheel-leg-4-web.jpg"),
+      title: "WHEEL-LEG / 赛场实拍",
+      desc: "轮腿构型机器人在赛场中央区域的机动瞬间, 兼具轮式速度与腿式越障能力。",
+    },
+    {
+      image: assetUrl("images/hero/arena-fleet.jpg"),
+      title: "BASE / 基地与前哨",
+      desc: "蓝方基地与前哨站全景, 机器人列阵待命, 等待开局倒计时。",
+    },
+    {
+      image: assetUrl("images/hero/rm2024-supercapacitor-controller.webp"),
+      title: "SUPERCAP / 超级电容控制器",
+      desc: "RM2024 超级电容控制器与电容组, 为底盘爆发机动提供瞬时大功率输出。",
+    },
+  ];
+  let focusSlideIndex = 0;
+
+  function switchFocusSlide(step) {
+    const total = focusSlides.length;
+    focusSlideIndex = ((focusSlideIndex + step) % total + total) % total;
+    hud.setFocusMedia(focusSlideIndex, total, focusSlides[focusSlideIndex]);
+  }
+  focusSlides.forEach((slide) => {
+    const preload = new Image(); // 预加载, 避免首次切换时图片闪烁
+    preload.src = slide.image;
+  });
+  switchFocusSlide(0);
+  hud.setFocusSwitchHandler(switchFocusSlide);
 
   function switchExploreModel(next) {
     if (exploreTransitioning) {
@@ -724,6 +757,15 @@ async function boot() {
     }
   });
   window.addEventListener("keydown", (event) => {
+    if (state === "focus") {
+      // FOCUS 下左右方向键切换右侧图片
+      if (event.key === "ArrowLeft") {
+        switchFocusSlide(-1);
+      } else if (event.key === "ArrowRight") {
+        switchFocusSlide(1);
+      }
+      return;
+    }
     if (state !== "explore") {
       return;
     }

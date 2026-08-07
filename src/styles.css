@@ -809,7 +809,8 @@ body {
   user-select: none;
 }
 
-#app[data-state="explore"] .scroll-cue {
+/* is-active 由 hud.js 在进入 EXPLORE 并经过 beginTimeOffsetSeconds 后添加 */
+.scroll-cue.is-active {
   opacity: 1;
   visibility: visible;
 }
@@ -845,8 +846,8 @@ body {
   will-change: top, opacity;
 }
 
-/* 动画只在 EXPLORE 状态挂载: 进入该状态时从 0 相位启动, 保证流星先落、文字慢一拍 */
-#app[data-state="explore"] .scroll-cue__lines i::before {
+/* 动画随 is-active 挂载: 激活时从 0 相位启动, 保证流星先落、文字慢一拍 */
+.scroll-cue.is-active .scroll-cue__lines i::before {
   animation: scroll-cue-meteor var(--scroll-cue-cycle, 10s)
     cubic-bezier(0.55, 0.08, 0.82, 0.45) var(--scroll-cue-delay, 0s) infinite;
 }
@@ -863,9 +864,223 @@ body {
   will-change: transform, opacity;
 }
 
-#app[data-state="explore"] .scroll-cue__text {
+.scroll-cue.is-active .scroll-cue__text {
   animation: scroll-cue-text var(--scroll-cue-cycle, 10s) ease-in-out 0s
     infinite;
+}
+
+/* ---------- Focus panel (FOCUS 兵种信息: 左侧兵种名 + 右侧图片卡) ---------- */
+/* 进入 FOCUS 时左右两块分别从屏幕两侧滑入; 退出时立即收回 (delay 只在 focus 态挂载) */
+
+.focus-panel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.focus-panel__intro {
+  position: absolute;
+  left: 64px;
+  top: 50%;
+  width: min(360px, 28vw);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%) translateX(-56px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.45s ease;
+}
+
+.focus-panel__media {
+  position: absolute;
+  right: 64px;
+  top: 50%;
+  width: min(480px, 36vw);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-50%) translateX(56px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.45s ease;
+}
+
+#app[data-state="focus"] .focus-panel__intro,
+#app[data-state="focus"] .focus-panel__media {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+  transition-delay: 0.5s, 0.5s, 0.5s;
+}
+
+#app[data-state="focus"] .focus-panel__media {
+  transition-delay: 0.65s, 0.65s, 0.65s; /* 右卡慢半拍, 跟随相机到位节奏 */
+}
+
+.focus-panel__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-en);
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 1px;
+}
+
+.focus-panel__eyebrow i {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, var(--red) 0%, var(--blue) 100%);
+  box-shadow: 0 0 10px rgba(46, 155, 255, 0.45);
+}
+
+.focus-panel__name {
+  margin-top: 14px;
+  font-family: var(--font-en);
+  font-weight: 400;
+  font-size: clamp(44px, 5vw, 76px);
+  line-height: 1.05;
+  color: var(--ink);
+  text-shadow:
+    0 0 18px rgba(46, 155, 255, 0.35),
+    0 0 42px rgba(46, 155, 255, 0.12);
+}
+
+.focus-panel__rule {
+  display: block;
+  margin-top: 12px;
+  width: 96px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--red) 0%, var(--blue) 100%);
+  box-shadow: 0 0 12px rgba(46, 155, 255, 0.45);
+}
+
+.focus-panel__cn {
+  display: block;
+  margin-top: 12px;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.focus-panel__desc {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--ink-dim);
+}
+
+.focus-panel__frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.focus-panel__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+
+.focus-panel__frame img.is-loading {
+  opacity: 0;
+}
+
+.focus-panel__corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--cyan);
+}
+
+.focus-panel__corner--tl { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
+.focus-panel__corner--tr { top: 6px; right: 6px; border-left: 0; border-bottom: 0; border-color: var(--red); }
+.focus-panel__corner--bl { bottom: 6px; left: 6px; border-right: 0; border-top: 0; border-color: var(--red); }
+.focus-panel__corner--br { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
+
+.focus-panel__bar {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(20, 30, 48, 0.72) 0 6px,
+      rgba(8, 13, 22, 0.72) 6px 12px
+    );
+  backdrop-filter: blur(6px);
+}
+
+.focus-panel__arrow {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: #060a12;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
+}
+
+.focus-panel__arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.focus-panel__arrow:hover {
+  background: var(--cyan);
+  transform: scale(1.06);
+}
+
+.focus-panel__status {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.focus-panel__status em {
+  font-style: normal;
+  font-family: var(--font-en);
+  font-size: 11px;
+  color: var(--cyan);
+}
+
+.focus-panel__status b {
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focus-panel__slide-desc {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+  min-height: 2.6em;
 }
 
 @media (max-width: 900px) {
@@ -874,6 +1089,7 @@ body {
   .coordinate-readout { display: none; }
   .key-hints { display: none; }
   .scroll-cue { display: none; }
+  .focus-panel { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
   .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
