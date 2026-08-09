@@ -118,7 +118,7 @@ test('interactive tags ship sci-fi open and close animations', async () => {
   assert.match(archive, /\.filter::after,\.project-dialog\[open\]/)
 })
 
-test('homepage introduces the team, the competition, and official highlights', async () => {
+test('homepage introduces the team, competition, and team-related highlights', async () => {
   const homepage = await readSource('index.html')
 
   // 我们是谁：叙事介绍 + 战队档案事实行
@@ -132,56 +132,87 @@ test('homepage introduces the team, the competition, and official highlights', a
   assert.match(homepage, /roster/)
   assert.match(homepage, /bvid=BV14g4y1z7QC/)
 
-  // 精彩展示：三段官方短视频 + 官方账号链接
+  // 工程日志前移到赛事科普之前；高光展示只嵌入三条港科相关影像
+  assert.match(homepage, /id="field-log"/)
+  assert.ok(homepage.indexOf('id="field-log"') < homepage.indexOf('id="what-is-rm"'))
   assert.match(homepage, /id="showcase"/)
-  assert.match(homepage, /bvid=BV1LB55z9EUL/)
-  assert.match(homepage, /bvid=BV1pA7pzhEkF/)
-  assert.match(homepage, /bvid=BV1QQ4y1B7Cy/)
+  assert.match(homepage, /香港科技大学24赛季高燃混剪/)
+  assert.match(homepage, /24赛季混剪第二弹——HKUST 再创佳绩/)
+  assert.match(homepage, /给视觉磕一个/)
+  assert.match(homepage, /团队相关创作者/)
+  assert.match(homepage, /BV1b94y1v7rt/)
+  assert.match(homepage, /BV1TH4y1c7tU/)
+  assert.match(homepage, /BV1xGwezFEUN/)
+  assert.match(homepage, /BV1QU411m795/)
+  assert.match(homepage, /BV18kdPBiEsy/)
+  assert.match(homepage, /space\.bilibili\.com\/634988052/)
   assert.match(homepage, /space\.bilibili\.com\/20554233/)
   assert.match(homepage, /data-wp="what-is-rm"/)
 
   // 新板块插入后 Waypoint 编号连续重排
   for (const label of [
-    'WAYPOINT 03 // FIRST CONTACT',
-    'WAYPOINT 04 // HIGHLIGHT REEL',
-    'WAYPOINT 05 // CRUISE',
-    'WAYPOINT 06 // PLANETS',
-    'WAYPOINT 07 // SYSTEMS',
-    'WAYPOINT 08 // FLIGHT PLAN',
-    "WAYPOINT 09 // THE JUMP",
+    'WAYPOINT 03 // FIELD LOG',
+    'WAYPOINT 04 // FIRST CONTACT',
+    'WAYPOINT 05 // HIGHLIGHT REEL',
+    'WAYPOINT 06 // CRUISE',
+    'WAYPOINT 07 // PLANETS',
+    'WAYPOINT 08 // SYSTEMS',
+    'WAYPOINT 09 // FLIGHT PLAN',
+    'WAYPOINT 10 // THE JUMP',
   ]) {
     assert.ok(homepage.includes(label), label)
   }
 
-  // 嵌入视频采用点击加载门面：data-video-embed 持有播放器地址，首屏只载封面，不产生播放器遥测
-  assert.match(homepage, /initVideoFacades/)
-  // 修饰键点击保留新标签页原生行为；注入的播放器带 autoplay 权限与焦点移交
-  assert.match(homepage, /event\.metaKey \|\| event\.ctrlKey/)
-  assert.match(homepage, /autoplay; fullscreen; encrypted-media/)
-  assert.match(homepage, /iframe\.focus\(\)/)
-  const embeds = homepage.match(/data-video-embed="[^"]+"/g) || []
-  assert.equal(embeds.length, 4)
-  for (const embed of embeds) {
-    assert.match(embed, /player\.bilibili\.com\/player\.html/)
-    assert.match(embed, /bvid=BV1[a-zA-Z0-9]+/)
-    assert.match(embed, /autoplay=1/)
+  // 八段视频只在至少 25% 可见时加载；未接管时执行最佳努力重播
+  assert.match(homepage, /initDeferredVideos/)
+  assert.match(homepage, /IntersectionObserver/)
+  const expectedBvids = [
+    'BV1rMaVzTEh1',
+    'BV1uH8bzdE61',
+    'BV1Y482zjERP',
+    'BV1ex4y1s72c',
+    'BV14g4y1z7QC',
+    'BV1HBHyeGEQT',
+    'BV1sJHSefErC',
+    'BV1TP8jzSEVA',
+  ]
+  const iframes = homepage.match(/<iframe[^>]+data-video-src="[^"]+"[^>]*>/g) || []
+  assert.equal(iframes.length, expectedBvids.length)
+  assert.deepEqual(
+    iframes.map((iframe) => iframe.match(/bvid=(BV1[a-zA-Z0-9]+)/)?.[1]),
+    expectedBvids,
+  )
+  for (const iframe of iframes) {
+    assert.match(iframe, /src="about:blank"/)
+    assert.match(iframe, /player\.bilibili\.com\/player\.html/)
+    assert.match(iframe, /autoplay=1/)
+    assert.match(iframe, /muted=1/)
+    assert.match(iframe, /data-video-duration="\d+"/)
+    assert.match(iframe, /data-video-loop/)
+    assert.match(iframe, /tabindex="-1"/)
+    assert.match(iframe, /loading="lazy"/)
+    assert.match(iframe, /allow="autoplay; fullscreen; encrypted-media"/)
+    assert.match(iframe, /\sallowfullscreen(?:\s|>)/)
+    assert.doesNotMatch(iframe, /allowfullscreen=/)
+    assert.match(iframe, /referrerpolicy="no-referrer"/)
+    assert.match(iframe, /title="[^"]+"/)
   }
-  // 门面封面图懒加载、异步解码且不带 Referer；无 JS 时门面退化为官方视频页链接
-  const covers = homepage.match(/<img[^>]+hdslb\.com[^>]*>/g) || []
-  assert.equal(covers.length, 4)
-  for (const cover of covers) {
-    assert.match(cover, /loading="lazy"/)
-    assert.match(cover, /decoding="async"/)
-    assert.match(cover, /referrerpolicy="no-referrer"/)
+  for (const obsoleteBvid of ['BV1LB55z9EUL', 'BV1pA7pzhEkF', 'BV1QQ4y1B7Cy']) {
+    assert.doesNotMatch(homepage, new RegExp(obsoleteBvid))
   }
-  const facades = homepage.match(/<a class="video-facade"[^>]*>/g) || []
-  assert.equal(facades.length, 4)
-  for (const facade of facades) {
-    assert.match(facade, /href="https:\/\/www\.bilibili\.com\/video\/BV1[a-zA-Z0-9]+\/"/)
-    assert.match(facade, /target="_blank"/)
-    assert.match(facade, /rel="noopener"/)
-    assert.match(facade, /aria-label="/)
-  }
-  // 首页不再直接内嵌播放器 iframe
-  assert.equal((homepage.match(/<iframe[^>]+player\.bilibili\.com/g) || []).length, 0)
+  const fallbackLinks = homepage.match(/<noscript><p class="video-fallback"><a[^>]+www\.bilibili\.com\/video\/BV1[^>]+>/g) || []
+  assert.equal(fallbackLinks.length, expectedBvids.length)
+  assert.match(homepage, /iframe\[data-video-src\]\{display:none\}/)
+  assert.match(homepage, /VIDEO_VISIBILITY_THRESHOLD = \.25/)
+  assert.match(homepage, /markVideoAsUserControlled/)
+  assert.match(homepage, /document\.activeElement === frame/)
+  assert.match(homepage, /scheduleVideoReplay/)
+  assert.match(homepage, /if \(reduced \|\| document\.visibilityState/)
+  assert.match(homepage, /url\.searchParams\.set\('autoplay', '0'\)/)
+  assert.match(homepage, /document\.visibilityState/)
+  assert.match(homepage, /clearVideoReplay/)
+  assert.match(homepage, /addEventListener\('pagehide'/)
+  assert.match(homepage, /addEventListener\('pageshow'/)
+  assert.match(homepage, /reduced \|\| !\('IntersectionObserver' in window\)/)
+  assert.doesNotMatch(homepage, /rootMargin: '160px|loop=1|video-facade|initVideoFacades|data-video-embed/)
 })

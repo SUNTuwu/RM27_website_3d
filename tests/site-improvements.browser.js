@@ -3,14 +3,109 @@ const { chromium } = require('playwright')
 
 const baseUrl = 'http://127.0.0.1:8377'
 
-async function openPage(browser, path, options = {}) {
+const isBilibiliHost = (hostname) => [
+  'bilibili.com',
+  'bilivideo.com',
+  'hdslb.com',
+].some((domain) => hostname === domain || hostname.endsWith(`.${domain}`))
+
+const isBilibiliMediaHost = (hostname) =>
+  hostname === 'player.bilibili.com' ||
+  hostname === 'bilivideo.com' || hostname.endsWith('.bilivideo.com') ||
+  hostname === 'hdslb.com' || hostname.endsWith('.hdslb.com')
+
+async function openPage(browser, path, options = {}, beforeLoad) {
   const page = await browser.newPage(options)
   const errors = []
+  const bilibiliRequests = []
   page.on('pageerror', (error) => errors.push(String(error)))
-  // B 站播放器心跳遥测会让 networkidle 无法稳定，测试中统一中止播放器域请求
-  await page.route(/player\.bilibili\.com|bilivideo\.com/, (route) => route.abort())
+  await page.route('**/*', (route) => {
+    const requestUrl = route.request().url()
+    const hostname = new URL(requestUrl).hostname.toLowerCase()
+    if (!isBilibiliHost(hostname)) return route.continue()
+    bilibiliRequests.push(requestUrl)
+    return isBilibiliMediaHost(hostname) ? route.abort() : route.continue()
+  })
+  if (beforeLoad) await beforeLoad(page)
   await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle' })
-  return { page, errors }
+  return { page, errors, bilibiliRequests }
+}
+
+async function waitForRequestCount(page, getRequests, expected, timeout = 5000) {
+  const deadline = Date.now() + timeout
+  while (getRequests().length < expected && Date.now() < deadline) {
+    await page.waitForTimeout(50)
+  }
+  assert.equal(getRequests().length, expected)
+}
+
+async function installControlledVideoTimers(page) {
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window)
+    const nativeClearTimeout = window.clearTimeout.bind(window)
+    let nextVideoTimerId = -1
+    let videoTimers = []
+    window.setTimeout = (callback, delay = 0, ...args) => {
+      if (delay !== 4010) return nativeSetTimeout(callback, delay, ...args)
+      const timer = nextVideoTimerId
+      nextVideoTimerId -= 1
+      videoTimers = [...videoTimers, { timer, callback, args }]
+      return timer
+    }
+    window.clearTimeout = (timer) => {
+      const nextTimers = videoTimers.filter((candidate) => candidate.timer !== timer)
+      if (nextTimers.length !== videoTimers.length) {
+        videoTimers = nextTimers
+        return
+      }
+      nativeClearTimeout(timer)
+    }
+    window.__videoReplayTimerCount = () => videoTimers.length
+    window.__runNextVideoReplayTimer = () => {
+      const [nextTimer, ...remainingTimers] = videoTimers
+      if (!nextTimer) return false
+      videoTimers = remainingTimers
+      nextTimer.callback(...nextTimer.args)
+      return true
+    }
+  })
+}
+
+async function installControlledIntersectionObserver(page) {
+  await installControlledVideoTimers(page)
+  await page.addInitScript(() => {
+    let observers = []
+    class ControlledIntersectionObserver {
+      constructor(callback) {
+        this.callback = callback
+        this.targets = new Set()
+        observers = [...observers, this]
+      }
+      observe(target) { this.targets = new Set([...this.targets, target]) }
+      unobserve(target) {
+        this.targets = new Set([...this.targets].filter((candidate) => candidate !== target))
+      }
+      disconnect() { this.targets = new Set() }
+    }
+    window.IntersectionObserver = ControlledIntersectionObserver
+    window.__videoObserverCount = () => observers.filter((observer) =>
+      [...observer.targets].some((target) => target.matches('iframe[data-video-src]'))
+    ).length
+    window.__triggerVideoIntersection = (selector, ratio) => {
+      const target = document.querySelector(selector)
+      if (!target) throw new Error(`Missing intersection target: ${selector}`)
+      for (const observer of observers.filter((candidate) => candidate.targets.has(target))) {
+        observer.callback([{ target, intersectionRatio: ratio, isIntersecting: ratio > 0 }], observer)
+      }
+    }
+  })
+}
+
+async function removeIntersectionObserver(page) {
+  await installControlledVideoTimers(page)
+  await page.addInitScript(() => {
+    delete window.IntersectionObserver
+  })
 }
 
 ;(async () => {
@@ -19,8 +114,8 @@ async function openPage(browser, path, options = {}) {
   try {
     const homepageResult = await openPage(browser, '/index.html', {
       viewport: { width: 1440, height: 900 },
-      reducedMotion: 'reduce',
-    })
+      reducedMotion: 'no-preference',
+    }, installControlledIntersectionObserver)
     const homepage = homepageResult.page
 
     assert.equal(await homepage.locator('#department-grid .planet-card').count(), 4)
@@ -28,48 +123,195 @@ async function openPage(browser, path, options = {}) {
     assert.equal(await homepage.locator('#faq-list details').count(), 5)
     assert.equal(await homepage.locator('[data-recruit-primary]').textContent(), '获取开招提醒 ⟶')
     assert.match(await homepage.locator('[data-recruit-status-title]').textContent(), /筹备中/)
-    assert.equal(await homepage.locator('.stat b[data-n="35"]').textContent(), '35')
+    assert.equal(await homepage.locator('.stat b[data-n="35"]').getAttribute('data-n'), '35')
     await homepage.locator('.skip-link').focus()
     await homepage.keyboard.press('Enter')
     assert.equal(await homepage.evaluate(() => location.hash), '#main-content')
     assert.equal(await homepage.evaluate(() => document.activeElement.id), 'main-content')
 
-    // reduced-motion 下 FAQ 走原生瞬时开关，不进入动画态
-    const reducedFaq = homepage.locator('#faq-list details').first()
+    // 我们是谁 / 工程日志 / 什么是 RoboMaster / 精彩展示
+    assert.equal(await homepage.locator('.intro-facts .fact-line').count(), 4)
+    assert.equal(await homepage.locator('.intro-facts').getAttribute('role'), 'group')
+    assert.equal(await homepage.locator('#what-is-rm .roster .unit').count(), 7)
+    assert.equal(await homepage.locator('#what-is-rm .roster').getAttribute('role'), 'group')
+    assert.equal(await homepage.locator('#about .team-video-card iframe').count(), 1)
+    assert.equal(await homepage.locator('#field-log .team-video-card iframe').count(), 3)
+    assert.equal(await homepage.locator('#tech .team-video-card iframe').count(), 0)
+    assert.equal(await homepage.locator('#showcase .show-card iframe').count(), 3)
+    assert.equal(await homepage.locator('#what-is-rm iframe').count(), 1)
+    assert.ok(
+      await homepage.locator('#field-log').evaluate((fieldLog) =>
+        Boolean(fieldLog.compareDocumentPosition(document.querySelector('#what-is-rm')) & Node.DOCUMENT_POSITION_FOLLOWING)
+      )
+    )
+
+    // 八段视频在 25% 可见前保持空白；同一观察器负责加载、卸载和重播调度
+    const initialVideoContract = await homepage.locator('iframe[data-video-src]').evaluateAll((frames) =>
+      frames.map((frame) => {
+        const deferredUrl = new URL(frame.dataset.videoSrc)
+        return {
+          src: frame.getAttribute('src'),
+          bvid: deferredUrl.searchParams.get('bvid'),
+          autoplay: deferredUrl.searchParams.get('autoplay'),
+          muted: deferredUrl.searchParams.get('muted'),
+          duration: frame.dataset.videoDuration,
+          hasLoopControl: frame.hasAttribute('data-video-loop'),
+          loading: frame.loading,
+          tabIndex: frame.tabIndex,
+          allow: frame.getAttribute('allow'),
+          allowFullscreen: frame.hasAttribute('allowfullscreen'),
+          referrerPolicy: frame.referrerPolicy,
+          title: frame.title,
+        }
+      })
+    )
+    assert.deepEqual(initialVideoContract.map((video) => video.bvid), [
+      'BV1rMaVzTEh1',
+      'BV1uH8bzdE61',
+      'BV1Y482zjERP',
+      'BV1ex4y1s72c',
+      'BV14g4y1z7QC',
+      'BV1HBHyeGEQT',
+      'BV1sJHSefErC',
+      'BV1TP8jzSEVA',
+    ])
+    for (const video of initialVideoContract) {
+      assert.equal(video.src, 'about:blank')
+      assert.equal(video.autoplay, '1')
+      assert.equal(video.muted, '1')
+      assert.ok(Number(video.duration) > 0)
+      assert.equal(video.hasLoopControl, true)
+      assert.equal(video.loading, 'lazy')
+      assert.equal(video.tabIndex, -1)
+      assert.equal(video.allow, 'autoplay; fullscreen; encrypted-media')
+      assert.equal(video.allowFullscreen, true)
+      assert.equal(video.referrerPolicy, 'no-referrer')
+      assert.ok(video.title.length > 0)
+    }
+    assert.equal(homepageResult.bilibiliRequests.length, 0)
+    assert.equal(await homepage.evaluate(() => window.__videoObserverCount()), 1)
+    assert.equal(await homepage.locator('nav a[data-wp="what-is-rm"]').getAttribute('href'), '#what-is-rm')
+
+    const competitionVideoRequests = () => homepageResult.bilibiliRequests.filter((url) => url.includes('bvid=BV14g4y1z7QC'))
+    const competitionFrame = homepage.locator('#what-is-rm iframe')
+    await competitionFrame.focus()
+    assert.equal(await competitionFrame.evaluate((frame) => document.activeElement === frame), true)
+    await homepage.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await competitionFrame.scrollIntoViewIfNeeded()
+    await homepage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.24))
+    await homepage.waitForTimeout(100)
+    assert.equal(competitionVideoRequests().length, 0)
+    assert.equal(await competitionFrame.getAttribute('src'), 'about:blank')
+    await homepage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.25))
+    await homepage.waitForFunction(() => !document.querySelector('#what-is-rm iframe')?.hasAttribute('data-video-src'))
+    await homepage.waitForTimeout(100)
+    assert.match(await competitionFrame.getAttribute('src'), /bvid=BV14g4y1z7QC.*autoplay=1.*muted=1/)
+    assert.equal(await competitionFrame.getAttribute('tabindex'), '0')
+    assert.equal(competitionVideoRequests().length, 1)
+    await homepage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.25))
+    await homepage.waitForTimeout(100)
+    assert.equal(competitionVideoRequests().length, 1)
+
+    // 未接管时按已核验时长最佳努力重播；离开阈值后清除定时器并卸载播放器
+    await competitionFrame.evaluate((frame) => {
+      frame.dataset.videoDuration = '0.01'
+      frame.dispatchEvent(new Event('load'))
+    })
+    assert.equal(await homepage.evaluate(() => window.__videoReplayTimerCount()), 1)
+    assert.equal(await homepage.evaluate(() => window.__runNextVideoReplayTimer()), true)
+    await waitForRequestCount(homepage, competitionVideoRequests, 2)
+    await homepage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.24))
+    assert.equal(await competitionFrame.getAttribute('src'), 'about:blank')
+    assert.equal(await competitionFrame.getAttribute('tabindex'), '-1')
+    assert.equal(await homepage.evaluate(() => window.__videoReplayTimerCount()), 0)
+    assert.equal(competitionVideoRequests().length, 2)
+
+    // pagehide 停止定时器；pageshow 只恢复仍可见且未被用户接管的播放器
+    await homepage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.25))
+    await homepage.waitForFunction(() => document.querySelector('#what-is-rm iframe')?.getAttribute('src') !== 'about:blank')
+    await waitForRequestCount(homepage, competitionVideoRequests, 3)
+    await competitionFrame.evaluate((frame) => frame.dispatchEvent(new Event('load')))
+    assert.equal(await homepage.evaluate(() => window.__videoReplayTimerCount()), 1)
+    await homepage.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+    assert.equal(await homepage.evaluate(() => window.__videoReplayTimerCount()), 0)
+    assert.equal(competitionVideoRequests().length, 3)
+    await homepage.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+    assert.equal(await homepage.evaluate(() => window.__videoReplayTimerCount()), 1)
+    assert.equal(await homepage.evaluate(() => window.__runNextVideoReplayTimer()), true)
+    await waitForRequestCount(homepage, competitionVideoRequests, 4)
+
+    // iframe 获得焦点后，父页面不再重播、卸载或在 BFCache 恢复时重载
+    await competitionFrame.focus()
+    assert.equal(await competitionFrame.evaluate((frame) => document.activeElement === frame), true)
+    await homepage.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await competitionFrame.evaluate((frame) => frame.dispatchEvent(new Event('load')))
+    await homepage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.24))
+    assert.match(await competitionFrame.getAttribute('src'), /bvid=BV14g4y1z7QC/)
+    await homepage.evaluate(() => {
+      window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    })
+    assert.equal(await homepage.evaluate(() => window.__videoReplayTimerCount()), 0)
+    assert.equal(competitionVideoRequests().length, 4)
+    assert.deepEqual(homepageResult.errors, [])
+
+    // 不支持 IntersectionObserver 时，全部播放器视为可见，但生命周期监听仍然生效
+    const fallbackResult = await openPage(browser, '/index.html', {
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'no-preference',
+    }, removeIntersectionObserver)
+    const fallbackPage = fallbackResult.page
+    assert.equal(await fallbackPage.evaluate(() => 'IntersectionObserver' in window), false)
+    await fallbackPage.waitForFunction(() =>
+      document.querySelectorAll('iframe[data-video-src]').length === 0
+    )
+    assert.equal(fallbackResult.bilibiliRequests.length, 8)
+    const fallbackCompetitionRequests = () => fallbackResult.bilibiliRequests.filter((url) =>
+      url.includes('bvid=BV14g4y1z7QC')
+    )
+    const fallbackCompetitionFrame = fallbackPage.locator('#what-is-rm iframe')
+    await fallbackCompetitionFrame.evaluate((frame) => {
+      frame.dataset.videoDuration = '0.01'
+      frame.dispatchEvent(new Event('load'))
+    })
+    assert.equal(await fallbackPage.evaluate(() => window.__videoReplayTimerCount()), 1)
+    await fallbackPage.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+    assert.equal(await fallbackPage.evaluate(() => window.__videoReplayTimerCount()), 0)
+    assert.equal(fallbackCompetitionRequests().length, 1)
+    await fallbackPage.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+    assert.equal(await fallbackPage.evaluate(() => window.__videoReplayTimerCount()), 1)
+    assert.equal(await fallbackPage.evaluate(() => window.__runNextVideoReplayTimer()), true)
+    await waitForRequestCount(fallbackPage, fallbackCompetitionRequests, 2)
+    assert.deepEqual(fallbackResult.errors, [])
+    await fallbackPage.close()
+
+    // reduced-motion 下保留按需播放器，但关闭自动播放与强制重播
+    const reducedResult = await openPage(browser, '/index.html', {
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+    }, installControlledIntersectionObserver)
+    const reducedPage = reducedResult.page
+    assert.equal(await reducedPage.locator('.stat b[data-n="35"]').textContent(), '35')
+    const reducedFaq = reducedPage.locator('#faq-list details').first()
     await reducedFaq.locator('summary').click()
     assert.equal(await reducedFaq.evaluate((details) => details.open), true)
     assert.equal(await reducedFaq.evaluate((details) => details.classList.contains('is-animating')), false)
     await reducedFaq.locator('summary').click()
     assert.equal(await reducedFaq.evaluate((details) => details.open), false)
-
-    // 我们是谁 / 什么是 RoboMaster / 精彩展示：官方视频源与兵种名录
-    assert.equal(await homepage.locator('.intro-facts .fact-line').count(), 4)
-    assert.equal(await homepage.locator('.intro-facts').getAttribute('role'), 'group')
-    assert.equal(await homepage.locator('#what-is-rm .roster .unit').count(), 7)
-    assert.equal(await homepage.locator('#what-is-rm .roster').getAttribute('role'), 'group')
-    assert.equal(await homepage.locator('#showcase .show-card .video-facade').count(), 3)
-    // 首屏只载封面门面，不内嵌播放器 iframe
-    assert.equal(await homepage.locator('iframe').count(), 0)
-    const officialBvids = await homepage.locator('#what-is-rm [data-video-embed], #showcase [data-video-embed]').evaluateAll((facades) =>
-      facades.map((facade) => new URL(facade.dataset.videoEmbed).searchParams.get('bvid'))
-    )
-    assert.deepEqual(officialBvids, ['BV14g4y1z7QC', 'BV1LB55z9EUL', 'BV1pA7pzhEkF', 'BV1QQ4y1B7Cy'])
-    assert.equal(await homepage.locator('nav a[data-wp="what-is-rm"]').getAttribute('href'), '#what-is-rm')
-
-    // 点击门面后才注入播放器 iframe，src 指向对应官方视频
-    await homepage.locator('#showcase .video-facade').first().click()
-    const injected = homepage.locator('#showcase iframe').first()
-    assert.match(await injected.getAttribute('src'), /bvid=BV1LB55z9EUL/)
-    assert.equal(await injected.getAttribute('title'), 'RMUC 2025 机甲大师超级对抗赛规则视频')
-    assert.equal(await homepage.locator('#showcase .video-facade').count(), 2)
-
-    // 赛事板块门面同样可点击注入，带 autoplay 权限且焦点移交播放器
-    await homepage.locator('#what-is-rm .video-facade').click()
-    const rmFrame = homepage.locator('#what-is-rm iframe').first()
-    assert.match(await rmFrame.getAttribute('src'), /bvid=BV14g4y1z7QC/)
-    assert.equal(await rmFrame.getAttribute('allow'), 'autoplay; fullscreen; encrypted-media')
-    assert.equal(await rmFrame.evaluate((frame) => document.activeElement === frame), true)
-    assert.deepEqual(homepageResult.errors, [])
+    const reducedCompetitionFrame = reducedPage.locator('#what-is-rm iframe')
+    await reducedCompetitionFrame.scrollIntoViewIfNeeded()
+    await reducedPage.evaluate(() => window.__triggerVideoIntersection('#what-is-rm iframe', 0.25))
+    await reducedPage.waitForFunction(() => !document.querySelector('#what-is-rm iframe')?.hasAttribute('data-video-src'))
+    assert.match(await reducedCompetitionFrame.getAttribute('src'), /bvid=BV14g4y1z7QC.*autoplay=0.*muted=1/)
+    const reducedCompetitionRequests = () => reducedResult.bilibiliRequests.filter((url) => url.includes('bvid=BV14g4y1z7QC&'))
+    await waitForRequestCount(reducedPage, reducedCompetitionRequests, 1)
+    await reducedCompetitionFrame.evaluate((frame) => {
+      frame.dataset.videoDuration = '0.01'
+      frame.dispatchEvent(new Event('load'))
+    })
+    assert.equal(await reducedPage.evaluate(() => window.__videoReplayTimerCount()), 0)
+    assert.deepEqual(reducedResult.errors, [])
+    await reducedPage.close()
 
     const mobileResult = await openPage(browser, '/index.html', {
       viewport: { width: 375, height: 844 },
@@ -88,9 +330,28 @@ async function openPage(browser, path, options = {}) {
     const noScriptHomepage = await browser.newPage({ viewport: { width: 375, height: 844 }, javaScriptEnabled: false })
     await noScriptHomepage.goto(`${baseUrl}/index.html`, { waitUntil: 'load' })
     assert.equal(await noScriptHomepage.locator('#primary-navigation').evaluate((element) => getComputedStyle(element).display), 'flex')
-    // 无 JS 时 reveal 内容直接可见，视频门面退化为新标签页打开官方视频页
+    // 无 JS 时 reveal 内容保持可见；八个空 iframe 隐藏且不可聚焦，官方链接保持同序可用
     assert.equal(await noScriptHomepage.locator('#showcase .show-card').first().evaluate((element) => getComputedStyle(element).opacity), '1')
-    assert.equal(await noScriptHomepage.locator('#what-is-rm .video-facade').getAttribute('href'), 'https://www.bilibili.com/video/BV14g4y1z7QC/')
+    const noScriptFrames = noScriptHomepage.locator('iframe[data-video-src]')
+    assert.equal(await noScriptFrames.count(), 8)
+    for (let index = 0; index < await noScriptFrames.count(); index += 1) {
+      assert.equal(await noScriptFrames.nth(index).isVisible(), false)
+    }
+    assert.equal(await noScriptFrames.evaluateAll((frames) => frames.some((frame) => frame.matches(':focus'))), false)
+    const noScriptVideoLinks = noScriptHomepage.locator('.video-fallback a')
+    assert.equal(await noScriptVideoLinks.count(), 8)
+    assert.deepEqual(await noScriptVideoLinks.evaluateAll((links) => links.map((link) => link.href)), [
+      'https://www.bilibili.com/video/BV1rMaVzTEh1/',
+      'https://www.bilibili.com/video/BV1uH8bzdE61/',
+      'https://www.bilibili.com/video/BV1Y482zjERP/',
+      'https://www.bilibili.com/video/BV1ex4y1s72c/',
+      'https://www.bilibili.com/video/BV14g4y1z7QC/',
+      'https://www.bilibili.com/video/BV1HBHyeGEQT/',
+      'https://www.bilibili.com/video/BV1sJHSefErC/',
+      'https://www.bilibili.com/video/BV1TP8jzSEVA/',
+    ])
+    await noScriptHomepage.keyboard.press('Tab')
+    assert.equal(await noScriptFrames.evaluateAll((frames) => frames.some((frame) => frame.matches(':focus'))), false)
     await noScriptHomepage.close()
 
     const archiveResult = await openPage(browser, '/open-source.html', {
@@ -358,7 +619,7 @@ async function openPage(browser, path, options = {}) {
 
     await deepLinkPage.keyboard.press('Escape')
     assert.equal(await deepLinkPage.locator('#project-dialog').evaluate((dialog) => dialog.open), false)
-    assert.equal(await deepLinkPage.evaluate(() => location.hash), '')
+    await deepLinkPage.waitForFunction(() => location.hash === '')
 
     await deepLinkPage.locator('[data-details-index="24"]').click()
     assert.equal(await deepLinkPage.evaluate(() => location.hash), '#project-24')
