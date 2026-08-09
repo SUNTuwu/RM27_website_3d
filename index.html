@@ -9,6 +9,29 @@
 <meta property="og:description" content="你不需要先会造机器人。你需要愿意把它造出来。">
 <meta property="og:image" content="assets/arena-fleet-web.jpg">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="ENTERPRIZE · HKUST RoboMaster">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ENTERPRIZE · HKUST RoboMaster Team｜RM2027 招新">
+<meta name="twitter:description" content="香港科技大学 RoboMaster 战队 ENTERPRIZE：机械、硬件、电控、算法四大方向，RM2027 招新与开源档案。">
+<meta name="theme-color" content="#04060e">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="apple-touch-icon" href="assets/logo.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SportsTeam",
+  "name": "ENTERPRIZE · HKUST RoboMaster Team",
+  "alternateName": "香港科技大学 RoboMaster 战队 ENTERPRIZE",
+  "sport": "RoboMaster 机甲大师赛",
+  "foundingDate": "2015",
+  "description": "香港科技大学 RoboMaster 战队 ENTERPRIZE，下设机械、硬件、电控、算法四个方向，正在面向 RM2027 赛季招新。",
+  "memberOf": {
+    "@type": "CollegeOrUniversity",
+    "name": "The Hong Kong University of Science and Technology"
+  }
+}
+</script>
 <style>
 :root{
   --bg:#04060e; --card:rgba(140,180,220,.05); --line:rgba(120,180,220,.14);
@@ -26,6 +49,9 @@ body{background:var(--bg);color:var(--txt);font-family:"Source Han Sans","Source
 a{color:var(--cyan2);text-decoration:none}
 a:hover{text-decoration:underline}
 ::selection{background:rgba(70,184,200,.4)}
+.skip-link{position:fixed;z-index:240;left:18px;top:-64px;padding:9px 15px;border-radius:0 0 8px 8px;background:var(--cyan2);color:#04121a;font-weight:800;transition:top .2s}
+.skip-link:focus{top:0}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--gold2);outline-offset:4px}
 
 /* ===== 深空画布 / 星云 / 扫描线 ===== */
 #warp{position:fixed;inset:0;z-index:0;pointer-events:none}
@@ -53,15 +79,20 @@ nav .bar{max-width:1280px;margin:0 auto;padding:0 26px;display:flex;align-items:
 nav .logo{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:2.5px;font-size:17px;color:var(--txt)}
 nav .logo img{width:34px;height:34px;border-radius:8px}
 nav .logo .n{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:2px;font-weight:400}
-nav .links{display:flex;align-items:center;gap:24px;font-size:14.5px}
+nav .links{display:flex;align-items:center;gap:18px;font-size:14.5px}
 nav .links a{color:var(--dim);transition:color .2s}
 nav .links a:hover{color:var(--cyan2);text-decoration:none}
 nav .links a.act{color:var(--cyan2)}
 nav .join-btn{background:linear-gradient(90deg,var(--cyan),#2b8fa0);color:#04121a !important;font-weight:700;padding:7px 18px;border-radius:99px;transition:transform .2s,box-shadow .2s}
 nav .join-btn:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(78,168,184,.4);text-decoration:none}
+.nav-toggle{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--line);border-radius:8px;background:rgba(78,168,184,.08);color:var(--cyan2);font:800 21px var(--mono);cursor:pointer}
 @media(max-width:1100px){
-  nav .links a:not(.join-btn){display:none}
   #warp-hud{display:none}
+  .nav-toggle{display:inline-flex}
+  nav .links{position:absolute;top:62px;left:18px;right:18px;display:none;align-items:stretch;gap:4px;padding:12px;border:1px solid var(--line);border-radius:0 0 14px 14px;background:rgba(4,6,14,.97);box-shadow:0 18px 48px rgba(0,0,0,.45)}
+  nav .links.is-open{display:flex;flex-direction:column}
+  nav .links a{padding:10px 12px;border-radius:7px}
+  nav .links .join-btn{text-align:center;margin-top:4px}
 }
 
 /* ===== 主区 ===== */
@@ -69,6 +100,7 @@ main{position:relative;z-index:1}
 footer{position:relative;z-index:1}
 .wrap{max-width:1080px;margin:0 auto;padding:0 26px}
 section{padding:100px 0;position:relative}
+section[id],[id="oss"],[id="training"]{scroll-margin-top:76px}
 
 /* ===== 章节标题（LCARS 星历） ===== */
 .sec-head{margin-bottom:42px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
@@ -253,15 +285,67 @@ nav.holo-surface::after{inset:0;border-radius:0}
   border-radius:0 14px 14px 0}
 .step::before{counter-increment:step;content:"0" counter(step);font-size:30px;font-weight:900;font-family:var(--mono);
   color:transparent;-webkit-text-stroke:1px rgba(183,148,244,.7);letter-spacing:2px}
+.step .en2{color:var(--cyan);font:10px var(--mono);letter-spacing:1.6px;text-transform:uppercase}
 .step h4{margin:10px 0 6px;color:var(--purple);font-size:16.5px}
 .step p{font-size:13.5px;color:var(--dim)}
 
 /* ===== FAQ ===== */
-details{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:0 12px 12px 0;
-  padding:16px 22px;margin-bottom:12px}
-summary{cursor:pointer;font-weight:700;font-size:15.5px}
-summary::marker{color:var(--cyan)}
+details{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:0 12px 12px 0;
+  padding:16px 22px;margin-bottom:12px;transition:border-color .4s ease,box-shadow .45s ease,background .4s ease}
+details[data-faq-details][open]{border-color:rgba(127,212,224,.55);border-left-color:var(--cyan2);
+  background:linear-gradient(150deg,rgba(70,184,200,.10),var(--card) 45%);box-shadow:0 0 28px rgba(112,224,255,.14),inset 0 0 34px rgba(112,224,255,.05)}
+details[data-faq-details]::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;
+  background:linear-gradient(180deg,transparent 8%,rgba(127,212,224,.14) 50%,transparent 92%)}
+details[data-faq-details][open]::before{animation:faq-scan .85s cubic-bezier(.22,1,.36,1)}
+@keyframes faq-scan{0%{opacity:1;transform:translateY(-101%)}100%{opacity:0;transform:translateY(101%)}}
+summary{cursor:pointer;font-weight:700;font-size:15.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:14px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"[+]";flex:none;font:700 12px var(--mono);letter-spacing:1px;color:var(--cyan);text-shadow:0 0 10px rgba(127,212,224,.55);
+  transition:transform .45s cubic-bezier(.22,1,.36,1),color .35s ease,text-shadow .35s ease}
+details[open] summary::after{transform:rotate(135deg);color:var(--gold2);text-shadow:0 0 14px rgba(227,193,136,.85)}
 details p{margin-top:10px;color:#c0cce2;font-size:14px}
+details[data-faq-details] p{position:relative;margin:0;padding-top:12px;box-sizing:border-box}
+details[data-faq-details] p::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,var(--cyan2),rgba(127,212,224,.12) 70%,transparent);transform:scaleX(0);transform-origin:left}
+details[data-faq-details][open] p{animation:faq-boot .5s ease-out}
+details[data-faq-details][open] p::before{animation:faq-line .55s .08s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes faq-boot{0%{opacity:0}14%{opacity:.8}28%{opacity:.25}44%{opacity:.95}60%{opacity:.6}100%{opacity:1}}
+@keyframes faq-line{to{transform:scaleX(1)}}
+details[data-faq-details].is-animating p{overflow:hidden}
+
+/* ===== 我们是谁 · 赛事介绍 · 精彩展示 ===== */
+.intro-panel{display:grid;grid-template-columns:1.5fr 1fr;gap:26px;align-items:stretch;margin-bottom:36px}
+.intro-main{padding:26px 30px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--cyan);border-radius:0 16px 16px 0}
+.intro-main p{color:#c9d4e8;font-size:15px;line-height:1.9;margin-bottom:14px}
+.intro-main p:last-child{margin-bottom:0}
+.intro-main b{color:var(--cyan2)}
+.intro-facts{padding:22px 24px;background:rgba(7,12,23,.72);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;justify-content:center;gap:12px;font-family:var(--mono)}
+.fact-line{display:flex;justify-content:space-between;gap:14px;border-bottom:1px dashed rgba(127,212,224,.18);padding-bottom:10px;font-size:12px}
+.fact-line:last-child{border-bottom:0;padding-bottom:0}
+.fact-line span{color:var(--dim);letter-spacing:2px}
+.fact-line b{color:var(--gold2);text-align:right;font-weight:700}
+.roster{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.roster .unit{border:1px solid rgba(127,212,224,.3);background:rgba(70,184,200,.06);border-radius:4px;padding:5px 11px;font:11px var(--mono);letter-spacing:1.5px;color:var(--cyan2)}
+.roster .unit i{font-style:normal;color:var(--dim);margin-left:6px}
+.rm-video{overflow:hidden;border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:0 16px 16px 0;background:rgba(7,12,23,.82);box-shadow:0 18px 60px rgba(0,0,0,.35)}
+.rm-video .cap2{padding:13px 18px;color:var(--dim);font-size:12.5px}
+.video-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#060b16;color:var(--cyan2);cursor:pointer;overflow:hidden;text-decoration:none}
+.video-facade img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.82;transition:opacity .35s ease,transform .5s cubic-bezier(.22,1,.36,1)}
+.video-facade:hover img,.video-facade:focus-visible img{opacity:1;transform:scale(1.03)}
+.video-facade .vf-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,6,14,.14) 40%,rgba(4,6,14,.7) 100%)}
+.video-facade .vf-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#04121a;background:var(--cyan2);box-shadow:0 0 26px rgba(112,224,255,.65);transition:transform .3s ease,box-shadow .3s ease}
+.video-facade:hover .vf-play,.video-facade:focus-visible .vf-play{transform:translate(-50%,-50%) scale(1.12);box-shadow:0 0 40px rgba(112,224,255,.9)}
+.video-facade .vf-hint{position:absolute;left:14px;right:14px;bottom:10px;font:10.5px var(--mono);letter-spacing:1.5px;color:#cfe6f2;text-align:left}
+.video-frame{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+#what-is-rm .intro-panel{margin-bottom:0}
+.show-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.show-card{overflow:hidden;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--pc,var(--cyan));border-radius:0 0 14px 14px;
+  transition:transform .4s cubic-bezier(.22,1,.36,1),box-shadow .4s ease,border-color .3s ease}
+.show-card:hover{transform:translateY(-6px);box-shadow:0 20px 50px rgba(70,184,200,.18);border-color:rgba(127,212,224,.5)}
+.show-card .sc-body{padding:15px 18px 17px}
+.show-card h3{font-size:14.5px;color:var(--txt);line-height:1.5}
+.show-card .sc-meta{margin-top:8px;font:10.5px var(--mono);letter-spacing:1.5px;color:var(--dim)}
+@media(max-width:900px){.intro-panel{grid-template-columns:1fr}.show-grid{grid-template-columns:1fr}}
 
 /* ===== 跃迁黑洞 ===== */
 #join{overflow:hidden}
@@ -307,29 +391,48 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 .reveal{opacity:0;transform:translateY(30px)}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none !important;transition:none !important}
-  .reveal{opacity:1;transform:none}
+  .reveal,.card:hover,.lpanel:hover,.btn:hover,.repo:hover,.bh-cta .jump:hover{opacity:1;transform:none}
+  .planet-card:hover .planet{transform:none}
+}
+@media(max-width:720px),(hover:none),(pointer:coarse){
+  nav{backdrop-filter:none;background:rgba(4,6,14,.94)}
+  #nebula-field{filter:none;mix-blend-mode:normal;opacity:.58}
+  .mouse-warp-canvas{display:none}
+  .card,.lpanel{backdrop-filter:none}
 }
 @media(max-width:600px){
   .video-teaser{min-height:270px;padding:24px}.video-teaser p{font-size:13px}
   .recruit-status{padding:20px}.action-row{margin-top:18px}
 }
 </style>
+<noscript><style>
+.reveal{opacity:1 !important;transform:none !important}
+@media(max-width:1100px){
+  .nav-toggle{display:none}
+  nav .bar{height:auto;min-height:62px;flex-wrap:wrap;padding-bottom:10px}
+  nav .links{position:static;display:flex;flex-direction:row;width:100%;overflow-x:auto;padding:8px 0;border:0;border-radius:0;background:transparent;box-shadow:none}
+  nav .links a{white-space:nowrap}
+}
+</style></noscript>
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
 
-<div id="nebula"></div>
+<div id="nebula" aria-hidden="true"></div>
 <canvas id="nebula-field" aria-hidden="true"></canvas>
-<canvas id="warp"></canvas>
-<div id="scanlines"></div>
-<div id="flash"></div>
+<canvas id="warp" aria-hidden="true"></canvas>
+<div id="scanlines" aria-hidden="true"></div>
+<div id="flash" aria-hidden="true"></div>
 
 <!-- ===== 顶部导航 ===== -->
-<nav>
+<nav aria-label="主要导航">
   <div class="bar">
-    <div class="logo"><img src="assets/logo.png" alt="ENTERPRIZE logo"><div>ENTERPRIZE<div class="n">NCC-2015-EPZ // HKUST ROBOMASTER</div></div></div>
-    <div class="links">
+    <a class="logo" href="#hero" aria-label="返回 ENTERPRIZE 首页顶部"><img src="assets/logo.png" alt=""><div>ENTERPRIZE<div class="n">NCC-2015-EPZ // HKUST ROBOMASTER</div></div></a>
+    <button class="nav-toggle" id="nav-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false" aria-label="打开导航菜单">☰</button>
+    <div class="links" id="primary-navigation">
       <a href="#hero"   data-wp="hero">深空</a>
       <a href="#about"  data-wp="about">战队</a>
+      <a href="#what-is-rm" data-wp="what-is-rm">赛事</a>
       <a href="#honors" data-wp="honors">战绩</a>
       <a href="#depts"  data-wp="depts">部门</a>
       <a href="#tech"   data-wp="tech">技术</a>
@@ -342,7 +445,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 
 <div id="warp-hud">WARP <b id="vel-val">0.0</b> c</div>
 
-<main>
+<main id="main-content" tabindex="-1">
 <!-- ================= 01 深空 ================= -->
 <header class="hero" id="hero">
   <div class="hero-bg"></div>
@@ -350,13 +453,13 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   <div class="hero-warp-glow" id="hero-warp-glow" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div>
-      <div class="badge"><span class="dot"></span>RM2027 RECRUITMENT · STANDBY</div>
+      <div class="badge"><span class="dot"></span><span data-recruit-badge>RM2027 RECRUITMENT · STANDBY</span></div>
       <h1>ENTERPRIZE</h1>
       <div class="trek">HKUST ROBOMASTER TEAM // EST. 2015</div>
       <div class="theme">新 舰 起 航</div>
       <p class="lead">队名来自《星际迷航》的星舰 Enterprise——我们要做的，是驾驶自己的战舰，勇闯前人未至之境。在这里，你将亲手设计、制造并驾驶真正的机器人，站上全国最大的大学生机器人赛场。</p>
       <div class="cta">
-        <a class="btn btn-p" href="#join">点火起航 ⟶</a>
+        <a class="btn btn-p" href="#interest-actions" data-recruit-primary>获取开招提醒 ⟶</a>
         <a class="btn btn-o" href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">▶ B站视频</a>
       </div>
       <div class="stats">
@@ -378,6 +481,19 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       <div><div class="wp">WAYPOINT 02 // IGNITION</div><h2>点火 · 我们是谁</h2><div class="en">Who We Are</div></div>
       <div class="nums">47 1701 63<br>09 2620 26</div>
     </div>
+    <div class="intro-panel reveal">
+      <div class="intro-main">
+        <p><b>ENTERPRIZE 是香港科技大学的 RoboMaster 机甲大师战队。</b>2015 年，一群想把课堂公式变成钢铁机器的学生创立了它——队名致敬《星际迷航》的星舰 Enterprise，"勇闯前人未至之境"从此成为我们的工程信条。</p>
+        <p>战队以学分项目课程在 HKUST 工学院 Dream Team Hub 运行，机械、硬件、电控、算法四条航线并行。队员们用一年时间，把图纸、焊点与代码锻造成能上场作战的机器人舰队；而每一位新人，都会在老队员的带领下走完同一条路。</p>
+        <p>我们既是一支竞赛队伍，也是一所工程师的学校——所有经过赛场验证的方案最终全部开源，留给下一位想造机器人的人。</p>
+      </div>
+      <div class="intro-facts" role="group" aria-label="战队档案">
+        <div class="fact-line"><span>TEAM // 建制</span><b>机械 · 硬件 · 电控 · 算法</b></div>
+        <div class="fact-line"><span>BASE // 基地</span><b>HKUST 工学院 Dream Team Hub</b></div>
+        <div class="fact-line"><span>MODE // 运行</span><b>学分项目课程 · 全年赛季制</b></div>
+        <div class="fact-line"><span>SINCE // 传承</span><b>2015 至今 · 方案全部开源</b></div>
+      </div>
+    </div>
     <div class="grid g3">
       <div class="card reveal" style="--pc:var(--cyan)"><h3 style="color:var(--cyan2)">🛰 最老牌</h3><p>成立于 2015 年，全球最早参加 RoboMaster 机甲大师赛的战队之一，代表香港科技大学征战十年。</p></div>
       <div class="card reveal" style="--pc:var(--gold)"><h3 style="color:var(--gold2)">🏆 赛场与工程并进</h3><p>2019 年闯入全球总决赛 12 强；2025 高校联盟赛浙江站 3V3 冠军、超级对抗赛全国赛二等奖；2026 高校联盟赛安徽站获甲级二等奖。</p></div>
@@ -398,11 +514,95 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </section>
 
-<!-- ================= 03 巡航 · 战绩 ================= -->
+<!-- ================= 03 首次接触 · 什么是 RoboMaster ================= -->
+<section id="what-is-rm">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div><div class="wp">WAYPOINT 03 // FIRST CONTACT</div><h2>什么是 RoboMaster 机甲大师赛</h2><div class="en">About the Competition</div></div>
+      <div class="nums">7 VS 7<br>ROBOT COMBAT</div>
+    </div>
+    <div class="intro-panel">
+      <div class="intro-main reveal">
+        <p><b>RoboMaster 机甲大师赛由大疆 DJI 发起</b>，是全球首个射击对抗类的大学生机器人赛事。参赛队伍用一年时间自主设计、制造机器人舰队，在布满机关的赛场上实时对抗：发射弹丸攻击敌方机器人与基地，血量归零即被击毁，先摧毁对方基地者获胜。</p>
+        <p>这不是遥控车比赛——每台机器人由机械结构、嵌入式硬件、电机控制与视觉算法共同驱动；哨兵机器人更需要全自动感知、决策与射击。英雄远程吊射、工程采矿补给、步兵近战缠斗、空中机器人俯冲支援，再配合飞镖与雷达系统，才构成一支队伍的完整战力。</p>
+        <p>赛季从高校联盟赛与超级对抗赛区域赛开始，层层晋级全国赛，最终站上总决赛舞台——全国数百所高校、数万名青年工程师，在同一片赛场上验证各自一年的答案。</p>
+        <div class="roster" role="group" aria-label="比赛机器人兵种">
+          <span class="unit">英雄<i>HERO</i></span>
+          <span class="unit">工程<i>ENGINEER</i></span>
+          <span class="unit">步兵<i>INFANTRY</i></span>
+          <span class="unit">哨兵<i>SENTRY</i></span>
+          <span class="unit">空中机器人<i>AERIAL</i></span>
+          <span class="unit">飞镖<i>DART</i></span>
+          <span class="unit">雷达站<i>RADAR</i></span>
+        </div>
+      </div>
+      <div class="rm-video reveal">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV14g4y1z7QC/" target="_blank" rel="noopener" aria-label="播放官方宣传片：三分钟带你了解 RoboMaster 机甲大师赛"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1&autoplay=1"
+          data-video-title="RoboMaster 官方宣传片：三分钟带你了解机甲大师赛">
+          <img src="https://i0.hdslb.com/bfs/archive/684e3e3b667e0ebf2d76e4a4782e41c3481954dd.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <p class="cap2">官方宣传片《三分钟带你了解万千青年工程师的舞台——RoboMaster机甲大师赛》 · 来源：B站「RoboMaster机甲大师」</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 高光回放 · 精彩展示 ================= -->
+<section id="showcase">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div><div class="wp">WAYPOINT 04 // HIGHLIGHT REEL</div><h2>高光回放 · 精彩展示</h2><div class="en">Official Match Highlights</div></div>
+      <div class="nums">OFFICIAL<br>CLIPS ×3</div>
+    </div>
+    <p style="max-width:780px;color:#c0cce2;margin-bottom:26px" class="reveal">以下视频均由 RoboMaster 官方账号「RoboMaster机甲大师」发布：先看懂规则，再感受赛场的极限操作——而这，正是 ENTERPRIZE 每个赛季的日常。</p>
+    <div class="show-grid">
+      <div class="show-card reveal" style="--pc:var(--gold)">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV1LB55z9EUL/" target="_blank" rel="noopener" aria-label="播放视频：RMUC 2025 机甲大师超级对抗赛规则视频"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=114477991200346&bvid=BV1LB55z9EUL&cid=31131238904&p=1&autoplay=1"
+          data-video-title="RMUC 2025 机甲大师超级对抗赛规则视频">
+          <img src="https://i2.hdslb.com/bfs/archive/472cd8245a06bd3c4e86b1bc4432db0c21cf4244.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <div class="sc-body"><h3>RMUC 2025 超级对抗赛 · 规则视频</h3><div class="sc-meta">RoboMaster机甲大师 // 看懂比赛 · 2 MIN</div></div>
+      </div>
+      <div class="show-card reveal" style="--pc:var(--cyan)">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV1pA7pzhEkF/" target="_blank" rel="noopener" aria-label="播放视频：RMUC 2025 东部赛区精彩集锦——空地协同，极限换家"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=114597092656537&bvid=BV1pA7pzhEkF&cid=30233464752&p=1&autoplay=1"
+          data-video-title="RMUC 2025 东部赛区精彩集锦：空地协同，极限换家">
+          <img src="https://i0.hdslb.com/bfs/archive/a7cbf9bbfee0b9a1a09dd2486a0c9146abf72e9a.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <div class="sc-body"><h3>空地协同，极限换家｜RMUC 2025 精彩集锦</h3><div class="sc-meta">RoboMaster机甲大师 // 高光时刻 · 2 MIN</div></div>
+      </div>
+      <div class="show-card reveal" style="--pc:var(--pink)">
+        <a class="video-facade" href="https://www.bilibili.com/video/BV1QQ4y1B7Cy/" target="_blank" rel="noopener" aria-label="播放赛事介绍视频：致热爱的你，机甲大师超级对抗赛等你加入"
+          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=721042980&bvid=BV1QQ4y1B7Cy&cid=424822031&p=1&autoplay=1"
+          data-video-title="赛事介绍：致热爱的你，机甲大师超级对抗赛等你加入">
+          <img src="https://i2.hdslb.com/bfs/archive/1aecfff058f590b0e284011452b4281ddcea0063.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
+          <span class="vf-veil" aria-hidden="true"></span>
+          <span class="vf-play" aria-hidden="true">▶</span>
+          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
+        </a>
+        <div class="sc-body"><h3>致热爱的你｜超级对抗赛等你加入</h3><div class="sc-meta">RoboMaster机甲大师 // 赛事介绍 · 4 MIN</div></div>
+      </div>
+    </div>
+    <p style="margin-top:20px" class="reveal"><a class="btn btn-o" href="https://space.bilibili.com/20554233" target="_blank" rel="noopener">更多官方视频 ⟶ B站「RoboMaster机甲大师」</a></p>
+  </div>
+</section>
+
+<!-- ================= 05 巡航 · 战绩 ================= -->
 <section id="honors">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 03 // CRUISE</div><h2>曲速巡航 · 十年战绩</h2><div class="en">Honors · 2015 – 2026</div></div>
+      <div><div class="wp">WAYPOINT 05 // CRUISE</div><h2>曲速巡航 · 十年战绩</h2><div class="en">Honors · 2015 – 2026</div></div>
       <div class="nums">88 5811 84<br>12 0046 B8</div>
     </div>
     <div class="metric-row">
@@ -433,63 +633,23 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </div>
 
-<!-- ================= 04 星球 · 四大部门 ================= -->
+<!-- ================= 06 星球 · 四大部门 ================= -->
 <section id="depts">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 04 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
+      <div><div class="wp">WAYPOINT 06 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
       <div class="nums">34 0776 EP<br>56 3300 11</div>
     </div>
-    <div class="planets">
-      <div class="card planet-card reveal" style="--pc:var(--gold)">
-        <div class="planet p-mech"></div>
-        <h3 style="color:var(--gold2)">机械部</h3><div class="en2">Mechanical</div>
-        <ul>
-          <li>负责英雄、工程、步兵等机器人的机械结构设计：底盘、云台、机械臂、传动与轴系</li>
-          <li>从立项、采购到设计、迭代的完整项目流程</li>
-          <li>你将掌握：SolidWorks 三维建模、3D 打印、CNC 加工、装配与测试</li>
-        </ul>
-        <div class="req">希望你：喜欢动手造物，对结构有直觉；零基础可，部内有自学路线与老队员带教。</div>
-      </div>
-      <div class="card planet-card reveal" style="--pc:var(--green)">
-        <div class="planet p-hw"></div>
-        <h3 style="color:var(--green)">硬件部</h3><div class="en2">Hardware</div>
-        <ul>
-          <li>设计、构建、维护全队的电子系统与供电网络</li>
-          <li>核心模块：机器人主控板、超级电容功率控制板、无线充电接收系统</li>
-          <li>你将掌握：元器件特性、KiCad PCB 设计、电源拓扑、硬件调试与维护</li>
-        </ul>
-        <div class="req">希望你：对电路世界好奇，细致耐心；提供从基础到进阶的完整自学建议。</div>
-      </div>
-      <div class="card planet-card reveal" style="--pc:var(--pink)">
-        <div class="planet p-ec"></div>
-        <h3 style="color:var(--pink)">电控部</h3><div class="en2">Embedded Control</div>
-        <ul>
-          <li>开发 STM32 驱动程序，设计控制与信号处理逻辑</li>
-          <li>整机调试与维护，追求"赛场级"稳定性</li>
-          <li>你将掌握：C/C++、PID/LQR 控制、CAN 总线与 DJI 电机、滤波器、FreeRTOS</li>
-        </ul>
-        <div class="req">希望你：有热情、责任心强、能独立思考；零基础建议先自学 C++ 与 PID 控制（部内有教程）。</div>
-      </div>
-      <div class="card planet-card reveal" style="--pc:var(--cyan)">
-        <div class="planet p-alg"></div>
-        <h3 style="color:var(--cyan2)">算法部</h3><div class="en2">Algorithm & Vision</div>
-        <ul>
-          <li>处理相机、激光雷达等传感器数据，让机器人拥有"眼睛"</li>
-          <li>自动瞄准（装甲板识别跟踪）、智能导航、全自动哨兵、雷达站</li>
-          <li>你将掌握：OpenCV、YOLO 深度学习、卡尔曼滤波、TensorRT 部署、ROS</li>
-        </ul>
-        <div class="req">希望你：对 AI 与视觉着迷，愿意读论文写代码；代表作：局均易伤 1618.3s 全国第一的雷达算法。</div>
-      </div>
-    </div>
+    <div class="planets" id="department-grid" aria-live="polite"></div>
+    <noscript><p class="note">启用 JavaScript 后可查看四个部门的职责、技术方向、成长路线与代表项目。</p></noscript>
   </div>
 </section>
 
-<!-- ================= 05 舰载科技 ================= -->
+<!-- ================= 07 舰载科技 ================= -->
 <section id="tech">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 05 // SYSTEMS</div><h2>舰载科技 · 你将亲手打造</h2><div class="en">What You Will Build</div></div>
+      <div><div class="wp">WAYPOINT 07 // SYSTEMS</div><h2>舰载科技 · 你将亲手打造</h2><div class="en">What You Will Build</div></div>
       <div class="nums">77 1618 3<br>02 1912 1</div>
     </div>
     <div class="grid g2">
@@ -535,7 +695,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <!-- 开源墙 -->
     <div id="oss" style="padding-top:90px">
       <div class="sec-head reveal">
-        <div><div class="wp">WAYPOINT 05-B // OPEN SOURCE</div><h2>开源，是我们的传统</h2><div class="en">Open Source Since 2016</div></div>
+        <div><div class="wp">WAYPOINT 07-B // OPEN SOURCE</div><h2>开源，是我们的传统</h2><div class="en">Open Source Since 2016</div></div>
         <div class="nums">21 0000 +<br>34 REPOS</div>
       </div>
       <p style="max-width:760px;color:#c0cce2;margin-bottom:26px" class="reveal">从 2016 年起，我们把每一赛季的代码、硬件、机械图纸与培训资料全部开源。你的作品将被整个 RoboMaster 社区阅读、引用、点 Star——这是比简历更有说服力的工程师名片。</p>
@@ -554,7 +714,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <!-- 培训 -->
     <div id="training" style="padding-top:90px">
       <div class="sec-head reveal">
-        <div><div class="wp">WAYPOINT 05-C // TRAINING</div><h2>系统化新生培训</h2><div class="en">Training Program</div></div>
+        <div><div class="wp">WAYPOINT 07-C // TRAINING</div><h2>系统化新生培训</h2><div class="en">Training Program</div></div>
         <div class="nums">20 + EPS<br>03 TRACKS</div>
       </div>
       <div class="grid g3">
@@ -566,20 +726,15 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </section>
 
-<!-- ================= 06 航线 · 入队之路 ================= -->
+<!-- ================= 08 航线 · 入队之路 ================= -->
 <section id="path">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 06 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
+      <div><div class="wp">WAYPOINT 08 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
       <div class="nums">09 - 10 MON<br>11 RDC</div>
     </div>
-    <div class="steps">
-      <div class="step reveal"><h4>获取开招提醒</h4><p>RM2027 正式报名时间待公布。现在可订阅公众号动态、加入 QQ 招新群或发邮件咨询；开招后将在这些渠道发布报名表。</p></div>
-      <div class="step reveal"><h4>新生培训</h4><p>按部门方向参加系列 Tutorial（机械/硬件/电控/算法），老队员带教，快速上手工程基础。</p></div>
-      <div class="step reveal"><h4>RDC 校内赛</h4><p>参加机器人设计大赛（Robot Design Contest，约 11 月）：组队造两台机器人真实对抗——2023 年 180+ 人参赛、13 支队伍同场竞技。</p></div>
-      <div class="step reveal"><h4>面试 & 入队</h4><p>面试看热情、责任心与协作能力；通过后进入项目组，在真实研发、联调与比赛中逐步承担角色。</p></div>
-    </div>
-    <p class="note">* 时间线参考往年节奏：招新约 9–10 月、RDC 约 11 月、联盟赛通常在次年春季。RM2027 的具体安排以公众号通知为准；具备扎实相关经验者可在报名时说明项目经历。</p>
+    <div class="steps" id="recruitment-path" aria-live="polite"></div>
+    <p class="note" data-recruit-schedule></p>
 
     <div style="padding-top:70px">
       <div class="grid g3">
@@ -598,22 +753,18 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="faq" style="padding-top:40px">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 06-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
+      <div><div class="wp">WAYPOINT 08-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
       <div class="nums">Q & A<br>05 LOGS</div>
     </div>
-    <details class="reveal"><summary>零基础可以报名吗？</summary><p>完全可以。教程面向零基础设计，历届许多队员入队时没有任何机器人经验。我们更看重热情、责任心与自学能力。电控方向建议提前自学 C++ 与 PID 控制，其余部门均有完整带教路线。</p></details>
-    <details class="reveal"><summary>有专业或年级限制吗？</summary><p>不限专业、不限年级。工学院与 ISD 同学居多，但商学院、理学院的同学也曾入选并成为骨干。</p></details>
-    <details class="reveal"><summary>时间投入大吗？会影响学业吗？</summary><p>比赛与交付节点前的投入会明显增加。建议在咨询或宣讲时了解当季节奏、训练安排与项目责任，再结合自己的课业规划决定；团队重视清晰沟通和长期协作。</p></details>
-    <details class="reveal"><summary>如何报名？</summary><p>RM2027 正式报名尚未开放。请关注公众号「HKUST ENTERPRIZE」、加入 QQ 招新群 581184202，或邮件联系 robomasterhkust@gmail.com 获取开招提醒。</p></details>
-    <details class="reveal"><summary>我已有经验，应该怎么准备？</summary><p>在报名时附上 GitHub、作品集、机器人项目或比赛经历即可。机械、嵌入式、硬件、算法与工程协作经验都会帮助你更快找到合适的项目入口。</p></details>
+    <div id="faq-list"><details class="reveal" data-faq-details><summary>招新信息正在载入</summary><p>如未自动显示，请加入 QQ 招新群 581184202 或邮件咨询。</p></details></div>
   </div>
 </section>
 
-<!-- ================= 07 跃迁 · 加入我们 ================= -->
+<!-- ================= 09 跃迁 · 加入我们 ================= -->
 <section id="join">
   <div class="wrap">
     <div class="sec-head reveal" style="justify-content:center;text-align:center">
-      <div><div class="wp">WAYPOINT 07 // THE JUMP</div><h2>新舰起航，缺你不可</h2><div class="en">Join Us · RM2027</div></div>
+      <div><div class="wp">WAYPOINT 09 // THE JUMP</div><h2>新舰起航，缺你不可</h2><div class="en">Join Us · RM2027</div></div>
     </div>
     <div class="bh-stage reveal">
       <div class="bh">
@@ -631,16 +782,16 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       Space: the final frontier. 星舰 Enterprise 的下一个十年，由你来书写。<br>RM2027 正式报名尚未开放；现在留下一个可联系的入口，开招时第一时间加入。
     </p>
     <div class="card recruit-status reveal" id="interest-actions" style="--pc:var(--gold)">
-      <h3>RM2027 招新状态：筹备中</h3>
-      <p>报名表、宣讲与面试时间将由战队官方渠道发布。若你想先了解方向、培训或项目经历，欢迎通过 QQ 群或邮件联系。</p>
+      <h3 data-recruit-status-title>RM2027 招新状态：筹备中</h3>
+      <p data-recruit-status-message>正式安排尚未公布。现在可通过 QQ 群或邮件获取开招提醒。</p>
       <div class="action-row">
-        <button class="action-btn" type="button" data-copy="581184202">复制 QQ 招新群号</button>
-        <a class="action-btn alt" href="mailto:robomasterhkust@gmail.com?subject=RM2027%20%E6%8B%9B%E6%96%B0%E5%92%A8%E8%AF%A2">邮件咨询招新</a>
+        <button class="action-btn" type="button" data-copy="581184202" data-recruit-qq>复制 QQ 招新群号</button>
+        <a class="action-btn alt" href="mailto:robomasterhkust@gmail.com?subject=RM2027%20%E6%8B%9B%E6%96%B0%E5%92%A8%E8%AF%A2" data-recruit-email>邮件咨询招新</a>
       </div>
     </div>
     <div class="grid g4">
-      <div class="card chan reveal" style="--pc:var(--cyan)"><b>📱 QQ 招新群</b><span>581184202</span></div>
-      <div class="card chan reveal" style="--pc:var(--blue)"><b>📧 邮箱</b><span>robomasterhkust@gmail.com<br>robomaster@ust.hk</span></div>
+      <div class="card chan reveal" style="--pc:var(--cyan)"><b>📱 QQ 招新群</b><span data-recruit-qq-number>581184202</span></div>
+      <div class="card chan reveal" style="--pc:var(--blue)"><b>📧 邮箱</b><span><span data-recruit-email-address>robomasterhkust@gmail.com</span><br>robomaster@ust.hk</span></div>
       <div class="card chan reveal" style="--pc:var(--purple)"><b>💬 微信公众号</b><span>HKUST ENTERPRIZE<br>(gh_855d709c046e)</span></div>
       <div class="card chan reveal" style="--pc:var(--pink)"><b>📺 Bilibili</b><span><a href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">港科大ENTERPRIZE战队</a></span></div>
       <div class="card chan reveal" style="--pc:var(--gold)"><b>📸 Instagram</b><span><a href="https://www.instagram.com/hkust_enterprize_robomaster/" target="_blank" rel="noopener">@hkust_enterprize_robomaster</a></span></div>
@@ -661,6 +812,8 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   </div>
 </footer>
 
+<script src="data/recruitment.js"></script>
+<script src="assets/performance.js"></script>
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
@@ -669,7 +822,187 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 (function(){
 "use strict";
 var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var isMobile = window.innerWidth < 720;
+function createCurrentPerformanceProfile(){
+  return window.ENTERPRIZE_PERFORMANCE.createPerformanceProfile({
+    surface: 'home',
+    width: window.innerWidth,
+    height: window.innerHeight,
+    devicePixelRatio: window.devicePixelRatio,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemory: navigator.deviceMemory,
+    reducedMotion: reduced,
+  });
+}
+var performanceProfile = createCurrentPerformanceProfile();
+var initialPerformanceProfile = performanceProfile;
+var isMobile = performanceProfile.isMobile;
+var animationScheduler = window.ENTERPRIZE_PERFORMANCE.createAnimationScheduler({
+  targetFps: performanceProfile.targetFps || 30,
+});
+function refreshPerformanceProfile(){
+  var requestedProfile = createCurrentPerformanceProfile();
+  var canUseDesktopEffects = initialPerformanceProfile.enableSmoothScroll;
+  performanceProfile = Object.freeze(Object.assign({}, requestedProfile, {
+    targetFps: Math.min(requestedProfile.targetFps || 30, initialPerformanceProfile.targetFps || 30),
+    pixelRatio: Math.min(requestedProfile.pixelRatio, initialPerformanceProfile.pixelRatio),
+    particleScale: Math.min(requestedProfile.particleScale, initialPerformanceProfile.particleScale),
+    enableMouseWarp: requestedProfile.enableMouseWarp && initialPerformanceProfile.enableMouseWarp,
+    enableHoloLighting: requestedProfile.enableHoloLighting && initialPerformanceProfile.enableHoloLighting,
+    enableSmoothScroll: requestedProfile.enableSmoothScroll && canUseDesktopEffects,
+    enableScrollAnimations: requestedProfile.enableScrollAnimations && initialPerformanceProfile.enableScrollAnimations,
+  }));
+  isMobile = performanceProfile.isMobile;
+  animationScheduler.setTargetFps(performanceProfile.targetFps || 30);
+  if (lenis) {
+    if (performanceProfile.enableSmoothScroll) lenis.start();
+    else lenis.stop();
+  }
+  document.querySelectorAll('[data-holo-ready]').forEach(function(element){
+    element.classList.toggle('holo-surface',performanceProfile.enableHoloLighting);
+  });
+  if (window.ScrollTrigger && ScrollTrigger.getAll) {
+    ScrollTrigger.getAll().forEach(function(trigger){
+      if (performanceProfile.enableScrollAnimations) trigger.enable(false, true);
+      else trigger.disable(false);
+    });
+  }
+  return performanceProfile;
+}
+window.addEventListener('resize', refreshPerformanceProfile, {passive:true});
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>'"]/g, function(character){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[character];
+  });
+}
+
+function renderRecruitment(){
+  var content = window.ENTERPRIZE_RECRUITMENT;
+  if (!content) return;
+  var departmentGrid = document.getElementById('department-grid');
+  var path = document.getElementById('recruitment-path');
+  var faq = document.getElementById('faq-list');
+  departmentGrid.innerHTML = content.departments.map(function(department){
+    var rows = [
+      ['职责', department.responsibility],
+      ['技术', department.technologies],
+      ['成长', department.growth],
+      ['项目', department.project],
+    ];
+    return '<article class="card planet-card reveal" style="--pc:'+escapeHtml(department.tone)+'">' +
+      '<div class="planet '+escapeHtml(department.planetClass)+'" aria-hidden="true"></div>' +
+      '<h3 style="color:'+escapeHtml(department.titleTone)+'">'+escapeHtml(department.name)+'</h3>' +
+      '<div class="en2">'+escapeHtml(department.english)+'</div><ul>' +
+      rows.map(function(row){ return '<li><b>'+row[0]+'：</b>'+escapeHtml(row[1])+'</li>'; }).join('') +
+      '</ul></article>';
+  }).join('');
+  path.innerHTML = content.path.map(function(step){
+    return '<article class="step reveal"><div class="en2">'+escapeHtml(step.phase)+'</div><h4>'+escapeHtml(step.title)+'</h4><p>'+escapeHtml(step.description)+'</p></article>';
+  }).join('');
+  faq.innerHTML = content.faq.map(function(item){
+    return '<details class="reveal" data-faq-details><summary>'+escapeHtml(item.question)+'</summary><p>'+escapeHtml(item.answer)+'</p></details>';
+  }).join('');
+  document.querySelectorAll('[data-recruit-badge]').forEach(function(element){ element.textContent = content.badge; });
+  document.querySelectorAll('[data-recruit-primary]').forEach(function(element){ element.textContent = content.primaryCta.label; element.setAttribute('href', content.primaryCta.href); });
+  document.querySelectorAll('[data-recruit-status-title]').forEach(function(element){ element.textContent = content.statusTitle; });
+  document.querySelectorAll('[data-recruit-status-message]').forEach(function(element){ element.textContent = content.statusMessage; });
+  document.querySelectorAll('[data-recruit-schedule]').forEach(function(element){ element.textContent = '* '+content.scheduleNote; });
+  document.querySelectorAll('[data-recruit-qq]').forEach(function(element){ element.dataset.copy = content.contacts.qqGroup; });
+  document.querySelectorAll('[data-recruit-qq-number]').forEach(function(element){ element.textContent = content.contacts.qqGroup; });
+  document.querySelectorAll('[data-recruit-email-address]').forEach(function(element){ element.textContent = content.contacts.email; });
+  document.querySelectorAll('[data-recruit-email]').forEach(function(element){
+    element.href = 'mailto:'+content.contacts.email+'?subject='+encodeURIComponent(content.contacts.emailSubject);
+  });
+}
+
+function initNavigation(){
+  var toggle = document.getElementById('nav-toggle');
+  var navigation = document.getElementById('primary-navigation');
+  if (!toggle || !navigation) return;
+  function setOpen(isOpen){
+    navigation.classList.toggle('is-open', isOpen);
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? '关闭导航菜单' : '打开导航菜单');
+    toggle.textContent = isOpen ? '×' : '☰';
+  }
+  toggle.addEventListener('click', function(){ setOpen(toggle.getAttribute('aria-expanded') !== 'true'); });
+  navigation.addEventListener('click', function(event){ if (event.target.closest('a')) setOpen(false); });
+  document.addEventListener('keydown', function(event){
+    if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') { setOpen(false); toggle.focus(); }
+  });
+  window.addEventListener('resize', function(){ if (window.innerWidth > 1100) setOpen(false); }, {passive:true});
+}
+
+/* FAQ 折叠面板：拦截 summary 点击，用 WAAPI 驱动高度/透明度过渡；
+   reduced-motion 或不支持 WAAPI 时保持原生瞬时开关（无 JS 同样可用）。 */
+function initFaqAnimations(){
+  document.querySelectorAll('details[data-faq-details]').forEach(function(details){
+    var summary = details.querySelector('summary');
+    var body = details.querySelector('p');
+    if (!summary || !body || typeof body.animate !== 'function') return;
+    var current = null;
+    var generation = 0;
+    var expanded = details.open;
+    function animatePanel(from, to, onFinish, fade){
+      generation += 1;
+      var token = generation;
+      if (current) current.cancel();
+      details.classList.add('is-animating');
+      /* 展开时只动高度，把透明度交给 faq-boot 全息开机闪效；收起时才叠加淡出 */
+      var frames = fade
+        ? [{height: from + 'px', opacity: 1}, {height: to + 'px', opacity: 0}]
+        : [{height: from + 'px'}, {height: to + 'px'}];
+      var animation = body.animate(frames, {duration: 430, easing: 'cubic-bezier(.22,1,.36,1)'});
+      current = animation;
+      animation.onfinish = function(){
+        if (token !== generation) return;
+        current = null;
+        details.classList.remove('is-animating');
+        if (onFinish) onFinish();
+      };
+    }
+    summary.addEventListener('click', function(event){
+      if (reduced) return;
+      event.preventDefault();
+      var measured = body.getBoundingClientRect().height;
+      if (expanded){
+        expanded = false;
+        animatePanel(measured, 0, function(){ details.open = false; }, true);
+      } else {
+        expanded = true;
+        if (!details.open) details.open = true;
+        animatePanel(measured, body.scrollHeight, null, false);
+      }
+    });
+  });
+}
+
+/* ============ 视频门面：点击后才注入 B 站播放器，无 JS 时原生跳转 ============ */
+function initVideoFacades(){
+  document.querySelectorAll('a[data-video-embed]').forEach(function(facade){
+    facade.addEventListener('click', function(event){
+      /* 保留 Ctrl/Cmd/Shift 点击在新标签页打开视频页的原生行为 */
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      var iframe = document.createElement('iframe');
+      iframe.className = 'video-frame';
+      iframe.src = facade.dataset.videoEmbed;
+      iframe.title = facade.dataset.videoTitle || 'RoboMaster 官方视频';
+      iframe.setAttribute('allowfullscreen', 'true');
+      iframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      iframe.tabIndex = -1;
+      facade.replaceWith(iframe);
+      /* 键盘激活后焦点移交播放器，不回退到 body */
+      iframe.focus();
+    });
+  });
+}
+
+renderRecruitment();
+initNavigation();
+initFaqAnimations();
+initVideoFacades();
 
 /* ============ HUD 速度表（须先于 initWarp 声明） ============ */
 var velVal = document.getElementById('vel-val');
@@ -687,16 +1020,18 @@ function spawn(anywhere){
   return { x: Math.cos(a)*r, y: Math.sin(a)*r,
            z: anywhere ? -Math.random()*900 : -900 - Math.random()*100 };
 }
-if (!reduced && window.THREE) (function initWarp(){
+if (performanceProfile.enableWebGL && window.THREE) (function initWarp(){
   var canvas = document.getElementById('warp');
-  var renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:false});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  var renderer = null;
+  try { renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true, antialias:false}); }
+  catch (error) { canvas.remove(); return; }
+  renderer.setPixelRatio(performanceProfile.pixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, .1, 2000);
   camera.position.z = 1;
 
-  var N = isMobile ? 500 : 1300;
+  var N = Math.max(240, Math.round((isMobile ? 500 : 1300) * performanceProfile.particleScale));
   var stars = [], pos = new Float32Array(N * 6), i;
   for (i = 0; i < N; i++) stars.push(spawn(true));
   var geo = new THREE.BufferGeometry();
@@ -716,7 +1051,7 @@ if (!reduced && window.THREE) (function initWarp(){
   var roundSprite = new THREE.CanvasTexture(spriteCanvas);
 
   var dustGeo = new THREE.BufferGeometry();
-  var dn = isMobile ? 200 : 500, dp = new Float32Array(dn*3);
+  var dn = Math.max(80, Math.round((isMobile ? 200 : 500) * performanceProfile.particleScale)), dp = new Float32Array(dn*3);
   for (var j = 0; j < dn; j++){
     var a2 = Math.random()*Math.PI*2, r2 = 60+Math.random()*500;
     dp[j*3]=Math.cos(a2)*r2; dp[j*3+1]=Math.sin(a2)*r2; dp[j*3+2]=-300-Math.random()*900;
@@ -729,7 +1064,7 @@ if (!reduced && window.THREE) (function initWarp(){
 
   // 闪烁星尘层（缓慢自转 + 呼吸明暗）
   var twGeo = new THREE.BufferGeometry();
-  var tn = isMobile ? 120 : 260, tp = new Float32Array(tn*3);
+  var tn = Math.max(60, Math.round((isMobile ? 120 : 260) * performanceProfile.particleScale)), tp = new Float32Array(tn*3);
   for (var t2 = 0; t2 < tn; t2++){
     var a3 = Math.random()*Math.PI*2, r3 = 40+Math.random()*420;
     tp[t2*3]=Math.cos(a3)*r3; tp[t2*3+1]=Math.sin(a3)*r3; tp[t2*3+2]=-150-Math.random()*800;
@@ -742,7 +1077,7 @@ if (!reduced && window.THREE) (function initWarp(){
 
   // 随机流星粒子
   var meteors = [];
-  var METEOR_MAX = isMobile ? 2 : 4;
+  var METEOR_MAX = isMobile || performanceProfile.isLowPower ? 0 : 4;
   function spawnMeteor(){
     var mGeo = new THREE.BufferGeometry();
     var mp = new Float32Array(6);
@@ -760,19 +1095,19 @@ if (!reduced && window.THREE) (function initWarp(){
   var mouseX = 0, mouseY = 0;
   window.addEventListener('pointermove', function(e){
     mouseX = (e.clientX/window.innerWidth - .5); mouseY = (e.clientY/window.innerHeight - .5);
-  });
+  }, {passive:true});
 
   var BASE = 1.05, MAXV = 14, elapsed = 0, meteorTimer = 0;
-  function frame(){
-    elapsed += .016;
-    warpSpeed += (Math.min(targetSpeed + boost, 1) - warpSpeed) * .045;
+  function frame(now, delta){
+    elapsed += .016 * delta;
+    warpSpeed += (Math.min(targetSpeed + boost, 1) - warpSpeed) * (1-Math.pow(.955,delta));
     var visualWarp = Math.max(warpSpeed, heroWarp, photoWarp);
     fieldMotion = visualWarp;
     var v = BASE + visualWarp * MAXV;
     var stretch = 2 + visualWarp * 112;
     for (var i = 0; i < N; i++){
       var s = stars[i];
-      s.z += v;
+      s.z += v*delta;
       if (s.z > 60) { var ns = spawn(false); s.x=ns.x; s.y=ns.y; s.z=ns.z; }
       var o = i*6;
       pos[o]=s.x; pos[o+1]=s.y; pos[o+2]=s.z;
@@ -782,25 +1117,25 @@ if (!reduced && window.THREE) (function initWarp(){
 
     // 圆形星尘同样沿 Z 轴前进；远处小而慢、接近镜头后更快更亮。
     for (var dj=0; dj<dn; dj++){
-      var doff=dj*3; dp[doff+2]+=v*.22;
+      var doff=dj*3; dp[doff+2]+=v*.22*delta;
       if(dp[doff+2]>60){var da=Math.random()*Math.PI*2, dr=60+Math.random()*500;
         dp[doff]=Math.cos(da)*dr;dp[doff+1]=Math.sin(da)*dr;dp[doff+2]=-950-Math.random()*400;}
     }
     for (var tj=0; tj<tn; tj++){
-      var toff=tj*3; tp[toff+2]+=v*.16;
+      var toff=tj*3; tp[toff+2]+=v*.16*delta;
       if(tp[toff+2]>60){var ta=Math.random()*Math.PI*2, tr=40+Math.random()*420;
         tp[toff]=Math.cos(ta)*tr;tp[toff+1]=Math.sin(ta)*tr;tp[toff+2]=-900-Math.random()*350;}
     }
     dustGeo.attributes.position.needsUpdate=true;twGeo.attributes.position.needsUpdate=true;
 
     // 静止时仍有极慢旋转和呼吸闪烁。
-    dust.rotation.z += .0004;
-    twinkles.rotation.z -= .0007;
+    dust.rotation.z += .0004*delta;
+    twinkles.rotation.z -= .0007*delta;
     twMat.opacity = .35 + .3 * (Math.sin(elapsed*1.7)*.5+.5);
     dustMat.opacity = .45 + .25 * (Math.sin(elapsed*1.1+2)*.5+.5);
 
     // 随机流星
-    meteorTimer -= .016;
+    meteorTimer -= .016*delta;
     if (meteorTimer <= 0 && meteors.length < METEOR_MAX){
       spawnMeteor();
       meteorTimer = 1.5 + Math.random()*4;
@@ -808,9 +1143,9 @@ if (!reduced && window.THREE) (function initWarp(){
     for (var mi = meteors.length-1; mi >= 0; mi--){
       var m = meteors[mi];
       var mp2 = m.line.geometry.attributes.position.array;
-      mp2[0]+=m.dx; mp2[1]+=m.dy; mp2[3]+=m.dx; mp2[4]+=m.dy;
+      mp2[0]+=m.dx*delta; mp2[1]+=m.dy*delta; mp2[3]+=m.dx*delta; mp2[4]+=m.dy*delta;
       m.line.geometry.attributes.position.needsUpdate = true;
-      m.life -= .012;
+      m.life -= .012*delta;
       m.line.material.opacity = Math.max(m.life, 0) * .9;
       if (m.life <= 0){
         scene.remove(m.line);
@@ -820,45 +1155,57 @@ if (!reduced && window.THREE) (function initWarp(){
     }
 
     camera.fov = 60 + visualWarp * 42;
-    camera.position.x += (mouseX*30 + Math.sin(elapsed*.3)*4 - camera.position.x) * .03;
-    camera.position.y += (-mouseY*30 + Math.cos(elapsed*.23)*3 - camera.position.y) * .03;
+    var cameraEase = 1-Math.pow(.97,delta);
+    camera.position.x += (mouseX*30 + Math.sin(elapsed*.3)*4 - camera.position.x) * cameraEase;
+    camera.position.y += (-mouseY*30 + Math.cos(elapsed*.23)*3 - camera.position.y) * cameraEase;
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
     updateHUD(visualWarp);
-    requestAnimationFrame(frame);
   }
-  frame();
+  animationScheduler.add(frame);
   window.addEventListener('resize', function(){
+    var currentProfile = refreshPerformanceProfile();
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(currentProfile.pixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  }, {passive:true});
 })();
 
 /* ============ 2. Lenis + GSAP ============ */
 var lenis = null;
-if (!reduced && window.Lenis){
+if (performanceProfile.enableSmoothScroll && window.Lenis){
   lenis = new Lenis({ duration: 1.15, smoothWheel: true });
-  var rafL = function(t){ lenis.raf(t); requestAnimationFrame(rafL); };
-  requestAnimationFrame(rafL);
+  animationScheduler.add(function(t){ lenis.raf(t); });
 }
-var lastY = window.scrollY, lastT = performance.now();
-function pollScroll(){
-  var now = performance.now(), y = window.scrollY;
-  var dt = Math.max(now - lastT, 16);
-  targetSpeed += (Math.min(Math.abs(y - lastY)/dt/2.2, 1) - targetSpeed) * .12;
-  lastY = y; lastT = now;
-  requestAnimationFrame(pollScroll);
+var lastY = window.scrollY, lastT = performance.now(), scrollSample = null;
+function captureScrollSpeed(){
+  scrollSample = Object.freeze({y:window.scrollY,time:performance.now()});
 }
-if (!reduced) pollScroll();
+function updateScrollSpeed(now,delta){
+  if (!scrollSample) {
+    targetSpeed *= Math.pow(.9,delta);
+    return;
+  }
+  var sample = scrollSample;
+  var dt = Math.min(Math.max(sample.time-lastT,16),100);
+  var target = Math.min(Math.abs(sample.y-lastY)/dt/2.2,1);
+  targetSpeed += (target-targetSpeed)*(1-Math.pow(.88,delta));
+  lastY=sample.y; lastT=sample.time; scrollSample=null;
+}
+if (!reduced) {
+  window.addEventListener('scroll',captureScrollSpeed,{passive:true});
+  animationScheduler.add(updateScrollSpeed);
+}
 
 document.querySelectorAll('a[href^="#"]').forEach(function(a){
   a.addEventListener('click', function(e){
+    if (a.classList.contains('skip-link')) return;
     var t = document.querySelector(a.getAttribute('href'));
     if (!t) return;
     e.preventDefault();
-    if (lenis) lenis.scrollTo(t, {offset: -70});
-    else t.scrollIntoView({behavior:'smooth'});
+    if (lenis && performanceProfile.enableSmoothScroll) lenis.scrollTo(t, {offset: -70});
+    else t.scrollIntoView({behavior:reduced ? 'auto' : 'smooth'});
   });
 });
 
@@ -869,11 +1216,11 @@ function setHeroWarp(value){ heroWarp = Math.max(0, Math.min(value, 1)); }
 function initMouseWarp(){
   var canvas = document.getElementById('mouse-warp-canvas');
   var hero = document.getElementById('hero');
-  if (!canvas || !hero || reduced) return;
+  if (!canvas || !hero || !performanceProfile.enableMouseWarp) return;
   var ctx = canvas.getContext('2d'), width = 0, height = 0, dpr = 1;
   var target = {x:.58, y:.44}, focus = {x:.58, y:.44};
-  var roll = -.22, rollTarget = -.22, nextRollAt = 0;
-  var rays = Array.from({length:window.innerWidth < 720 ? 24 : 42}, function(_, i){
+  var roll = -.22, rollTarget = -.22, nextRollAt = 0, isHeroVisible = true;
+  var rays = Array.from({length:Math.round((window.innerWidth < 720 ? 24 : 42)*performanceProfile.particleScale)}, function(_, i){
     return {angle:Math.random()*Math.PI*2, depth:Math.random(), speed:.0038+Math.random()*.0058,
       tail:.045+Math.random()*.11, width:.35+Math.random()*1.05,
       twist:(Math.random()-.5)*.48, warm:i%9 === 0};
@@ -881,7 +1228,7 @@ function initMouseWarp(){
   function resize(){
     var rect = canvas.getBoundingClientRect();
     width = rect.width; height = rect.height;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = createCurrentPerformanceProfile().pixelRatio;
     canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
@@ -899,22 +1246,24 @@ function initMouseWarp(){
   hero.addEventListener('pointermove', setTarget, {passive:true});
   hero.addEventListener('pointerleave', function(){ target.x=.58; target.y=.44; }, {passive:true});
   window.addEventListener('resize', resize, {passive:true});
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function(entries){ isHeroVisible=entries[0].isIntersecting; }).observe(hero);
+  }
   resize();
-  function draw(now){
-    var rect = hero.getBoundingClientRect();
-    if (rect.bottom > 0 && rect.top < window.innerHeight && width && height){
+  function draw(now, delta){
+    if (performanceProfile.enableMouseWarp && isHeroVisible && width && height){
       if (now > nextRollAt){
         rollTarget = -.62 + Math.random()*1.24;
         nextRollAt = now + 2600 + Math.random()*3400;
       }
-      roll += (rollTarget-roll)*.0045;
-      focus.x += (target.x-focus.x)*.11;
-      focus.y += (target.y-focus.y)*.11;
+      roll += (rollTarget-roll)*(1-Math.pow(.9955,delta));
+      focus.x += (target.x-focus.x)*(1-Math.pow(.89,delta));
+      focus.y += (target.y-focus.y)*(1-Math.pow(.89,delta));
       var cx = focus.x*width, cy = focus.y*height;
       var transitionBoost = 1 + Math.min(photoWarp, .38)*1.25;
       ctx.clearRect(0,0,width,height);
       rays.forEach(function(ray){
-        ray.depth += ray.speed*transitionBoost;
+        ray.depth += ray.speed*transitionBoost*delta;
         if (ray.depth > 1){
           ray.depth -= 1; ray.angle += (Math.random()-.5)*.34; ray.twist = (Math.random()-.5)*.48;
         }
@@ -945,16 +1294,15 @@ function initMouseWarp(){
       glow.addColorStop(0,'rgba(188,244,255,.16)'); glow.addColorStop(.16,'rgba(111,220,246,.055)'); glow.addColorStop(1,'rgba(111,220,246,0)');
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx,cy,62,0,Math.PI*2); ctx.fill();
     }
-    requestAnimationFrame(draw);
   }
-  requestAnimationFrame(draw);
+  animationScheduler.add(draw);
 }
 
 /* 程序化银河：圆形云气、圆形软光晕和星点沿倾斜银河带无限循环，不依赖任何背景图片。 */
 function initNebulaField(){
   var canvas = document.getElementById('nebula-field');
-  if (!canvas || reduced) return;
-  var ctx = canvas.getContext('2d'), width = 0, height = 0, dpr = 1, last = 0;
+  if (!canvas || !performanceProfile.enableNebula) return;
+  var ctx = canvas.getContext('2d'), width = 0, height = 0, dpr = 1;
   var target = {x:.57,y:.43}, focus = {x:.57,y:.43}, tilt = -.19, wander = 0, nextWander = 0;
   var palette = ['47,176,222','79,118,232','125,91,208'];
   function makeMote(initial, cloud){
@@ -964,11 +1312,11 @@ function initNebulaField(){
       alpha:(cloud ? .030+Math.random()*.035 : .11+Math.random()*.32),
       phase:Math.random()*Math.PI*2, color:palette[Math.floor(Math.random()*palette.length)]};
   }
-  var clouds = Array.from({length:window.innerWidth < 720 ? 36 : 68}, function(){ return makeMote(true,true); });
-  var motes = Array.from({length:window.innerWidth < 720 ? 115 : 260}, function(){ return makeMote(true,false); });
+  var clouds = Array.from({length:Math.max(20,Math.round((window.innerWidth < 720 ? 36 : 68)*performanceProfile.particleScale))}, function(){ return makeMote(true,true); });
+  var motes = Array.from({length:Math.max(64,Math.round((window.innerWidth < 720 ? 115 : 260)*performanceProfile.particleScale))}, function(){ return makeMote(true,false); });
   function resize(){
     var rect = canvas.getBoundingClientRect(); width=rect.width; height=rect.height;
-    dpr=Math.min(window.devicePixelRatio||1,2); canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
+    dpr=createCurrentPerformanceProfile().pixelRatio; canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
   function setTarget(e){
@@ -985,12 +1333,12 @@ function initNebulaField(){
   }
   window.addEventListener('pointermove',setTarget,{passive:true});
   window.addEventListener('resize',resize,{passive:true}); resize();
-  function draw(now){
-    var delta=last ? Math.min((now-last)/16.67,2.1) : 1; last=now;
+  function draw(now,delta){
     if (width && height){
       if (now>nextWander){wander=-.16+Math.random()*.32;nextWander=now+4800+Math.random()*5200;}
-      focus.x+=(target.x-focus.x)*.055; focus.y+=(target.y-focus.y)*.055;
-      tilt+=((-.19+wander+(focus.x-.5)*.19-(focus.y-.45)*.09)-tilt)*.006;
+      var focusEase=1-Math.pow(.945,delta), tiltEase=1-Math.pow(.994,delta);
+      focus.x+=(target.x-focus.x)*focusEase; focus.y+=(target.y-focus.y)*focusEase;
+      tilt+=((-.19+wander+(focus.x-.5)*.19-(focus.y-.45)*.09)-tilt)*tiltEase;
       var sharedSpeed=.55+fieldMotion*2.25;
       ctx.clearRect(0,0,width,height); ctx.save();
       ctx.translate(width*.5,height*.5);ctx.rotate(tilt);ctx.translate(-width*.5,-height*.5);
@@ -1016,23 +1364,26 @@ function initNebulaField(){
       });
       ctx.restore();
     }
-    requestAnimationFrame(draw);
   }
-  requestAnimationFrame(draw);
+  animationScheduler.add(draw);
 }
 
 /* 全页全息受光：鼠标是唯一冷光源，面板边缘按与光源的相对位置变化。 */
 function initHoloLighting(){
-  if (reduced) return;
+  if (!performanceProfile.enableHoloLighting) return;
   var targets=Array.prototype.slice.call(document.querySelectorAll('nav,.card,.lpanel,.btn'));
   if (!targets.length) return;
-  targets.forEach(function(el){el.classList.add('holo-surface');});
-  var light={x:window.innerWidth*.57,y:window.innerHeight*.42}, queued=false;
+  targets.forEach(function(el){el.dataset.holoReady='';el.classList.add('holo-surface');});
+  var light={x:window.innerWidth*.57,y:window.innerHeight*.42}, isDirty=true;
   function update(){
-    queued=false;
-    targets.forEach(function(el){
-      var rect=el.getBoundingClientRect();
-      if(rect.bottom < -80 || rect.top > window.innerHeight+80 || rect.right < -80 || rect.left > window.innerWidth+80) return;
+    if (!performanceProfile.enableHoloLighting || !isDirty) return;
+    isDirty=false;
+    var visibleTargets=targets.map(function(el){return {el:el,rect:el.getBoundingClientRect()};}).filter(function(item){
+      var rect=item.rect;
+      return rect.bottom >= -80 && rect.top <= window.innerHeight+80 && rect.right >= -80 && rect.left <= window.innerWidth+80;
+    });
+    visibleTargets.forEach(function(item){
+      var el=item.el,rect=item.rect;
       var x=light.x-rect.left, y=light.y-rect.top;
       var nearX=Math.max(rect.left,Math.min(light.x,rect.right));
       var nearY=Math.max(rect.top,Math.min(light.y,rect.bottom));
@@ -1048,25 +1399,35 @@ function initHoloLighting(){
       el.style.setProperty('--holo-shadow-y',(dy/length*cast).toFixed(2)+'px');
     });
   }
-  function queue(){if(!queued){queued=true;requestAnimationFrame(update);}}
+  function queue(){isDirty=true;}
   window.addEventListener('pointermove',function(e){light.x=e.clientX;light.y=e.clientY;queue();},{passive:true});
   window.addEventListener('scroll',queue,{passive:true});
   window.addEventListener('resize',queue,{passive:true});
-  queue();
+  animationScheduler.add(update);
 }
 
 initNebulaField();
 initMouseWarp();
 initHoloLighting();
+if (!reduced) animationScheduler.start();
 
-if (window.gsap){
+if (window.gsap && performanceProfile.enableScrollAnimations){
   gsap.registerPlugin(ScrollTrigger);
   if (lenis) lenis.on('scroll', ScrollTrigger.update);
 
-  document.querySelectorAll('.reveal').forEach(function(el){
-    gsap.to(el, {opacity:1, y:0, duration:1, ease:'power3.out',
-      scrollTrigger:{trigger:el, start:'top 88%', once:true}});
-  });
+  var revealElements=Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if ('IntersectionObserver' in window) {
+    var revealObserver=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if (!entry.isIntersecting) return;
+        revealObserver.unobserve(entry.target);
+        gsap.to(entry.target,{opacity:1,y:0,duration:1,ease:'power3.out'});
+      });
+    },{rootMargin:'0px 0px -12% 0px'});
+    revealElements.forEach(function(el){revealObserver.observe(el);});
+  } else {
+    revealElements.forEach(function(el){gsap.to(el,{opacity:1,y:0,duration:1,ease:'power3.out'});});
+  }
 
   // 航点里程碑加速
   [['#about',.8],['#honors',1.4],['#depts',.9],['#tech',1.0],['#join',2.2]].forEach(function(pair){
@@ -1108,18 +1469,20 @@ if (window.gsap){
     scrollTrigger:{trigger:'#banner', start:'bottom 75%', end:'bottom 30%', scrub:true}});
 } else {
   document.querySelectorAll('.reveal').forEach(function(el){ el.style.opacity=1; el.style.transform='none'; });
+  if (window.ScrollTrigger) ScrollTrigger.disable(true,true);
+  if (window.gsap && window.gsap.ticker) gsap.ticker.sleep();
 }
 
 /* ============ 3. 跃迁按钮 ============ */
 document.getElementById('jump-btn').addEventListener('click', function(){
-  if (reduced || !window.gsap) { document.querySelector('#interest-actions').scrollIntoView({behavior:'smooth'}); return; }
+  if (!performanceProfile.enableScrollAnimations || !window.gsap) { document.querySelector('#interest-actions').scrollIntoView({behavior:reduced ? 'auto' : 'smooth'}); return; }
   var obj = {b:0};
   var tl = gsap.timeline();
   tl.to(obj, {b:3.2, duration:.9, ease:'power2.in', onUpdate:function(){ boost = obj.b; }})
     .to('#flash', {opacity:1, duration:.28, ease:'power1.in'}, '-=.25')
     .add(function(){
       var actions = document.querySelector('#interest-actions');
-      if (lenis) lenis.scrollTo(actions, {offset:-100, immediate:true});
+      if (lenis && performanceProfile.enableSmoothScroll) lenis.scrollTo(actions, {offset:-100, immediate:true});
       else actions.scrollIntoView();
       boost = 0;
     })
@@ -1141,15 +1504,20 @@ document.querySelectorAll('[data-copy]').forEach(function(btn){
 });
 
 /* ============ 5. 数字滚动 ============ */
-var nio = new IntersectionObserver(function(es){ es.forEach(function(e){
-  if (!e.isIntersecting) return;
-  var el = e.target, n = +el.dataset.n, t0 = performance.now(), dur = 1500;
-  (function tick(t){ var p = Math.min((t-t0)/dur, 1);
-    el.textContent = Math.round(n * (1 - Math.pow(1-p, 3)));
-    if (p < 1) requestAnimationFrame(tick); })(t0);
-  nio.unobserve(el);
-});}, {threshold:.5});
-document.querySelectorAll('.stat b[data-n]').forEach(function(el){ nio.observe(el); });
+var numberTargets = document.querySelectorAll('.stat b[data-n]');
+if (reduced) {
+  numberTargets.forEach(function(element){ element.textContent = element.dataset.n; });
+} else {
+  var nio = new IntersectionObserver(function(es){ es.forEach(function(e){
+    if (!e.isIntersecting) return;
+    var el = e.target, n = +el.dataset.n, t0 = performance.now(), dur = 1500;
+    (function tick(t){ var p = Math.min((t-t0)/dur, 1);
+      el.textContent = Math.round(n * (1 - Math.pow(1-p, 3)));
+      if (p < 1) requestAnimationFrame(tick); })(t0);
+    nio.unobserve(el);
+  });}, {threshold:.5});
+  numberTargets.forEach(function(element){ nio.observe(element); });
+}
 })();
 </script>
 </body>

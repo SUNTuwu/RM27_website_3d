@@ -32,7 +32,7 @@ node scripts/build-site.mjs
 python -m http.server 8377 --directory site
 ```
 
-Only `site/` is intended for public deployment. See [Cloudflare Pages deployment](docs/cloudflare-pages.md) for the dashboard configuration and pre-release requirements.
+Only `site/` is intended for public deployment. See [Cloudflare Pages deployment](docs/cloudflare-pages.md) for the dashboard configuration and pre-release requirements. Product priorities and acceptance criteria are tracked in the [website improvement roadmap](docs/website-improvement-roadmap.md).
 
 ## Legacy browser checks
 
