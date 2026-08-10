@@ -201,16 +201,13 @@ nav.holo-surface::after{inset:0;border-radius:0}
 @keyframes hint{50%{transform:translate(-50%,8px);opacity:.4}}
 
 /* ===== 视频 ===== */
-.video-box{border-radius:0 16px 16px 0;overflow:hidden;border:1px solid var(--line);border-left:5px solid var(--pink);
-  box-shadow:0 14px 60px rgba(0,0,0,.6)}
-.video-box iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
-.video-teaser{min-height:330px;display:flex;align-items:flex-end;padding:34px;position:relative;isolation:isolate;
-  background:linear-gradient(90deg,rgba(4,6,14,.92),rgba(4,6,14,.32)),url("assets/arena-fleet-web.jpg") center/cover no-repeat;
-  color:var(--txt);text-decoration:none;transition:filter .25s,transform .25s}
-.video-teaser::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent,rgba(4,6,14,.68))}
-.video-teaser:hover{filter:brightness(1.15);text-decoration:none}.video-teaser .play{display:inline-flex;align-items:center;gap:10px;
-  background:var(--pink);color:#1a0c12;border-radius:99px;padding:10px 18px;font-weight:800;font-family:var(--mono);letter-spacing:1.5px}
-.video-teaser p{margin-top:10px;color:#e3ebfa;max-width:520px;font-size:14px}
+.team-reel{margin-top:54px}
+.team-reel-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:18px;flex-wrap:wrap}
+.team-reel-head h3{font-size:20px;color:var(--txt);letter-spacing:1.5px}
+.team-reel-head p{max-width:700px;color:#c0cce2;font-size:14px}
+.team-reel-head .count{font:11px var(--mono);letter-spacing:2px;color:var(--pink)}
+.team-video-feature{max-width:880px}
+.team-video-card .sc-meta a{color:var(--cyan2);text-decoration:underline;text-underline-offset:3px}
 
 /* ===== 战绩时间线 ===== */
 .metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:18px;margin-bottom:50px}
@@ -329,14 +326,9 @@ details[data-faq-details].is-animating p{overflow:hidden}
 .roster .unit i{font-style:normal;color:var(--dim);margin-left:6px}
 .rm-video{overflow:hidden;border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:0 16px 16px 0;background:rgba(7,12,23,.82);box-shadow:0 18px 60px rgba(0,0,0,.35)}
 .rm-video .cap2{padding:13px 18px;color:var(--dim);font-size:12.5px}
-.video-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#060b16;color:var(--cyan2);cursor:pointer;overflow:hidden;text-decoration:none}
-.video-facade img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.82;transition:opacity .35s ease,transform .5s cubic-bezier(.22,1,.36,1)}
-.video-facade:hover img,.video-facade:focus-visible img{opacity:1;transform:scale(1.03)}
-.video-facade .vf-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,6,14,.14) 40%,rgba(4,6,14,.7) 100%)}
-.video-facade .vf-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#04121a;background:var(--cyan2);box-shadow:0 0 26px rgba(112,224,255,.65);transition:transform .3s ease,box-shadow .3s ease}
-.video-facade:hover .vf-play,.video-facade:focus-visible .vf-play{transform:translate(-50%,-50%) scale(1.12);box-shadow:0 0 40px rgba(112,224,255,.9)}
-.video-facade .vf-hint{position:absolute;left:14px;right:14px;bottom:10px;font:10.5px var(--mono);letter-spacing:1.5px;color:#cfe6f2;text-align:left}
 .video-frame{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.video-fallback{margin:0;padding:13px 18px;background:rgba(4,6,14,.78);font:11px var(--mono);letter-spacing:.7px}
+.video-fallback a{color:var(--cyan2);text-decoration:underline;text-underline-offset:3px}
 #what-is-rm .intro-panel{margin-bottom:0}
 .show-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .show-card{overflow:hidden;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--pc,var(--cyan));border-radius:0 0 14px 14px;
@@ -401,12 +393,12 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
   .card,.lpanel{backdrop-filter:none}
 }
 @media(max-width:600px){
-  .video-teaser{min-height:270px;padding:24px}.video-teaser p{font-size:13px}
   .recruit-status{padding:20px}.action-row{margin-top:18px}
 }
 </style>
 <noscript><style>
 .reveal{opacity:1 !important;transform:none !important}
+iframe[data-video-src]{display:none}
 @media(max-width:1100px){
   .nav-toggle{display:none}
   nav .bar{height:auto;min-height:62px;flex-wrap:wrap;padding-bottom:10px}
@@ -503,22 +495,59 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
       <div class="card reveal" style="--pc:var(--blue)"><h3 style="color:var(--blue)">🤝 老带新</h3><p>系统化新生培训（B站 20+ 期公开教程），现役队员一对一引导，零基础也能成长为独当一面的工程师。</p></div>
     </div>
 
-    <div style="margin-top:54px" class="reveal">
-      <div class="video-box">
-        <a class="video-teaser" href="https://www.bilibili.com/video/BV1rMaVzTEh1/" target="_blank" rel="noopener" aria-label="在 Bilibili 打开 ENTERPRIZE 2026 招新宣传片">
-          <div><span class="play">▶ 在 B 站观看招新片</span><p>《港科 ENTERPRIZE 2026 招新｜新舰起航》——在新标签页播放，不打断当前页面的浏览节奏。</p></div>
-        </a>
+    <div class="team-reel reveal">
+      <div class="team-reel-head">
+        <div><h3>招新影像 · 新舰起航</h3><p>先从一段由战队账号发布的招新片认识 ENTERPRIZE；接下来沿着工程日志，看看机器人在赛场与训练场中的真实状态。</p></div>
+        <div class="count">TEAM CHANNEL · 3:25</div>
       </div>
+      <article class="show-card team-video-card team-video-feature" style="--pc:var(--pink)">
+        <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=115122454469835&bvid=BV1rMaVzTEh1&cid=32069389984&p=1&autoplay=1&muted=1" data-video-duration="205" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="港科 ENTERPRIZE 2026 招新：新舰起航"></iframe>
+        <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1rMaVzTEh1/" target="_blank" rel="noopener">在 B 站打开港科 ENTERPRIZE 2026 招新片 ⟶</a></p></noscript>
+        <div class="sc-body"><h3>港科 ENTERPRIZE 2026 招新｜新舰起航</h3><div class="sc-meta">TEAM CHANNEL · 港科大ENTERPRIZE战队 · 3:25 · <a href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">查看战队账号</a></div></div>
+      </article>
       <p class="note">RM2027 宣传片与正式报名安排以战队公众号通知为准。</p>
     </div>
   </div>
 </section>
 
-<!-- ================= 03 首次接触 · 什么是 RoboMaster ================= -->
+<!-- ================= 03 工程日志 ================= -->
+<section id="field-log">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div><div class="wp">WAYPOINT 03 // FIELD LOG</div><h2>赛场实录 · 工程机器人日志</h2><div class="en">Robots in the Field</div></div>
+      <div class="nums">03 FIELD<br>LOGS</div>
+    </div>
+    <div class="card reveal" style="--pc:var(--cyan)">
+      <div class="team-reel-head">
+        <div><h3>从机构专题到训练记录</h3><p>三段公开影像记录轮腿步兵、轮式六轴机械臂与自定义控制器兑矿。前两段由 RoboMaster 官方账号发布；第三段链接回原始公开投稿。</p></div>
+        <div class="count">ENGINEERING LOG × 3</div>
+      </div>
+      <div class="show-grid">
+        <article class="show-card team-video-card" style="--pc:var(--gold)">
+          <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=114919953401117&bvid=BV1uH8bzdE61&cid=31299210635&p=1&autoplay=1&muted=1" data-video-duration="92" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="串联轮腿步兵机器人：香港科技大学 ENTERPRIZE 战队"></iframe>
+          <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1uH8bzdE61/" target="_blank" rel="noopener">在 B 站打开串联轮腿步兵专题 ⟶</a></p></noscript>
+          <div class="sc-body"><h3>串联轮腿步兵机器人</h3><div class="sc-meta">ROBOMASTER OFFICIAL · ENTERPRIZE FEATURE · 1:32</div></div>
+        </article>
+        <article class="show-card team-video-card" style="--pc:var(--cyan)">
+          <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=114947401058013&bvid=BV1Y482zjERP&cid=31402361490&p=1&autoplay=1&muted=1" data-video-duration="65" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="轮式末端六轴机械臂：香港科技大学工程机器人"></iframe>
+          <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1Y482zjERP/" target="_blank" rel="noopener">在 B 站打开六轴机械臂专题 ⟶</a></p></noscript>
+          <div class="sc-body"><h3>轮式末端六轴机械臂</h3><div class="sc-meta">ROBOMASTER OFFICIAL · HKUST FEATURE · 1:05</div></div>
+        </article>
+        <article class="show-card team-video-card" style="--pc:var(--pink)">
+          <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=1006482780&bvid=BV1ex4y1s72c&cid=1634797187&p=1&autoplay=1&muted=1" data-video-duration="29" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="训练记录：自定义控制器兑矿"></iframe>
+          <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1ex4y1s72c/" target="_blank" rel="noopener">在 B 站打开自定义控制器训练片段 ⟶</a></p></noscript>
+          <div class="sc-body"><h3>自定义控制器丝滑兑矿</h3><div class="sc-meta">PUBLIC TRAINING LOG · 0:29</div></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 首次接触 · 什么是 RoboMaster ================= -->
 <section id="what-is-rm">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 03 // FIRST CONTACT</div><h2>什么是 RoboMaster 机甲大师赛</h2><div class="en">About the Competition</div></div>
+      <div><div class="wp">WAYPOINT 04 // FIRST CONTACT</div><h2>什么是 RoboMaster 机甲大师赛</h2><div class="en">About the Competition</div></div>
       <div class="nums">7 VS 7<br>ROBOT COMBAT</div>
     </div>
     <div class="intro-panel">
@@ -537,64 +566,44 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
         </div>
       </div>
       <div class="rm-video reveal">
-        <a class="video-facade" href="https://www.bilibili.com/video/BV14g4y1z7QC/" target="_blank" rel="noopener" aria-label="播放官方宣传片：三分钟带你了解 RoboMaster 机甲大师赛"
-          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1&autoplay=1"
-          data-video-title="RoboMaster 官方宣传片：三分钟带你了解机甲大师赛">
-          <img src="https://i0.hdslb.com/bfs/archive/684e3e3b667e0ebf2d76e4a4782e41c3481954dd.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
-          <span class="vf-veil" aria-hidden="true"></span>
-          <span class="vf-play" aria-hidden="true">▶</span>
-          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
-        </a>
+        <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1&autoplay=1&muted=1" data-video-duration="210" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="RoboMaster 官方宣传片：三分钟带你了解机甲大师赛"></iframe>
+        <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV14g4y1z7QC/" target="_blank" rel="noopener">启用 JavaScript 后播放，或在 B站打开官方宣传片 ⟶</a></p></noscript>
         <p class="cap2">官方宣传片《三分钟带你了解万千青年工程师的舞台——RoboMaster机甲大师赛》 · 来源：B站「RoboMaster机甲大师」</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ================= 04 高光回放 · 精彩展示 ================= -->
+<!-- ================= 05 高光回放 · 精彩展示 ================= -->
 <section id="showcase">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 04 // HIGHLIGHT REEL</div><h2>高光回放 · 精彩展示</h2><div class="en">Official Match Highlights</div></div>
-      <div class="nums">OFFICIAL<br>CLIPS ×3</div>
+      <div><div class="wp">WAYPOINT 05 // HIGHLIGHT REEL</div><h2>高光回放 · 精彩展示</h2><div class="en">Team-related Highlights</div></div>
+      <div class="nums">TEAM<br>CLIPS ×3</div>
     </div>
-    <p style="max-width:780px;color:#c0cce2;margin-bottom:26px" class="reveal">以下视频均由 RoboMaster 官方账号「RoboMaster机甲大师」发布：先看懂规则，再感受赛场的极限操作——而这，正是 ENTERPRIZE 每个赛季的日常。</p>
+    <p style="max-width:820px;color:#c0cce2;margin-bottom:26px" class="reveal">前两段由战队账号「港科大ENTERPRIZE战队」发布，回看 2024 赛季的工程与赛场瞬间；第三段按团队相关创作者署名保留，不将公开关联描述成校方或战队官方发布。</p>
     <div class="show-grid">
-      <div class="show-card reveal" style="--pc:var(--gold)">
-        <a class="video-facade" href="https://www.bilibili.com/video/BV1LB55z9EUL/" target="_blank" rel="noopener" aria-label="播放视频：RMUC 2025 机甲大师超级对抗赛规则视频"
-          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=114477991200346&bvid=BV1LB55z9EUL&cid=31131238904&p=1&autoplay=1"
-          data-video-title="RMUC 2025 机甲大师超级对抗赛规则视频">
-          <img src="https://i2.hdslb.com/bfs/archive/472cd8245a06bd3c4e86b1bc4432db0c21cf4244.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
-          <span class="vf-veil" aria-hidden="true"></span>
-          <span class="vf-play" aria-hidden="true">▶</span>
-          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
-        </a>
-        <div class="sc-body"><h3>RMUC 2025 超级对抗赛 · 规则视频</h3><div class="sc-meta">RoboMaster机甲大师 // 看懂比赛 · 2 MIN</div></div>
-      </div>
-      <div class="show-card reveal" style="--pc:var(--cyan)">
-        <a class="video-facade" href="https://www.bilibili.com/video/BV1pA7pzhEkF/" target="_blank" rel="noopener" aria-label="播放视频：RMUC 2025 东部赛区精彩集锦——空地协同，极限换家"
-          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=114597092656537&bvid=BV1pA7pzhEkF&cid=30233464752&p=1&autoplay=1"
-          data-video-title="RMUC 2025 东部赛区精彩集锦：空地协同，极限换家">
-          <img src="https://i0.hdslb.com/bfs/archive/a7cbf9bbfee0b9a1a09dd2486a0c9146abf72e9a.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
-          <span class="vf-veil" aria-hidden="true"></span>
-          <span class="vf-play" aria-hidden="true">▶</span>
-          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
-        </a>
-        <div class="sc-body"><h3>空地协同，极限换家｜RMUC 2025 精彩集锦</h3><div class="sc-meta">RoboMaster机甲大师 // 高光时刻 · 2 MIN</div></div>
-      </div>
-      <div class="show-card reveal" style="--pc:var(--pink)">
-        <a class="video-facade" href="https://www.bilibili.com/video/BV1QQ4y1B7Cy/" target="_blank" rel="noopener" aria-label="播放赛事介绍视频：致热爱的你，机甲大师超级对抗赛等你加入"
-          data-video-embed="https://player.bilibili.com/player.html?isOutside=true&aid=721042980&bvid=BV1QQ4y1B7Cy&cid=424822031&p=1&autoplay=1"
-          data-video-title="赛事介绍：致热爱的你，机甲大师超级对抗赛等你加入">
-          <img src="https://i2.hdslb.com/bfs/archive/1aecfff058f590b0e284011452b4281ddcea0063.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">
-          <span class="vf-veil" aria-hidden="true"></span>
-          <span class="vf-play" aria-hidden="true">▶</span>
-          <span class="vf-hint" aria-hidden="true">点击加载 B站播放器 · 或新标签页打开</span>
-        </a>
-        <div class="sc-body"><h3>致热爱的你｜超级对抗赛等你加入</h3><div class="sc-meta">RoboMaster机甲大师 // 赛事介绍 · 4 MIN</div></div>
-      </div>
+      <article class="show-card reveal" style="--pc:var(--gold)">
+        <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1&autoplay=1&muted=1" data-video-duration="178" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="香港科技大学 2024 赛季高燃混剪"></iframe>
+        <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1HBHyeGEQT/" target="_blank" rel="noopener">在 B 站打开香港科技大学 24 赛季高燃混剪 ⟶</a></p></noscript>
+        <div class="sc-body"><h3>香港科技大学24赛季高燃混剪</h3><div class="sc-meta">战队账号发布 · 港科大ENTERPRIZE战队 · 2:58</div></div>
+      </article>
+      <article class="show-card reveal" style="--pc:var(--cyan)">
+        <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=113089592689065&bvid=BV1sJHSefErC&cid=25760433799&p=1&autoplay=1&muted=1" data-video-duration="214" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="24 赛季混剪第二弹：HKUST 再创佳绩"></iframe>
+        <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1sJHSefErC/" target="_blank" rel="noopener">在 B 站打开 HKUST 24 赛季混剪第二弹 ⟶</a></p></noscript>
+        <div class="sc-body"><h3>24赛季混剪第二弹——HKUST 再创佳绩</h3><div class="sc-meta">战队账号发布 · 港科大ENTERPRIZE战队 · 3:34</div></div>
+      </article>
+      <article class="show-card reveal" style="--pc:var(--pink)">
+        <iframe class="video-frame" src="about:blank" data-video-src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1&autoplay=1&muted=1" data-video-duration="42" data-video-loop tabindex="-1" loading="lazy" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer" title="给视觉磕一个"></iframe>
+        <noscript><p class="video-fallback"><a href="https://www.bilibili.com/video/BV1TP8jzSEVA/" target="_blank" rel="noopener">在 B 站打开《给视觉磕一个》 ⟶</a></p></noscript>
+        <div class="sc-body"><h3>给视觉磕一个</h3><div class="sc-meta">团队相关创作者 · -Aakls- · 0:42</div></div>
+      </article>
     </div>
-    <p style="margin-top:20px" class="reveal"><a class="btn btn-o" href="https://space.bilibili.com/20554233" target="_blank" rel="noopener">更多官方视频 ⟶ B站「RoboMaster机甲大师」</a></p>
+    <div class="reveal" style="margin-top:24px">
+      <p class="note">继续观看只链接原始 Bilibili 页面，不增加自动播放：<a href="https://www.bilibili.com/video/BV1b94y1v7rt/" target="_blank" rel="noopener">RM23 战队混剪</a> · <a href="https://www.bilibili.com/video/BV1TH4y1c7tU/" target="_blank" rel="noopener">ENTERPRIZE 完整比赛候选</a>。</p>
+      <p class="note">RoboMaster 官方参考：<a href="https://www.bilibili.com/video/BV1xGwezFEUN/" target="_blank" rel="noopener">赛事入门</a> · <a href="https://www.bilibili.com/video/BV1QU411m795/" target="_blank" rel="noopener">高校战队招新</a> · <a href="https://www.bilibili.com/video/BV18kdPBiEsy/" target="_blank" rel="noopener">兵种篇</a> · <a href="https://space.bilibili.com/20554233" target="_blank" rel="noopener">查看机甲大师官方账号</a>。</p>
+      <p class="note">仅使用 Bilibili 官方播放器与原视频链接；不下载、剪辑、复制或重新托管视频。技术可嵌入不代表获得转载或其他使用授权。</p>
+    </div>
   </div>
 </section>
 
@@ -602,7 +611,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="honors">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 05 // CRUISE</div><h2>曲速巡航 · 十年战绩</h2><div class="en">Honors · 2015 – 2026</div></div>
+      <div><div class="wp">WAYPOINT 06 // CRUISE</div><h2>曲速巡航 · 十年战绩</h2><div class="en">Honors · 2015 – 2026</div></div>
       <div class="nums">88 5811 84<br>12 0046 B8</div>
     </div>
     <div class="metric-row">
@@ -637,7 +646,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="depts">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 06 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
+      <div><div class="wp">WAYPOINT 07 // PLANETS</div><h2>四颗星球 · 选择你的航向</h2><div class="en">Four Divisions · Find Your Role</div></div>
       <div class="nums">34 0776 EP<br>56 3300 11</div>
     </div>
     <div class="planets" id="department-grid" aria-live="polite"></div>
@@ -649,7 +658,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="tech">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 07 // SYSTEMS</div><h2>舰载科技 · 你将亲手打造</h2><div class="en">What You Will Build</div></div>
+      <div><div class="wp">WAYPOINT 08 // SYSTEMS</div><h2>舰载科技 · 你将亲手打造</h2><div class="en">What You Will Build</div></div>
       <div class="nums">77 1618 3<br>02 1912 1</div>
     </div>
     <div class="grid g2">
@@ -695,7 +704,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <!-- 开源墙 -->
     <div id="oss" style="padding-top:90px">
       <div class="sec-head reveal">
-        <div><div class="wp">WAYPOINT 07-B // OPEN SOURCE</div><h2>开源，是我们的传统</h2><div class="en">Open Source Since 2016</div></div>
+        <div><div class="wp">WAYPOINT 08-B // OPEN SOURCE</div><h2>开源，是我们的传统</h2><div class="en">Open Source Since 2016</div></div>
         <div class="nums">21 0000 +<br>34 REPOS</div>
       </div>
       <p style="max-width:760px;color:#c0cce2;margin-bottom:26px" class="reveal">从 2016 年起，我们把每一赛季的代码、硬件、机械图纸与培训资料全部开源。你的作品将被整个 RoboMaster 社区阅读、引用、点 Star——这是比简历更有说服力的工程师名片。</p>
@@ -714,7 +723,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
     <!-- 培训 -->
     <div id="training" style="padding-top:90px">
       <div class="sec-head reveal">
-        <div><div class="wp">WAYPOINT 07-C // TRAINING</div><h2>系统化新生培训</h2><div class="en">Training Program</div></div>
+        <div><div class="wp">WAYPOINT 08-C // TRAINING</div><h2>系统化新生培训</h2><div class="en">Training Program</div></div>
         <div class="nums">20 + EPS<br>03 TRACKS</div>
       </div>
       <div class="grid g3">
@@ -730,7 +739,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="path">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 08 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
+      <div><div class="wp">WAYPOINT 09 // FLIGHT PLAN</div><h2>入队航线</h2><div class="en">Your Path to ENTERPRIZE</div></div>
       <div class="nums">09 - 10 MON<br>11 RDC</div>
     </div>
     <div class="steps" id="recruitment-path" aria-live="polite"></div>
@@ -753,7 +762,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="faq" style="padding-top:40px">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><div class="wp">WAYPOINT 08-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
+      <div><div class="wp">WAYPOINT 09-B // SHIP'S LOG</div><h2>常见问题</h2><div class="en">FAQ</div></div>
       <div class="nums">Q & A<br>05 LOGS</div>
     </div>
     <div id="faq-list"><details class="reveal" data-faq-details><summary>招新信息正在载入</summary><p>如未自动显示，请加入 QQ 招新群 581184202 或邮件咨询。</p></details></div>
@@ -764,7 +773,7 @@ footer{padding:0 0 50px;color:var(--dim);font-size:13px;text-align:center}
 <section id="join">
   <div class="wrap">
     <div class="sec-head reveal" style="justify-content:center;text-align:center">
-      <div><div class="wp">WAYPOINT 09 // THE JUMP</div><h2>新舰起航，缺你不可</h2><div class="en">Join Us · RM2027</div></div>
+      <div><div class="wp">WAYPOINT 10 // THE JUMP</div><h2>新舰起航，缺你不可</h2><div class="en">Join Us · RM2027</div></div>
     </div>
     <div class="bh-stage reveal">
       <div class="bh">
@@ -977,32 +986,124 @@ function initFaqAnimations(){
   });
 }
 
-/* ============ 视频门面：点击后才注入 B 站播放器，无 JS 时原生跳转 ============ */
-function initVideoFacades(){
-  document.querySelectorAll('a[data-video-embed]').forEach(function(facade){
-    facade.addEventListener('click', function(event){
-      /* 保留 Ctrl/Cmd/Shift 点击在新标签页打开视频页的原生行为 */
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      event.preventDefault();
-      var iframe = document.createElement('iframe');
-      iframe.className = 'video-frame';
-      iframe.src = facade.dataset.videoEmbed;
-      iframe.title = facade.dataset.videoTitle || 'RoboMaster 官方视频';
-      iframe.setAttribute('allowfullscreen', 'true');
-      iframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media');
-      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-      iframe.tabIndex = -1;
-      facade.replaceWith(iframe);
-      /* 键盘激活后焦点移交播放器，不回退到 body */
-      iframe.focus();
+/* ============ 视频播放器：25% 可见时加载，静音自动播放并在可见时重播 ============ */
+var VIDEO_REPLAY_GRACE_MS = 4000;
+var VIDEO_VISIBILITY_THRESHOLD = .25;
+var videoReplayTimers = new Map();
+var visibleVideoFrames = new Set();
+var userControlledVideoFrames = new Set();
+
+function setVideoVisibility(frame, isVisible){
+  var nextFrames = new Set(visibleVideoFrames);
+  if (isVisible) nextFrames.add(frame);
+  else nextFrames.delete(frame);
+  visibleVideoFrames = nextFrames;
+}
+function clearVideoReplay(frame){
+  var timer = videoReplayTimers.get(frame);
+  if (timer) window.clearTimeout(timer);
+  var nextTimers = new Map(videoReplayTimers);
+  nextTimers.delete(frame);
+  videoReplayTimers = nextTimers;
+}
+function isVideoUserControlled(frame){
+  return userControlledVideoFrames.has(frame);
+}
+function markVideoAsUserControlled(frame){
+  if (isVideoUserControlled(frame)) return;
+  userControlledVideoFrames = new Set(Array.from(userControlledVideoFrames).concat(frame));
+  clearVideoReplay(frame);
+}
+function scheduleVideoReplay(frame){
+  clearVideoReplay(frame);
+  if (reduced || document.visibilityState !== 'visible' || !visibleVideoFrames.has(frame) || isVideoUserControlled(frame)) return;
+  var duration = Number(frame.dataset.videoDuration);
+  var source = frame.dataset.videoUrl;
+  if (!Number.isFinite(duration) || duration <= 0 || !source) return;
+  var timer = window.setTimeout(function(){
+    var nextTimers = new Map(videoReplayTimers);
+    nextTimers.delete(frame);
+    videoReplayTimers = nextTimers;
+    if (document.visibilityState !== 'visible' || !visibleVideoFrames.has(frame) || isVideoUserControlled(frame)) return;
+    frame.src = source;
+  }, duration * 1000 + VIDEO_REPLAY_GRACE_MS);
+  videoReplayTimers = new Map(videoReplayTimers).set(frame, timer);
+}
+function getVideoSource(frame){
+  var source = frame.dataset.videoUrl || frame.dataset.videoSrc;
+  if (!source || !reduced) return source;
+  var url = new URL(source);
+  url.searchParams.set('autoplay', '0');
+  return url.href;
+}
+function loadVideoFrame(frame){
+  var source = getVideoSource(frame);
+  if (!source) return;
+  if (!frame.dataset.videoUrl) frame.dataset.videoUrl = frame.dataset.videoSrc || source;
+  frame.tabIndex = 0;
+  frame.src = source;
+  frame.removeAttribute('data-video-src');
+}
+function restoreVideoFrame(frame){
+  if (document.visibilityState !== 'visible' || !visibleVideoFrames.has(frame) || isVideoUserControlled(frame)) return;
+  if (frame.getAttribute('src') === 'about:blank') loadVideoFrame(frame);
+  else if (!frame.dataset.videoSrc) scheduleVideoReplay(frame);
+}
+function initDeferredVideos(){
+  var frames = Array.from(document.querySelectorAll('iframe[data-video-src]'));
+  frames.forEach(function(frame){
+    frame.addEventListener('load', function(){ scheduleVideoReplay(frame); });
+    frame.addEventListener('focus', function(){
+      if (frame.getAttribute('src') !== 'about:blank') markVideoAsUserControlled(frame);
     });
   });
+  window.addEventListener('blur', function(){
+    frames.forEach(function(frame){
+      if (document.activeElement === frame && frame.getAttribute('src') !== 'about:blank') markVideoAsUserControlled(frame);
+    });
+  });
+  document.addEventListener('visibilitychange', function(){
+    frames.forEach(function(frame){
+      if (document.visibilityState === 'visible') restoreVideoFrame(frame);
+      else clearVideoReplay(frame);
+    });
+  });
+  window.addEventListener('pagehide', function(){
+    frames.forEach(clearVideoReplay);
+  });
+  window.addEventListener('pageshow', function(){
+    frames.forEach(restoreVideoFrame);
+  });
+  if (!('IntersectionObserver' in window)) {
+    frames.forEach(function(frame){
+      setVideoVisibility(frame, true);
+      if (document.visibilityState === 'visible') restoreVideoFrame(frame);
+    });
+    return;
+  }
+  var videoObserver = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      var frame = entry.target;
+      var isVisible = entry.intersectionRatio >= VIDEO_VISIBILITY_THRESHOLD;
+      setVideoVisibility(frame, isVisible);
+      if (isVisible) {
+        restoreVideoFrame(frame);
+        return;
+      }
+      clearVideoReplay(frame);
+      if (frame.dataset.videoUrl && !isVideoUserControlled(frame)) {
+        frame.tabIndex = -1;
+        frame.src = 'about:blank';
+      }
+    });
+  }, {threshold: [0, VIDEO_VISIBILITY_THRESHOLD]});
+  frames.forEach(function(frame){ videoObserver.observe(frame); });
 }
 
 renderRecruitment();
 initNavigation();
 initFaqAnimations();
-initVideoFacades();
+initDeferredVideos();
 
 /* ============ HUD 速度表（须先于 initWarp 声明） ============ */
 var velVal = document.getElementById('vel-val');
@@ -1505,7 +1606,7 @@ document.querySelectorAll('[data-copy]').forEach(function(btn){
 
 /* ============ 5. 数字滚动 ============ */
 var numberTargets = document.querySelectorAll('.stat b[data-n]');
-if (reduced) {
+if (reduced || !('IntersectionObserver' in window)) {
   numberTargets.forEach(function(element){ element.textContent = element.dataset.n; });
 } else {
   var nio = new IntersectionObserver(function(es){ es.forEach(function(e){
