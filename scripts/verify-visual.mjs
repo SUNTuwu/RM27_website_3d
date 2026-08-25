@@ -37,6 +37,15 @@ function failIf(condition, message) {
   }
 }
 
+function rectanglesOverlap(a, b) {
+  return (
+    a.left < b.right &&
+    a.right > b.left &&
+    a.top < b.bottom &&
+    a.bottom > b.top
+  );
+}
+
 async function getState(page) {
   return page.evaluate(() => window.__ENTERPRIZE_DEMO__?.state);
 }
@@ -95,6 +104,88 @@ try {
   failIf(false, "state reached EXPLORE (point cloud assembled)");
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(outputDirectory, "01-explore.png") });
+  const exploreLayout = await page.evaluate(() => {
+    const rect = (selector) => {
+      const bounds = document.querySelector(selector).getBoundingClientRect();
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        top: bounds.top,
+        bottom: bounds.bottom,
+        width: bounds.width,
+      };
+    };
+    return {
+      keyHints: [...document.querySelectorAll(".key-hint")].map((element) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          left: bounds.left,
+          right: bounds.right,
+          top: bounds.top,
+          bottom: bounds.bottom,
+          width: bounds.width,
+        };
+      }),
+      keyCaps: [...document.querySelectorAll(".key-hint__key")].map((element) => {
+        const bounds = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          width: bounds.width,
+          height: bounds.height,
+          transform: style.transform,
+          backgroundImage: style.backgroundImage,
+        };
+      }),
+      arrowHasHatch: [...document.querySelectorAll(".hud-slant-button")].some(
+        (element) => getComputedStyle(element).backgroundImage.includes("repeating"),
+      ),
+      hintSkew: Math.abs(
+        new DOMMatrix(getComputedStyle(document.querySelector(".hint-bar")).transform).c,
+      ),
+      hintColors: {
+        action: getComputedStyle(document.querySelector(".hint-bar")).color,
+        title: getComputedStyle(document.querySelector(".hint-bar b")).color,
+        stateAction: getComputedStyle(document.querySelector(".state-chip__label")).color,
+        stateTitle: getComputedStyle(document.querySelector(".state-chip__index")).color,
+      },
+      hint: rect(".hint-bar"),
+      switcher: rect(".explore-panel__switcher"),
+    };
+  });
+  const [leftKey, spaceKey, rightKey] = exploreLayout.keyCaps;
+  failIf(
+    Math.abs(leftKey.height - rightKey.height) > 1 ||
+      Math.max(leftKey.width, rightKey.width) >= 70 ||
+      spaceKey.width <= 150 ||
+      spaceKey.height <= 60 ||
+      exploreLayout.keyCaps.some(
+        (key) => key.transform !== "none" || key.backgroundImage !== "none",
+      ),
+    "EXPLORE shortcuts retain the original rectangular key sizes",
+  );
+  failIf(
+    exploreLayout.keyHints.some((bounds) =>
+      rectanglesOverlap(bounds, exploreLayout.hint),
+    ),
+    "EXPLORE shortcut controls do not overlap the shared hint bar",
+  );
+  failIf(
+    exploreLayout.switcher.right > viewW - edgeMargin,
+    "EXPLORE model switcher remains inside the viewport frame",
+  );
+  failIf(
+    exploreLayout.arrowHasHatch,
+    "switcher arrow buttons contain no diagonal hatch texture",
+  );
+  failIf(
+    exploreLayout.hintSkew > 1e-6,
+    "the bottom hint bar remains rectangular like the state chip",
+  );
+  failIf(
+    exploreLayout.hintColors.action !== exploreLayout.hintColors.stateAction ||
+      exploreLayout.hintColors.title !== exploreLayout.hintColors.stateTitle,
+    "the bottom hint uses the state chip gray-title and white-text hierarchy",
+  );
 
   // EXPLORE: 点击径向扩散
   await page.mouse.move(viewW / 2, viewH / 2);
@@ -147,6 +238,35 @@ try {
   });
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(outputDirectory, "05-focus.png") });
+  const focusLayout = await page.evaluate(() => {
+    const rect = (selector) => {
+      const bounds = document.querySelector(selector).getBoundingClientRect();
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        top: bounds.top,
+        bottom: bounds.bottom,
+      };
+    };
+    return {
+      mediaBar: rect(".focus-panel__bar"),
+      mediaDescription: rect(".focus-panel__slide-desc"),
+      hint: rect(".hint-bar"),
+      timeline: rect(".timeline-hud"),
+    };
+  });
+  failIf(
+    rectanglesOverlap(focusLayout.mediaBar, focusLayout.mediaDescription),
+    "FOCUS media switcher does not overlap its description",
+  );
+  failIf(
+    rectanglesOverlap(focusLayout.mediaDescription, focusLayout.hint),
+    "FOCUS media description does not overlap the shared hint bar",
+  );
+  failIf(
+    rectanglesOverlap(focusLayout.hint, focusLayout.timeline),
+    "FOCUS hint bar does not overlap the timeline panel",
+  );
   failIf(false, "FOCUS state active around robot");
 
   // FOCUS: 拖拽观察 + 滚轮退出
