@@ -26,6 +26,8 @@ import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
 const SCAN_DURATION = 3.2;
+const DOCUMENT_REVEAL_DURATION_MS = 560;
+const DOCUMENT_CANVAS_PARALLAX_RATIO = 0.14;
 
 function easeInOutCubic(x) {
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
@@ -68,6 +70,7 @@ if (isMobileDevice) {
 async function boot() {
   hud.setState("boot");
   const canvas = document.querySelector("#scene-canvas");
+  const unitSite = document.querySelector("#unit-site");
   const stage = createStage(canvas, VISUAL_CONFIG);
   const freeCamera = stage.freeCamera;
   const exploreFov = Number(VISUAL_CONFIG.explore.cameraFov);
@@ -631,6 +634,73 @@ async function boot() {
 
   // ---------- 全局状态机 ----------
   let state = "boot";
+  let documentRevealFrame = 0;
+  let documentRevealInProgress = false;
+
+  function updateDocumentParallax(scrollY = window.scrollY) {
+    const revealDistance = Math.max(unitSite.offsetTop, 1);
+    const progress = Math.min(Math.max(scrollY / revealDistance, 0), 1);
+    const canvasShift =
+      -window.innerHeight * DOCUMENT_CANVAS_PARALLAX_RATIO * progress;
+    document.documentElement.style.setProperty(
+      "--document-canvas-shift",
+      `${canvasShift.toFixed(2)}px`,
+    );
+  }
+
+  function stopDocumentReveal() {
+    if (documentRevealFrame) {
+      cancelAnimationFrame(documentRevealFrame);
+      documentRevealFrame = 0;
+    }
+    documentRevealInProgress = false;
+    document.documentElement.classList.remove("is-document-transitioning");
+  }
+
+  function revealUnitArchive() {
+    stopDocumentReveal();
+    const root = document.documentElement;
+    const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
+    const targetY = Math.min(unitSite.offsetTop, maxScrollY);
+    const startY = window.scrollY;
+    const distance = targetY - startY;
+
+    documentRevealInProgress = true;
+    root.classList.add("is-document-transitioning");
+
+    if (
+      Math.abs(distance) < 1 ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      updateDocumentParallax(targetY);
+      window.scrollTo(0, targetY);
+      stopDocumentReveal();
+      return;
+    }
+
+    const startedAt = performance.now();
+    const step = (now) => {
+      const progress = Math.min(
+        (now - startedAt) / DOCUMENT_REVEAL_DURATION_MS,
+        1,
+      );
+      const eased = 1 - Math.pow(1 - progress, 4);
+      const nextScrollY = startY + distance * eased;
+      updateDocumentParallax(nextScrollY);
+      window.scrollTo(0, nextScrollY);
+
+      if (progress < 1) {
+        documentRevealFrame = requestAnimationFrame(step);
+        return;
+      }
+
+      window.scrollTo(0, targetY);
+      stopDocumentReveal();
+    };
+
+    documentRevealFrame = requestAnimationFrame(step);
+  }
+
   function setState(next) {
     if (next !== state && (state === "scrub" || next === "scrub")) {
       // 子状态结束时只交出相机控制权，不改写当前姿态。
@@ -665,14 +735,20 @@ async function boot() {
     }
     timeline.setAutoDrive(false);
     setState("end");
+    document.documentElement.classList.add("is-document-mode");
     releasePageScroll();
+    updateDocumentParallax();
+    revealUnitArchive();
   }
 
   function returnToTimeline() {
     if (state !== "end") {
       return;
     }
+    stopDocumentReveal();
     window.scrollTo(0, 0);
+    document.documentElement.classList.remove("is-document-mode");
+    document.documentElement.style.removeProperty("--document-canvas-shift");
     lockPageScroll();
     setState("scrub");
     hud.setTimeline(timeline.progress);
@@ -1004,9 +1080,13 @@ async function boot() {
       } else if (state === "focus") {
         event.preventDefault();
         exitFocus();
-      } else if (state === "end" && event.deltaY < 0 && window.scrollY <= 1) {
-        event.preventDefault();
-        returnToTimeline();
+      } else if (state === "end") {
+        if (documentRevealInProgress) {
+          event.preventDefault();
+        } else if (event.deltaY < 0 && window.scrollY <= 1) {
+          event.preventDefault();
+          returnToTimeline();
+        }
       } else if (state === "assemble" || state === "scan" || state === "boot") {
         event.preventDefault();
       }
@@ -1018,7 +1098,14 @@ async function boot() {
   window.addEventListener(
     "scroll",
     () => {
-      if (state === "end" && window.scrollY <= 1) {
+      if (state === "end") {
+        updateDocumentParallax();
+      }
+      if (
+        state === "end" &&
+        !documentRevealInProgress &&
+        window.scrollY <= 1
+      ) {
         returnToTimeline();
       }
     },

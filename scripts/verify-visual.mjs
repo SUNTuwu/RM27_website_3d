@@ -295,6 +295,85 @@ try {
   failIf((await getState(page)) !== "scrub", "state stays SCRUB at 100% (no END lock)");
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(outputDirectory, "07-full-progress.png") });
+
+  // SCRUB -> END: the folder-shaped document layer rises over a sticky 3D stage.
+  await page.mouse.wheel(0, 600);
+  await waitState(page, "end", 10_000);
+  await page.waitForFunction(() => {
+    const unitSite = document.querySelector("#unit-site");
+    const top = unitSite.getBoundingClientRect().top;
+    return top > window.innerHeight * 0.08 && top < window.innerHeight * 0.92;
+  });
+  const revealLayout = await page.evaluate(() => ({
+    appTop: document.querySelector("#app").getBoundingClientRect().top,
+    canvasTop: document.querySelector("#scene-canvas").getBoundingClientRect().top,
+    unitTop: document.querySelector("#unit-site").getBoundingClientRect().top,
+    viewportHeight: window.innerHeight,
+    folderOpacity: getComputedStyle(
+      document.querySelector("#unit-site"),
+      "::before",
+    ).opacity,
+    folderShape: getComputedStyle(
+      document.querySelector("#unit-site"),
+      "::before",
+    ).clipPath,
+  }));
+  await page.screenshot({ path: path.join(outputDirectory, "08-document-reveal.png") });
+  failIf(
+    Math.abs(revealLayout.appTop) > 1 ||
+      revealLayout.canvasTop >= -1 ||
+      Math.abs(revealLayout.canvasTop) >=
+        (revealLayout.viewportHeight - revealLayout.unitTop) * 0.4 ||
+      revealLayout.unitTop <= 0 ||
+      revealLayout.unitTop >= revealLayout.viewportHeight,
+    "END reveal moves the 3D canvas upward more slowly than the 2D layer",
+  );
+  failIf(
+    revealLayout.folderOpacity !== "1" || revealLayout.folderShape === "none",
+    "END reveal exposes the folder-shaped upper edge",
+  );
+  await page.waitForFunction(() => {
+    const root = document.documentElement;
+    const unitTop = document.querySelector("#unit-site").getBoundingClientRect().top;
+    return !root.classList.contains("is-document-transitioning") && Math.abs(unitTop) < 2;
+  });
+  const documentMode = await page.evaluate(() => ({
+    active: document.documentElement.classList.contains("is-document-mode"),
+    scrollbarWidth: getComputedStyle(document.documentElement).scrollbarWidth,
+    appPosition: getComputedStyle(document.querySelector("#app")).position,
+    scrollHeight: document.documentElement.scrollHeight,
+    clientHeight: document.documentElement.clientHeight,
+  }));
+  failIf(
+    !documentMode.active || documentMode.scrollbarWidth !== "none",
+    "END document mode hides the browser scrollbar",
+  );
+  failIf(
+    documentMode.scrollHeight <= documentMode.clientHeight,
+    "END document content remains vertically scrollable",
+  );
+  failIf(
+    documentMode.appPosition !== "sticky",
+    "END document mode keeps the 3D stage as the parallax background",
+  );
+  const archiveScrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, -240);
+  await page.waitForFunction(
+    (startY) =>
+      window.__ENTERPRIZE_DEMO__?.state === "end" && window.scrollY < startY - 1,
+    archiveScrollY,
+    { timeout: 5_000 },
+  );
+  failIf(false, "END document mode still accepts wheel scrolling");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await waitState(page, "scrub", 10_000);
+  failIf(
+    await page.evaluate(() =>
+      document.documentElement.classList.contains("is-document-mode"),
+    ),
+    "returning to SCRUB clears document mode",
+  );
+
   await page.mouse.wheel(0, -2400);
   await page.waitForTimeout(1_200);
   const rewoundProgress = await getProgress(page);
@@ -342,7 +421,12 @@ try {
   );
 
   // 截图非空启发式: 3D 画面 PNG 应远大于纯色图
-  for (const name of ["01-explore.png", "04-scrub-start.png", "05-focus.png"]) {
+  for (const name of [
+    "01-explore.png",
+    "04-scrub-start.png",
+    "05-focus.png",
+    "08-document-reveal.png",
+  ]) {
     const details = await stat(path.join(outputDirectory, name));
     failIf(details.size < 40_000, `${name} looks non-blank (${details.size} bytes)`);
   }

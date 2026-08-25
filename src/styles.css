@@ -118,6 +118,24 @@ html.is-scroll-locked body {
   overflow: hidden;
 }
 
+/* Keep document-mode scrolling, but remove the browser chrome at the right edge. */
+html.is-document-mode,
+html.is-document-mode body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html.is-document-mode::-webkit-scrollbar,
+html.is-document-mode body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html.is-document-transitioning {
+  overscroll-behavior-y: none;
+}
+
 body {
   min-width: 320px;
   overflow-x: hidden;
@@ -1329,12 +1347,70 @@ body {
   color: rgba(239, 243, 240, 0.88);
 }
 
-/* ---------- 2D content placeholder ---------- */
+/* ---------- 2D document handoff ---------- */
 
 .unit-site {
+  position: relative;
+  z-index: 70;
   min-height: 100vh;
   min-height: 100svh;
   background: #000;
+  isolation: isolate;
+  box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.72);
+}
+
+html.is-document-mode #app {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+}
+
+html.is-document-mode #scene-canvas {
+  transform: translate3d(0, var(--document-canvas-shift, 0px), 0);
+  will-change: transform;
+}
+
+.unit-site::before,
+.unit-site::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  opacity: 0;
+  clip-path: polygon(
+    0 100%,
+    0 62%,
+    5% 62%,
+    7% 0,
+    29% 0,
+    32% 62%,
+    100% 62%,
+    100% 100%
+  );
+}
+
+.unit-site::before {
+  top: -50px;
+  height: 51px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 45, 77, 0.82) 0%,
+    rgba(127, 212, 255, 0.9) 30%,
+    rgba(120, 160, 210, 0.38) 100%
+  );
+  filter: drop-shadow(0 -8px 18px rgba(46, 155, 255, 0.16));
+}
+
+.unit-site::after {
+  top: -48px;
+  height: 49px;
+  background: #000;
+}
+
+html.is-document-mode .unit-site::before,
+html.is-document-mode .unit-site::after {
+  opacity: 1;
 }
 
 @media (max-width: 900px) {
