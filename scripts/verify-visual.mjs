@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { VISUAL_CONFIG } from "../src/config.js";
 
 const targetUrl = process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
 const outputDirectory =
@@ -121,7 +122,13 @@ try {
   // SCRUB: 滚轮回滚
   const progressPeak = await getProgress(page);
   await page.mouse.wheel(0, -3000);
-  await page.waitForTimeout(2_000);
+  await page
+    .waitForFunction(
+      (peak) => (window.__ENTERPRIZE_DEMO__?.timelineProgress ?? peak) < peak,
+      progressPeak,
+      { timeout: 15_000 },
+    )
+    .catch(() => {});
   const progressRewound = await getProgress(page);
   failIf(progressRewound >= progressPeak, "wheel rewind pulls timeline backward");
 
@@ -149,6 +156,7 @@ try {
   await page.mouse.up();
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(outputDirectory, "06-focus-drag.png") });
+  await page.mouse.move(viewW / 2, viewH / 2);
   await page.mouse.wheel(0, 300);
   await page.waitForFunction(
     () => window.__ENTERPRIZE_DEMO__?.state === "scrub" && window.__ENTERPRIZE_DEMO__?.focusMode === "idle",
@@ -182,7 +190,36 @@ try {
   );
   failIf(modelResponses.length < 9, `model resources observed: ${modelResponses.length} >= 9`);
   const pointCount = await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.pointCount ?? 0);
-  failIf(pointCount < 100000, `point cloud count ${pointCount} >= 100k`);
+  failIf(
+    pointCount !== VISUAL_CONFIG.pointCloud.count,
+    `point cloud count ${pointCount} matches config ${VISUAL_CONFIG.pointCloud.count}`,
+  );
+  const arenaSymmetry = await page.evaluate(
+    () => window.__ENTERPRIZE_DEMO__?.arenaSymmetry,
+  );
+  failIf(
+    arenaSymmetry?.halfCount !== 2 ||
+      arenaSymmetry?.rotationAxis !== "y" ||
+      Math.abs((arenaSymmetry?.rotationRadians ?? 0) - Math.PI) > 1e-6,
+    "arena contains two halves with a 180-degree vertical-axis rotation",
+  );
+  failIf(
+    !arenaSymmetry?.geometryShared ||
+      !arenaSymmetry?.texturesShared ||
+      !arenaSymmetry?.materialsIndependent,
+    "arena halves share geometry/textures and isolate materials",
+  );
+  failIf(
+    arenaSymmetry?.mixerCount !== 2 ||
+      arenaSymmetry?.mixerTimes.some((time) => time <= 0),
+    "both arena animation mixers are running",
+  );
+  failIf(
+    modelResponses.filter((response) =>
+      response.url.includes("/assets/models/arena/arena_half_blue.gltf"),
+    ).length !== 1,
+    "the blue half-arena glTF is transferred once",
+  );
 
   // 截图非空启发式: 3D 画面 PNG 应远大于纯色图
   for (const name of ["01-explore.png", "04-scrub-start.png", "05-focus.png"]) {

@@ -76,6 +76,7 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
 
   let mode = "idle"; // idle | entering | active | exiting
   let modeTime = 0;
+  let modeStartedAt = null;
   let dragging = false;
   let highlight = 0;
   let highlightTarget = 0;
@@ -106,7 +107,7 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
       modeChangeCallback = callback;
     },
     /** 进入聚焦: 捕获自由相机当前姿态，并以此作为过渡起点 */
-    enter() {
+    enter(startedAt) {
       computeAnchorPose();
       startPos.copy(camera.position);
       startQuat.copy(camera.quaternion);
@@ -114,9 +115,10 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
       currentOffset.copy(restOffset);
       mode = "entering";
       modeTime = 0;
+      modeStartedAt = Number.isFinite(startedAt) ? startedAt : null;
     },
     /** 退出聚焦: targetPose = timeline_0 冻结进度的相机姿态 */
-    exit(targetPose) {
+    exit(targetPose, startedAt) {
       startPos.copy(camera.position);
       startQuat.copy(camera.quaternion);
       endPos.copy(targetPose.position);
@@ -124,6 +126,7 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
       dragging = false;
       mode = "exiting";
       modeTime = 0;
+      modeStartedAt = Number.isFinite(startedAt) ? startedAt : null;
     },
     startDrag() {
       if (mode === "active") {
@@ -162,13 +165,20 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
 
       if (mode === "entering" || mode === "exiting") {
         modeTime += delta;
+        if (Number.isFinite(elapsed) && modeStartedAt === null) {
+          modeStartedAt = elapsed;
+        }
+        const transitionTime = Number.isFinite(elapsed) && modeStartedAt !== null
+          ? Math.max(elapsed - modeStartedAt, 0)
+          : modeTime;
         const duration = mode === "entering" ? ENTER_DURATION : EXIT_DURATION;
-        const k = easeInOutCubic(Math.min(modeTime / duration, 1));
+        const k = easeInOutCubic(Math.min(transitionTime / duration, 1));
         camera.position.lerpVectors(startPos, endPos, k);
         camera.quaternion.slerpQuaternions(startQuat, endQuat, k);
-        if (modeTime >= duration) {
+        if (transitionTime >= duration) {
           const finished = mode;
           mode = mode === "entering" ? "active" : "idle";
+          modeStartedAt = null;
           modeChangeCallback?.(mode, finished);
         }
         return;

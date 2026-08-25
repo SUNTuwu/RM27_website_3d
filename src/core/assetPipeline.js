@@ -2,11 +2,13 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const ASSET_MANIFEST = Object.freeze({
-  arena: "models/arena/arena.gltf", // 场地几何 + rune 环循环动画 (2026-08-07 更新)
+  arena: "models/arena/arena_half_blue.gltf",
   timeline: "models/timeline_0/arena.gltf",
   robot: "models/robot_1/robot_1.gltf",
   dart: "models/dart/dart.gltf",
 });
+
+export const PROJECT_ASSET_KEYS = Object.freeze(Object.keys(ASSET_MANIFEST));
 
 export function assetUrl(relativePath) {
   const base = import.meta.env.BASE_URL.endsWith("/")
@@ -61,14 +63,14 @@ export function configureLoadedScene(root, renderer, { lightIntensityScale = 1 }
   });
 }
 
-export async function loadProjectAssets({ onProgress, onError } = {}) {
+export function createProjectAssetLoader({ onProgress, onError } = {}) {
   const manager = new THREE.LoadingManager();
-  let lastProgress = 0;
+  const cache = new Map();
+  const loaded = new Map();
 
   manager.onProgress = (url, loaded, total) => {
     const ratio = total > 0 ? loaded / total : 0;
-    lastProgress = Math.max(lastProgress, Math.min(ratio, 0.98));
-    onProgress?.({ ratio: lastProgress, loaded, total, url });
+    onProgress?.({ phase: "dependency", ratio, loaded, total, url });
   };
 
   manager.onError = (url) => {
@@ -76,23 +78,72 @@ export async function loadProjectAssets({ onProgress, onError } = {}) {
   };
 
   const loader = new GLTFLoader(manager);
-  const entries = Object.entries(ASSET_MANIFEST);
 
-  const loadedEntries = await Promise.all(
-    entries.map(async ([key, relativePath]) => {
-      const url = assetUrl(relativePath);
-      try {
-        const gltf = await loader.loadAsync(url);
+  function load(key) {
+    if (!(key in ASSET_MANIFEST)) {
+      return Promise.reject(new Error(`Unknown project asset: ${key}`));
+    }
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    const url = assetUrl(ASSET_MANIFEST[key]);
+    onProgress?.({ phase: "start", key, ratio: 0, loaded: 0, total: 1, url });
+    const promise = loader
+      .loadAsync(url, (event) => {
+        const ratio = event.total > 0 ? event.loaded / event.total : 0;
+        onProgress?.({
+          phase: "transfer",
+          key,
+          ratio,
+          loaded: event.loaded,
+          total: event.total,
+          url,
+        });
+      })
+      .then((gltf) => {
         gltf.scene.name = `${key}_root`;
-        return [key, gltf];
-      } catch (cause) {
-        throw new Error(`Unable to load ${key} from ${url}`, { cause });
-      }
-    }),
-  );
+        loaded.set(key, gltf);
+        onProgress?.({ phase: "complete", key, ratio: 1, loaded: 1, total: 1, url });
+        return gltf;
+      })
+      .catch((cause) => {
+        cache.delete(key);
+        const error = new Error(`Unable to load ${key} from ${url}`, { cause });
+        onError?.(error);
+        throw error;
+      });
 
-  onProgress?.({ ratio: 1, loaded: entries.length, total: entries.length, url: "complete" });
-  return Object.fromEntries(loadedEntries);
+    cache.set(key, promise);
+    return promise;
+  }
+
+  async function loadMany(keys) {
+    const uniqueKeys = [...new Set(keys)];
+    const entries = await Promise.all(
+      uniqueKeys.map(async (key) => [key, await load(key)]),
+    );
+    return Object.fromEntries(entries);
+  }
+
+  return {
+    load,
+    loadMany,
+    has(key) {
+      return loaded.has(key);
+    },
+    get(key) {
+      return loaded.get(key) ?? null;
+    },
+    get loadedKeys() {
+      return [...loaded.keys()];
+    },
+  };
+}
+
+export async function loadProjectAssets({ onProgress, onError } = {}) {
+  const assetLoader = createProjectAssetLoader({ onProgress, onError });
+  return assetLoader.loadMany(PROJECT_ASSET_KEYS);
 }
 
 function collectSceneStats(root) {
@@ -126,38 +177,63 @@ function collectSceneStats(root) {
   };
 }
 
-export function auditProjectAssets(assets) {
-  const arenaStats = collectSceneStats(assets.arena.scene);
-  const timelineStats = collectSceneStats(assets.timeline.scene);
-  const robotStats = collectSceneStats(assets.robot.scene);
-  const dartStats = collectSceneStats(assets.dart.scene);
+function emptySceneStats() {
+  return { meshes: [], materials: [], emissiveMaterials: [] };
+}
+
+export function auditProjectAssets(
+  assets,
+  { required = PROJECT_ASSET_KEYS } = {},
+) {
+  const requiredKeys = new Set(required);
+  const arenaStats = assets.arena
+    ? collectSceneStats(assets.arena.scene)
+    : emptySceneStats();
+  const timelineStats = assets.timeline
+    ? collectSceneStats(assets.timeline.scene)
+    : emptySceneStats();
+  const robotStats = assets.robot
+    ? collectSceneStats(assets.robot.scene)
+    : emptySceneStats();
+  const dartStats = assets.dart
+    ? collectSceneStats(assets.dart.scene)
+    : emptySceneStats();
   const camera =
-    assets.timeline.cameras[0] ??
-    assets.timeline.scene.getObjectByProperty("isCamera", true) ??
+    assets.timeline?.cameras[0] ??
+    assets.timeline?.scene.getObjectByProperty("isCamera", true) ??
     null;
-  const clips = assets.timeline.animations.map((clip) => ({
+  const clips = (assets.timeline?.animations ?? []).map((clip) => ({
     name: clip.name || "Untitled",
     duration: clip.duration,
     tracks: clip.tracks.length,
   }));
   const issues = [];
 
-  if (arenaStats.meshes.length === 0) {
-    issues.push("arena_static contains no renderable meshes");
+  for (const key of requiredKeys) {
+    if (!assets[key]) {
+      issues.push(`${key} asset was not loaded`);
+    }
   }
-  if (arenaStats.emissiveMaterials.length === 0) {
-    issues.push("arena_static contains no active emissive materials");
+
+  if (assets.arena && arenaStats.meshes.length === 0) {
+    issues.push("arena contains no renderable meshes");
   }
-  if (!camera) {
+  if (assets.arena && arenaStats.emissiveMaterials.length === 0) {
+    issues.push("arena contains no active emissive materials");
+  }
+  if (assets.timeline && !camera) {
     issues.push("timeline_0 contains no camera");
   }
-  if (clips.length === 0) {
+  if (assets.timeline && clips.length === 0) {
     issues.push("timeline_0 contains no animation clips");
   }
-  if (!robotStats.meshes.some((mesh) => mesh.name.startsWith("robot_"))) {
+  if (
+    assets.robot &&
+    !robotStats.meshes.some((mesh) => mesh.name.startsWith("robot_"))
+  ) {
     issues.push("robot asset does not expose a robot_* mesh");
   }
-  if (dartStats.meshes.length === 0) {
+  if (assets.dart && dartStats.meshes.length === 0) {
     issues.push("dart asset contains no renderable meshes");
   }
 
@@ -171,13 +247,13 @@ export function auditProjectAssets(assets) {
   return {
     arena: {
       ...arenaStats,
-      sourceClips: assets.arena.animations,
+      sourceClips: assets.arena?.animations ?? [],
     },
     timeline: {
       ...timelineStats,
       camera,
       clips,
-      sourceClips: assets.timeline.animations,
+      sourceClips: assets.timeline?.animations ?? [],
     },
     robot: robotStats,
     dart: dartStats,

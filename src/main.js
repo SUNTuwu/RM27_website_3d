@@ -6,10 +6,16 @@ import {
   auditProjectAssets,
   assetUrl,
   configureLoadedScene,
-  loadProjectAssets,
+  createProjectAssetLoader,
 } from "./core/assetPipeline.js";
+import { createSymmetricArena } from "./arena/symmetricArena.js";
 import { createStage } from "./core/stage.js";
-import { FAR_SCAN, createPointCloud } from "./pointcloud/pointCloud.js";
+import {
+  FAR_SCAN,
+  createPointCloud,
+  createPointCloudFromData,
+} from "./pointcloud/pointCloud.js";
+import { loadPointCloudData } from "./pointcloud/pointCloudData.js";
 import { createBackRing } from "./pointcloud/backRing.js";
 import { createTimelineController } from "./timeline/timelineController.js";
 import { createLookAroundController } from "./timeline/lookAroundController.js";
@@ -23,6 +29,14 @@ const SCAN_DURATION = 3.2;
 
 function easeInOutCubic(x) {
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+function scheduleLowPriority(callback) {
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(callback, { timeout: 2_000 });
+  } else {
+    window.setTimeout(callback, 0);
+  }
 }
 
 const hud = createHud();
@@ -56,41 +70,28 @@ async function boot() {
   const canvas = document.querySelector("#scene-canvas");
   const stage = createStage(canvas, VISUAL_CONFIG);
   const freeCamera = stage.freeCamera;
-
-  // ---------- 资产 ----------
-  const assets = await loadProjectAssets({
-    onProgress: (progress) => hud.setLoading(progress.ratio, progress.url),
-  });
-  const report = auditProjectAssets(assets);
-  if (report.issues.length) {
-    throw new Error(`Asset audit failed: ${report.issues.join("; ")}`);
+  const exploreFov = Number(VISUAL_CONFIG.explore.cameraFov);
+  if (Number.isFinite(exploreFov)) {
+    freeCamera.fov = exploreFov;
+    freeCamera.updateProjectionMatrix();
   }
 
-  configureLoadedScene(assets.arena.scene, stage.renderer);
-  configureLoadedScene(assets.timeline.scene, stage.renderer, {
-    lightIntensityScale: VISUAL_CONFIG.timeline0.lightIntensityScale,
+  // ---------- P0 资产: 首屏只等待预生成的场地点位 ----------
+  const assetLoader = createProjectAssetLoader({
+    onError: (error) => {
+      console.error("[ENTERPRIZE] Deferred asset load failed", error);
+    },
   });
-  configureLoadedScene(assets.robot.scene, stage.renderer);
-  configureLoadedScene(assets.dart.scene, stage.renderer);
-
-  // ---------- 点云 (场地实体表面采样) ----------
-  const cloud = createPointCloud(assets.arena.scene, VISUAL_CONFIG.pointCloud);
+  const pointData = await loadPointCloudData(
+    assetUrl("pointcloud/arena_points.bin"),
+    { onProgress: (progress) => hud.setLoading(progress.ratio, progress.url) },
+  );
+  const cloud = createPointCloudFromData(pointData, VISUAL_CONFIG.pointCloud);
   const minX = cloud.bounds.min.x;
   const maxX = cloud.bounds.max.x;
 
   // ---------- X 轴扫描裁剪平面 (预扫描: 实体全部隐藏) ----------
   const scanPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), minX - 1);
-  [
-    ...report.arena.materials,
-    ...report.timeline.materials,
-    ...report.robot.materials,
-  ].forEach((material) => {
-    material.clippingPlanes = [scanPlane];
-    material.clipShadows = false;
-  });
-
-  stage.scene.add(assets.arena.scene);
-  stage.scene.add(assets.robot.scene);
   stage.scene.add(cloud.points);
 
   // ---------- 点云背景装饰环 (仿 Endfield lore 三层 HUD 环) ----------
@@ -105,77 +106,38 @@ async function boot() {
   stage.scene.add(backRing.group);
 
   // ---------- EXPLORE 多模型点云 (左右切换) ----------
-  // 机器人点云归一化: 缩放到与场地点云接近的观感尺寸, 中心对齐场地中心
-  const robotCloud = createPointCloud(assets.robot.scene, {
-    ...VISUAL_CONFIG.pointCloud,
-    recenter: true, // 机器人网格原点不在几何中心, 重定位后绕自身中心旋转
-  });
   const arenaMaxExtent = Math.max(cloud.extent.x, cloud.extent.y, cloud.extent.z);
-  const robotMaxExtent = Math.max(
-    robotCloud.extent.x,
-    robotCloud.extent.y,
-    robotCloud.extent.z,
-  );
-  const robotModelConfig = VISUAL_CONFIG.explore.models.robot;
-  const robotFit =
-    (arenaMaxExtent * robotModelConfig.fitScale) / robotMaxExtent;
-  // 涟漪波速/振幅按模型比例缩放, 否则小尺寸模型的波纹会瞬间炸穿
-  robotCloud.setRippleScale(
-    (robotMaxExtent / arenaMaxExtent) * robotModelConfig.rippleBoost,
-  );
   cloud.setRippleScale(VISUAL_CONFIG.explore.models.arena.rippleBoost);
-  robotCloud.points.scale.setScalar(robotFit);
-  robotCloud.points.position
-    .copy(cloud.center)
-    .sub(robotCloud.center.clone().multiplyScalar(robotFit));
-  robotCloud.points.visible = false;
-  robotCloud.setProgress(1); // 切换时直接呈现完整形态
-  stage.scene.add(robotCloud.points);
-
-  // 飞镖点云沿用机器人展示流程: 以自身中心旋转, 再归一化到场地点云尺度
-  const dartCloud = createPointCloud(assets.dart.scene, {
-    ...VISUAL_CONFIG.pointCloud,
-    recenter: true,
-  });
-  const dartMaxExtent = Math.max(
-    dartCloud.extent.x,
-    dartCloud.extent.y,
-    dartCloud.extent.z,
-  );
-  const dartModelConfig = VISUAL_CONFIG.explore.models.dart;
-  const dartFit = (arenaMaxExtent * dartModelConfig.fitScale) / dartMaxExtent;
-  dartCloud.setRippleScale(
-    (dartMaxExtent / arenaMaxExtent) * dartModelConfig.rippleBoost,
-  );
-  dartCloud.points.scale.setScalar(dartFit);
-  dartCloud.points.position
-    .copy(cloud.center)
-    .sub(dartCloud.center.clone().multiplyScalar(dartFit));
-  dartCloud.points.visible = false;
-  dartCloud.setProgress(1);
-  stage.scene.add(dartCloud.points);
+  let robotCloud = null;
+  let dartCloud = null;
 
   const exploreModels = [
     {
+      key: "arena",
       name: "RMUC ARENA",
       desc: "RMUC 标准赛场点云重建, 完整保留功能分区、增益点与掩体布局。",
       cloud,
     },
     {
+      key: "robot",
       name: "ROBOT_1",
       desc: "步兵机器人整机表面采样点云, 源自高精度 glTF 模型。",
-      cloud: robotCloud,
+      cloud: null,
+      loadPromise: null,
     },
     {
+      key: "dart",
       name: "DART",
       desc: "飞镖弹体表面采样点云, 保留 glTF 导出的姿态与外形细节。",
-      cloud: dartCloud,
+      cloud: null,
+      loadPromise: null,
     },
   ];
   const ARENA_MODEL_INDEX = 0;
   let exploreModelIndex = 0;
   let exploreTransitioning = false;
   let switchTween = null;
+  let exploreSwitchRequest = 0;
   let scanRequested = false;
 
   // ---------- FOCUS 右侧图片卡 (兵种档案幻灯片) ----------
@@ -197,35 +159,137 @@ async function boot() {
     },
   ];
   let focusSlideIndex = 0;
+  let focusMediaInitialized = false;
+  const preloadedFocusSlides = new Set();
+
+  function preloadFocusSlide(index) {
+    const normalized = ((index % focusSlides.length) + focusSlides.length) % focusSlides.length;
+    if (preloadedFocusSlides.has(normalized)) {
+      return;
+    }
+    preloadedFocusSlides.add(normalized);
+    scheduleLowPriority(() => {
+      const preload = new Image();
+      preload.decoding = "async";
+      preload.fetchPriority = "low";
+      preload.src = focusSlides[normalized].image;
+    });
+  }
 
   function switchFocusSlide(step) {
     const total = focusSlides.length;
     focusSlideIndex = ((focusSlideIndex + step) % total + total) % total;
+    focusMediaInitialized = true;
     hud.setFocusMedia(focusSlideIndex, total, focusSlides[focusSlideIndex]);
+    preloadFocusSlide(focusSlideIndex + 1);
   }
-  focusSlides.forEach((slide) => {
-    const preload = new Image(); // 预加载, 避免首次切换时图片闪烁
-    preload.src = slide.image;
-  });
-  switchFocusSlide(0);
+
+  function ensureFocusMedia() {
+    if (!focusMediaInitialized) {
+      switchFocusSlide(0);
+    }
+  }
+
   hud.setFocusSwitchHandler(switchFocusSlide);
 
-  function switchExploreModel(next) {
-    if (exploreTransitioning) {
+  const stagedAssets = {};
+  const configuredAssetKeys = new Set();
+  let report = null;
+  let timeline = null;
+  let focus = null;
+  let arenaInstance = null;
+  let emissiveMaterials = [];
+  let contentMinX = minX;
+  let contentMaxX = maxX;
+  let animateTimeOffset = 0;
+  let cameraTimeOffset = 0;
+  let timelinePreplayStart = SCAN_DURATION;
+  let cameraAttachScanTime = SCAN_DURATION;
+  let cameraLead = 0;
+  let deferredAssetsReady = false;
+  let deferredAssetsError = null;
+  let deferredAssetsPromise = null;
+
+  function configureProjectAsset(key, gltf) {
+    if (configuredAssetKeys.has(key)) {
       return;
     }
-    const total = exploreModels.length;
-    const nextIndex = ((next % total) + total) % total;
-    const outgoing = exploreModels[exploreModelIndex];
-    const incoming = exploreModels[nextIndex];
-    exploreModelIndex = nextIndex;
-    hud.setExploreModel(nextIndex, total, incoming.name, incoming.desc);
-    if (nextIndex === exploreModels.indexOf(outgoing)) {
-      return; // 初始化调用: 仅刷新 HUD
+    configureLoadedScene(
+      gltf.scene,
+      stage.renderer,
+      key === "timeline"
+        ? { lightIntensityScale: VISUAL_CONFIG.timeline0.lightIntensityScale }
+        : undefined,
+    );
+    configuredAssetKeys.add(key);
+  }
+
+  function normalizeExploreCloud(modelCloud, key) {
+    const modelMaxExtent = Math.max(
+      modelCloud.extent.x,
+      modelCloud.extent.y,
+      modelCloud.extent.z,
+    );
+    if (!Number.isFinite(modelMaxExtent) || modelMaxExtent <= 0) {
+      throw new Error(`${key} point cloud has invalid bounds`);
+    }
+    const modelConfig = VISUAL_CONFIG.explore.models[key];
+    const fit = (arenaMaxExtent * modelConfig.fitScale) / modelMaxExtent;
+    modelCloud.setRippleScale(
+      (modelMaxExtent / arenaMaxExtent) * modelConfig.rippleBoost,
+    );
+    modelCloud.points.scale.setScalar(fit);
+    modelCloud.points.position
+      .copy(cloud.center)
+      .sub(modelCloud.center.clone().multiplyScalar(fit));
+    modelCloud.points.visible = false;
+    modelCloud.setProgress(1);
+    stage.scene.add(modelCloud.points);
+  }
+
+  function ensureExploreCloud(entry) {
+    if (entry.cloud) {
+      return Promise.resolve(entry.cloud);
+    }
+    if (entry.loadPromise) {
+      return entry.loadPromise;
     }
 
-    // 模型已在 boot 时采样完成；点击后同帧启用两套点云并执行屏幕蒙版交接。
-    exploreTransitioning = true;
+    entry.loadPromise = assetLoader
+      .load(entry.key)
+      .then((gltf) => {
+        stagedAssets[entry.key] = gltf;
+        const assetReport = auditProjectAssets(
+          { [entry.key]: gltf },
+          { required: [entry.key] },
+        );
+        if (assetReport.issues.length) {
+          throw new Error(
+            `${entry.key} asset audit failed: ${assetReport.issues.join("; ")}`,
+          );
+        }
+        configureProjectAsset(entry.key, gltf);
+        const modelCloud = createPointCloud(gltf.scene, {
+          ...VISUAL_CONFIG.pointCloud,
+          recenter: true,
+        });
+        normalizeExploreCloud(modelCloud, entry.key);
+        entry.cloud = modelCloud;
+        if (entry.key === "robot") {
+          robotCloud = modelCloud;
+        } else if (entry.key === "dart") {
+          dartCloud = modelCloud;
+        }
+        return modelCloud;
+      })
+      .catch((error) => {
+        entry.loadPromise = null;
+        throw error;
+      });
+    return entry.loadPromise;
+  }
+
+  function startExploreTransition(outgoing, incoming, requestId) {
     const trans = VISUAL_CONFIG.explore.switchTransition;
     const spin = trans.spinTurns * Math.PI * 2;
     const ringSpeedMultiplier = Math.max(
@@ -297,9 +361,62 @@ async function boot() {
         backRing.setSpeedScale(1);
         switchTween = null;
         exploreTransitioning = false;
+        if (requestId !== exploreSwitchRequest) {
+          return;
+        }
         continueScanRequest();
       },
     });
+  }
+
+  function switchExploreModel(next) {
+    if (exploreTransitioning) {
+      return;
+    }
+    const total = exploreModels.length;
+    const outgoingIndex = exploreModelIndex;
+    const nextIndex = ((next % total) + total) % total;
+    const outgoing = exploreModels[outgoingIndex];
+    const incoming = exploreModels[nextIndex];
+    exploreModelIndex = nextIndex;
+    hud.setExploreModel(nextIndex, total, incoming.name, incoming.desc);
+    if (nextIndex === outgoingIndex) {
+      return; // 初始化调用: 仅刷新 HUD
+    }
+
+    exploreTransitioning = true;
+    const requestId = ++exploreSwitchRequest;
+    if (!incoming.cloud) {
+      hud.setExploreModel(
+        nextIndex,
+        total,
+        incoming.name,
+        `${incoming.desc} / LOADING...`,
+      );
+    }
+    ensureExploreCloud(incoming)
+      .then(() => {
+        if (requestId !== exploreSwitchRequest) {
+          return;
+        }
+        hud.setExploreModel(nextIndex, total, incoming.name, incoming.desc);
+        startExploreTransition(outgoing, incoming, requestId);
+      })
+      .catch((error) => {
+        if (requestId !== exploreSwitchRequest) {
+          return;
+        }
+        console.error(`[ENTERPRIZE] Unable to prepare ${incoming.key}`, error);
+        exploreModelIndex = outgoingIndex;
+        exploreTransitioning = false;
+        hud.setExploreModel(
+          outgoingIndex,
+          total,
+          outgoing.name,
+          outgoing.desc,
+        );
+        continueScanRequest();
+      });
   }
 
   // ---------- EXPLORE 左偏构图 (点云移到屏幕左 1/3, SCAN 时回中) ----------
@@ -311,89 +428,133 @@ async function boot() {
     freeCamera.setViewOffset(w, h, viewOffsetX, viewOffsetY, w, h);
   }
 
-  // 时间轴场景全程 visible: 预扫描期被裁剪平面隐藏, 材质与纹理随首批帧完成编译上传,
-  // 避免 SCAN 切换时首次编译 dart/hit 材质 + 上传贴图造成的卡顿
-  stage.scene.add(assets.timeline.scene);
-
-  // ---------- 主时间轴 ----------
-  const timelineCamera = report.timeline.camera;
-  stage.registerCamera(timelineCamera);
-  freeCamera.fov = timelineCamera.fov;
-  freeCamera.updateProjectionMatrix();
-  const timeline = createTimelineController({
-    root: assets.timeline.scene,
-    clip: report.timeline.sourceClips[0],
-    camera: timelineCamera,
-    wheelImpulse: VISUAL_CONFIG.timeline0.scroll.wheelImpulse,
-    maxRate: VISUAL_CONFIG.timeline0.scroll.maxRate,
-    velocityDecay: VISUAL_CONFIG.timeline0.scroll.velocityDecay,
-    autoHoldSeconds: VISUAL_CONFIG.timeline0.scroll.autoHoldSeconds,
-  });
-  const animateTimeOffset = THREE.MathUtils.clamp(
-    VISUAL_CONFIG.timeline0.animateTimeOffset,
-    0,
-    Math.min(SCAN_DURATION, timeline.clip.duration),
-  );
-  const cameraTimeOffset = THREE.MathUtils.clamp(
-    VISUAL_CONFIG.timeline0.cameraTimeOffset,
-    0,
-    animateTimeOffset,
-  );
-  const timelinePreplayStart = SCAN_DURATION - animateTimeOffset;
-  const cameraAttachScanTime = timelinePreplayStart + cameraTimeOffset;
-  const cameraLead = THREE.MathUtils.clamp(
-    VISUAL_CONFIG.timeline0.cameraLeadSeconds ?? 0,
-    0,
-    Math.max(SCAN_DURATION - 0.1, 0),
-  );
-
-  // ---------- 兵种聚焦 ----------
-  const focus = createFocusController({
-    camera: freeCamera,
-    robotRoot: assets.robot.scene,
-    scene: stage.scene,
-    distance: VISUAL_CONFIG.focus.distance,
-  });
-
-  // 预扫描裁剪边界: 覆盖场地 + 时间轴 (飞镖) + 机器人全部内容
-  const timelineBounds = new THREE.Box3().setFromObject(assets.timeline.scene);
-  const robotBounds = new THREE.Box3().setFromObject(assets.robot.scene);
-  const contentMinX = Math.min(
-    cloud.bounds.min.x,
-    timelineBounds.min.x,
-    robotBounds.min.x,
-  );
-  const contentMaxX = Math.max(
-    cloud.bounds.max.x,
-    timelineBounds.max.x,
-    robotBounds.max.x,
-  );
-  scanPlane.constant = contentMinX - 1;
-
   // ---------- 氛围: 星空 ----------
   stage.scene.add(createStars());
 
-  // ---------- 场地循环动画 (arena.gltf 内置 clip, 独立播放, 不受滚动控制) ----------
-  const arenaMixer = new THREE.AnimationMixer(assets.arena.scene);
-  if (report.arena.sourceClips.length > 0) {
-    const arenaAction = arenaMixer.clipAction(report.arena.sourceClips[0]);
-    arenaAction.setLoop(THREE.LoopRepeat, Infinity);
-    arenaAction.play();
+  // ---------- P1 资产: 首帧后后台准备 SCAN / SCRUB / FOCUS ----------
+  function prepareDeferredAssets() {
+    if (deferredAssetsPromise) {
+      return deferredAssetsPromise;
+    }
+
+    deferredAssetsPromise = (async () => {
+      const loaded = await assetLoader.loadMany(["arena", "timeline", "robot"]);
+      arenaInstance = createSymmetricArena(
+        loaded.arena,
+        VISUAL_CONFIG.arena.symmetry,
+      );
+      loaded.arena = arenaInstance.asset;
+      Object.assign(stagedAssets, loaded);
+      report = auditProjectAssets(stagedAssets, {
+        required: ["arena", "timeline", "robot"],
+      });
+      if (report.issues.length) {
+        throw new Error(`Asset audit failed: ${report.issues.join("; ")}`);
+      }
+
+      configureProjectAsset("arena", loaded.arena);
+      configureProjectAsset("timeline", loaded.timeline);
+      configureProjectAsset("robot", loaded.robot);
+      await ensureExploreCloud(exploreModels[1]);
+
+      [
+        ...report.arena.materials,
+        ...report.timeline.materials,
+        ...report.robot.materials,
+      ].forEach((material) => {
+        material.clippingPlanes = [scanPlane];
+        material.clipShadows = false;
+      });
+      stage.scene.add(
+        loaded.arena.scene,
+        loaded.robot.scene,
+        loaded.timeline.scene,
+      );
+
+      const timelineCamera = report.timeline.camera;
+      stage.registerCamera(timelineCamera);
+      freeCamera.fov = timelineCamera.fov;
+      freeCamera.updateProjectionMatrix();
+      timeline = createTimelineController({
+        root: loaded.timeline.scene,
+        clip: report.timeline.sourceClips[0],
+        camera: timelineCamera,
+        wheelImpulse: VISUAL_CONFIG.timeline0.scroll.wheelImpulse,
+        maxRate: VISUAL_CONFIG.timeline0.scroll.maxRate,
+        velocityDecay: VISUAL_CONFIG.timeline0.scroll.velocityDecay,
+        autoHoldSeconds: VISUAL_CONFIG.timeline0.scroll.autoHoldSeconds,
+      });
+      animateTimeOffset = THREE.MathUtils.clamp(
+        VISUAL_CONFIG.timeline0.animateTimeOffset,
+        0,
+        Math.min(SCAN_DURATION, timeline.clip.duration),
+      );
+      cameraTimeOffset = THREE.MathUtils.clamp(
+        VISUAL_CONFIG.timeline0.cameraTimeOffset,
+        0,
+        animateTimeOffset,
+      );
+      timelinePreplayStart = SCAN_DURATION - animateTimeOffset;
+      cameraAttachScanTime = timelinePreplayStart + cameraTimeOffset;
+      cameraLead = THREE.MathUtils.clamp(
+        VISUAL_CONFIG.timeline0.cameraLeadSeconds ?? 0,
+        0,
+        Math.max(SCAN_DURATION - 0.1, 0),
+      );
+
+      focus = createFocusController({
+        camera: freeCamera,
+        robotRoot: loaded.robot.scene,
+        scene: stage.scene,
+        distance: VISUAL_CONFIG.focus.distance,
+      });
+      focus.setOnModeChange((mode, finished) => {
+        if (mode === "idle" && finished === "exiting" && state === "focus") {
+          delete appElement.dataset.focusLeaving;
+          setState("scrub");
+        }
+      });
+
+      const timelineBounds = new THREE.Box3().setFromObject(loaded.timeline.scene);
+      const robotBounds = new THREE.Box3().setFromObject(loaded.robot.scene);
+      contentMinX = Math.min(
+        cloud.bounds.min.x,
+        timelineBounds.min.x,
+        robotBounds.min.x,
+      );
+      contentMaxX = Math.max(
+        cloud.bounds.max.x,
+        timelineBounds.max.x,
+        robotBounds.max.x,
+      );
+      scanPlane.constant = contentMinX - 1;
+
+      const glowGroups = [
+        VISUAL_CONFIG.arena.glow.red,
+        VISUAL_CONFIG.arena.glow.blue,
+      ];
+      emissiveMaterials = report.arena.emissiveMaterials.map((material) => {
+        const glowGroup = glowGroups.find((group) =>
+          material.name.startsWith(group.materialPrefix),
+        );
+        const base =
+          material.emissiveIntensity *
+          (glowGroup?.emissiveIntensityScale ?? 1);
+        material.emissiveIntensity = base;
+        return { material, base };
+      });
+
+      await stage.renderer.compileAsync(stage.scene, freeCamera);
+      deferredAssetsReady = true;
+      console.info("[ENTERPRIZE] deferred SCAN assets ready");
+      continueScanRequest();
+      return stagedAssets;
+    })().catch((error) => {
+      deferredAssetsError = error;
+      throw error;
+    });
+    return deferredAssetsPromise;
   }
-  const glowGroups = [
-    VISUAL_CONFIG.arena.glow.red,
-    VISUAL_CONFIG.arena.glow.blue,
-  ];
-  const emissiveMaterials = report.arena.emissiveMaterials.map((material) => {
-    const glowGroup = glowGroups.find((group) =>
-      material.name.startsWith(group.materialPrefix),
-    );
-    const base =
-      material.emissiveIntensity *
-      (glowGroup?.emissiveIntensityScale ?? 1);
-    material.emissiveIntensity = base;
-    return { material, base };
-  });
 
   // ---------- 轻量 tween ----------
   const tweens = new Set();
@@ -478,14 +639,23 @@ async function boot() {
     const prev = state;
     state = next;
     hud.setState(next);
-    focus.setHighlightTarget(next === "scrub" || next === "focus" ? 1 : 0);
+    focus?.setHighlightTarget(next === "scrub" || next === "focus" ? 1 : 0);
     if (next === "explore") {
       exploreLastClickAt = elapsedNow; // 进入 EXPLORE 重新计时闲置引导
+      void prepareDeferredAssets()
+        .then(() => {
+          scheduleLowPriority(() => {
+            void ensureExploreCloud(exploreModels[2]).catch((error) => {
+              console.error("[ENTERPRIZE] Dart preload failed", error);
+            });
+          });
+        })
+        .catch(() => {});
     } else if (prev === "explore") {
       clickGuide.hide();
     }
     if (next === "scrub") {
-      timeline.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
+      timeline?.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
     }
   }
 
@@ -523,12 +693,51 @@ async function boot() {
     if (state !== "explore" || scanRequested) {
       return;
     }
+    if (exploreTransitioning && !switchTween) {
+      exploreSwitchRequest += 1;
+      exploreTransitioning = false;
+      exploreModelIndex = ARENA_MODEL_INDEX;
+      const arenaEntry = exploreModels[ARENA_MODEL_INDEX];
+      hud.setExploreModel(
+        ARENA_MODEL_INDEX,
+        exploreModels.length,
+        arenaEntry.name,
+        arenaEntry.desc,
+      );
+    }
     scanRequested = true;
+    if (deferredAssetsError) {
+      scanRequested = false;
+      hud.showError(deferredAssetsError);
+      releasePageScroll();
+      return;
+    }
+    if (!deferredAssetsReady) {
+      const activeEntry = exploreModels[exploreModelIndex];
+      hud.setExploreModel(
+        exploreModelIndex,
+        exploreModels.length,
+        activeEntry.name,
+        `${activeEntry.desc} / PREPARING SCAN...`,
+      );
+      void prepareDeferredAssets()
+        .then(continueScanRequest)
+        .catch((error) => {
+          scanRequested = false;
+          hud.showError(error);
+          releasePageScroll();
+        });
+    }
     continueScanRequest();
   }
 
   function continueScanRequest() {
-    if (!scanRequested || state !== "explore" || exploreTransitioning) {
+    if (
+      !scanRequested ||
+      state !== "explore" ||
+      exploreTransitioning ||
+      !deferredAssetsReady
+    ) {
       return;
     }
     if (exploreModelIndex !== ARENA_MODEL_INDEX) {
@@ -539,10 +748,16 @@ async function boot() {
   }
 
   function beginScan() {
+    if (!timeline || !focus || !report) {
+      return;
+    }
     scanRequested = false;
+    ensureFocusMedia();
     // Arena 蒙版切换已完成后才开始 SCAN 与相机变换。
     exploreModels.forEach((entry) => {
-      entry.cloud.points.visible = entry.cloud === cloud;
+      if (entry.cloud) {
+        entry.cloud.points.visible = entry.cloud === cloud;
+      }
     });
     // 防御性清理切换状态，正常路径下此处已经没有活动补间。
     if (switchTween) {
@@ -552,8 +767,10 @@ async function boot() {
     backRing.setSpeedScale(1);
     exploreTransitioning = false;
     exploreModels.forEach((entry) => {
-      entry.cloud.points.rotation.y = 0;
-      entry.cloud.resetScreenMask();
+      if (entry.cloud) {
+        entry.cloud.points.rotation.y = 0;
+        entry.cloud.resetScreenMask();
+      }
     });
 
     // 背景装饰环渐隐退出, 结束后彻底隐藏 (不进入后续状态)
@@ -640,7 +857,7 @@ async function boot() {
       return;
     }
     setState("focus");
-    focus.enter(); // 从环视或 timeline 的当前画面姿态进入
+    focus.enter(elapsedNow); // 从环视或 timeline 的当前画面姿态进入
   }
 
   const appElement = document.querySelector("#app");
@@ -655,16 +872,9 @@ async function boot() {
     appElement.dataset.focusLeaving = "true";
     focusExitTimer = window.setTimeout(() => {
       focusExitTimer = null;
-      focus.exit(timeline.readCameraPose()); // 回到冻结进度姿态
+      focus.exit(timeline.readCameraPose(), elapsedNow); // 回到冻结进度姿态
     }, FOCUS_PANEL_FADE_MS);
   }
-
-  focus.setOnModeChange((mode, finished) => {
-    if (mode === "idle" && finished === "exiting" && state === "focus") {
-      delete appElement.dataset.focusLeaving;
-      setState("scrub");
-    }
-  });
 
   // ---------- 输入 ----------
   const raycaster = new THREE.Raycaster();
@@ -859,10 +1069,10 @@ async function boot() {
     const pointPixelRatio = stage.renderer.getPixelRatio();
     const viewportHeight = stage.renderer.domElement.height;
     cloud.update(elapsed, pointPixelRatio, viewportHeight);
-    if (robotCloud.points.visible) {
+    if (robotCloud?.points.visible) {
       robotCloud.update(elapsed, pointPixelRatio, viewportHeight);
     }
-    if (dartCloud.points.visible) {
+    if (dartCloud?.points.visible) {
       dartCloud.update(elapsed, pointPixelRatio, viewportHeight);
     }
     if (backRing.group.visible) {
@@ -871,7 +1081,7 @@ async function boot() {
     if (state === "assemble" || state === "explore" || state === "scan") {
       applyViewOffset(); // 每帧应用, 跟随窗口尺寸变化
     }
-    focus.update(delta, elapsed);
+    focus?.update(delta, elapsed);
 
     // 点击引导圈: EXPLORE 闲置超时后跟随点云中心投影, 点击或离开状态即隐藏
     if (
@@ -890,7 +1100,7 @@ async function boot() {
     }
 
     // 机器人点击引导圈: SCRUB 状态每帧跟随机器人原点投影, 相机背后或出屏即隐藏
-    if (state === "scrub") {
+    if (state === "scrub" && focus) {
       robotGuideProjected.copy(focus.anchor).project(freeCamera);
       const guideX = ((robotGuideProjected.x + 1) / 2) * window.innerWidth;
       const guideY = ((1 - robotGuideProjected.y) / 2) * window.innerHeight;
@@ -921,7 +1131,7 @@ async function boot() {
     stage.setLightLevel(lightLevel);
 
     // 场地循环动画: gltf 内置 clip + 自发光呼吸
-    arenaMixer.update(delta);
+    arenaInstance?.update(delta);
     const glowPulse = VISUAL_CONFIG.arena.glow.pulse;
     emissiveMaterials.forEach(({ material, base }, index) => {
       material.emissiveIntensity =
@@ -974,7 +1184,7 @@ async function boot() {
   });
 
   // ---------- 入场: ASSEMBLE ----------
-  // 预热: 预编译全部 shader 并触发纹理上传, 在 loading 屏后完成, 避免 SCAN 卡顿
+  // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
 
@@ -1000,6 +1210,11 @@ async function boot() {
     onComplete: () => setState("explore"),
   });
 
+  // 手动首帧已经提交后再启动 P1，避免 glTF 与贴图竞争首屏关键请求。
+  void prepareDeferredAssets().catch((error) => {
+    console.error("[ENTERPRIZE] Deferred runtime preparation failed", error);
+  });
+
   // ---------- E2E / 调试钩子 ----------
   window.__ENTERPRIZE_DEMO__ = {
     ready: true,
@@ -1008,13 +1223,13 @@ async function boot() {
       return state;
     },
     get timelineProgress() {
-      return timeline.progress;
+      return timeline?.progress ?? 0;
     },
     get debugTimelineVelocity() {
-      return timeline.velocity;
+      return timeline?.velocity ?? 0;
     },
     get focusMode() {
-      return focus.mode;
+      return focus?.mode ?? "idle";
     },
     get lookAroundMode() {
       return lookAround.mode;
@@ -1028,8 +1243,17 @@ async function boot() {
     get debugScanBlend() {
       return scanBlend;
     },
+    get deferredAssetsReady() {
+      return deferredAssetsReady;
+    },
+    get loadedAssetKeys() {
+      return assetLoader.loadedKeys;
+    },
+    get arenaSymmetry() {
+      return arenaInstance?.getDebugState() ?? null;
+    },
     robotScreenPosition() {
-      const projected = focus.anchor.clone().project(freeCamera);
+      const projected = (focus?.anchor ?? cloud.center).clone().project(freeCamera);
       return {
         x: ((projected.x + 1) / 2) * window.innerWidth,
         y: ((1 - projected.y) / 2) * window.innerHeight,

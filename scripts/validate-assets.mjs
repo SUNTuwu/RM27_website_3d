@@ -4,10 +4,11 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const assetPaths = {
-  arena: "assets/models/arena/arena.gltf",
+  arena: "assets/models/arena/arena_half_blue.gltf",
   timeline: "assets/models/timeline_0/arena.gltf",
   robot: "assets/models/robot_1/robot_1.gltf",
   dart: "assets/models/dart/dart.gltf",
+  arenaPoints: "assets/pointcloud/arena_points.bin",
 };
 const failures = [];
 
@@ -61,11 +62,38 @@ function animationDuration(gltf, animation) {
   return maxima.length ? Math.max(...maxima) : 0;
 }
 
+async function validatePointCloud(relativePath) {
+  const absolutePath = path.resolve(repositoryRoot, relativePath);
+  const data = await readFile(absolutePath);
+  check(data.byteLength >= 32, "arena point-cloud data contains a complete header");
+  if (data.byteLength < 32) {
+    return { count: 0, bytes: data.byteLength };
+  }
+
+  check(data.toString("ascii", 0, 4) === "EPC1", "arena point-cloud data uses EPC1 format");
+  const count = data.readUInt32LE(4);
+  check(count === 50_000, "arena point-cloud data contains 50,000 targets");
+  check(
+    data.byteLength === 32 + count * 3 * Float32Array.BYTES_PER_ELEMENT,
+    "arena point-cloud data byte length matches its header",
+  );
+  const bounds = Array.from({ length: 6 }, (_, index) =>
+    data.readFloatLE(8 + index * 4),
+  );
+  check(
+    bounds.every(Number.isFinite) &&
+      bounds.slice(0, 3).every((value, index) => value <= bounds[index + 3]),
+    "arena point-cloud data contains finite ordered bounds",
+  );
+  return { count, bytes: data.byteLength, bounds };
+}
+
 async function run() {
   const arena = await readGltf(assetPaths.arena);
   const timeline = await readGltf(assetPaths.timeline);
   const robot = await readGltf(assetPaths.robot);
   const dart = await readGltf(assetPaths.dart);
+  const arenaPoints = await validatePointCloud(assetPaths.arenaPoints);
 
   await Promise.all([
     validateExternalUris("arena", arena),
@@ -75,8 +103,11 @@ async function run() {
   ]);
 
   const arenaNodeNames = new Set((arena.data.nodes ?? []).map((node) => node.name));
-  ["ground", "outpost", "base", "rune_blue", "rune_red"].forEach((nodeName) => {
-    check(arenaNodeNames.has(nodeName), `arena contains node ${nodeName}`);
+  ["ground", "outpost", "base", "rune_blue"].forEach((nodePrefix) => {
+    check(
+      [...arenaNodeNames].some((nodeName) => nodeName?.startsWith(nodePrefix)),
+      `blue half-arena contains a ${nodePrefix} node`,
+    );
   });
   check(
     arena.data.extensionsUsed?.includes("KHR_materials_emissive_strength"),
@@ -86,20 +117,51 @@ async function run() {
     const emissive = material.emissiveFactor ?? [0, 0, 0];
     return emissive.some((channel) => channel > 0);
   });
-  check(emissiveMaterials.length >= 2, "arena contains red/blue emissive materials");
+  const blueTeamMaterials = emissiveMaterials.filter((material) =>
+    material.name?.startsWith("EMISSION_BLUE"),
+  );
+  check(blueTeamMaterials.length >= 2, "blue half-arena contains team emissive materials");
+  check(
+    !(arena.data.materials ?? []).some((material) =>
+      material.name?.startsWith("EMISSION_RED"),
+    ),
+    "source arena contains only the canonical blue team materials",
+  );
 
-  // arena 循环动画: rune_blue / rune_red 旋转轨道, 首尾关键帧一致可循环
+  // The canonical blue-half clip is bound independently under both runtime team roots.
   const arenaClips = arena.data.animations ?? [];
   check(arenaClips.length > 0, "arena contains a loop animation clip");
-  const runeRotationTargets = new Set(
-    arenaClips.flatMap((animation) =>
-      (animation.channels ?? [])
-        .filter((channel) => channel.target.path === "rotation")
-        .map((channel) => arena.data.nodes?.[channel.target.node]?.name),
-    ),
+  const runeChannels = arenaClips.flatMap((animation) =>
+    (animation.channels ?? []).map((channel) => ({
+      name: arena.data.nodes?.[channel.target.node]?.name,
+      path: channel.target.path,
+    })),
   );
-  check(runeRotationTargets.has("rune_blue"), "arena loop animates rune_blue rotation");
-  check(runeRotationTargets.has("rune_red"), "arena loop animates rune_red rotation");
+  check(
+    runeChannels.some(
+      ({ name, path }) => name?.startsWith("rune_blue") && path === "rotation",
+    ),
+    "blue half-arena loop animates rune rotation",
+  );
+  check(
+    runeChannels.some(
+      ({ name, path }) => name?.startsWith("rune_blue") && path === "translation",
+    ),
+    "blue half-arena loop animates rune translation",
+  );
+  const arenaDuration = animationDuration(arena.data, arenaClips[0]);
+  check(
+    arenaDuration >= 6 && arenaDuration <= 6.1,
+    "blue half-arena loop duration is approximately 6.04s",
+  );
+  check(
+    arenaPoints.bounds[0] < -14 && arenaPoints.bounds[3] > 14,
+    "arena point cloud contains both rotated halves",
+  );
+  check(
+    Math.abs(arenaPoints.bounds[0] + arenaPoints.bounds[3]) < 0.1,
+    "arena point-cloud X bounds are symmetric around the world origin",
+  );
 
   const cameraNodeIndex = (timeline.data.nodes ?? []).findIndex(
     (node) => node.camera !== undefined,
@@ -158,6 +220,12 @@ async function run() {
       meshes: dart.data.meshes?.length ?? 0,
       materials: dart.data.materials?.length ?? 0,
       clips: dart.data.animations?.length ?? 0,
+    },
+    arenaPoints: {
+      nodes: "-",
+      meshes: arenaPoints.count.toLocaleString("en-US"),
+      materials: "-",
+      clips: `${(arenaPoints.bytes / 1024).toFixed(1)} KiB`,
     },
   });
 

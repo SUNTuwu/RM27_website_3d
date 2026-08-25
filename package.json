@@ -7,7 +7,9 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
+    "generate:pointcloud": "node scripts/generate-pointcloud.mjs",
     "validate:assets": "node scripts/validate-assets.mjs",
+    "verify:staged": "node scripts/verify-staged-loading.mjs",
     "verify:visual": "node scripts/verify-visual.mjs",
     "check": "npm run validate:assets && npm run build"
   },

@@ -109,50 +109,79 @@ const FRAGMENT_SHADER = /* glsl */ `
  * 从场地实体网格表面采样点云。
  * 点位置 = 实体表面世界坐标, 保证扫描转场时点云与实体空间对齐。
  */
-export function createPointCloud(
-  arenaRoot,
+function buildPointCloud(
+  sourceData,
   {
-    count = VISUAL_CONFIG.pointCloud.count,
+    count: requestedCount = VISUAL_CONFIG.pointCloud.count,
     size = VISUAL_CONFIG.pointCloud.size,
     glow = VISUAL_CONFIG.pointCloud.glow,
     rippleScale = 1,
     recenter = false,
   } = {},
+  precomputed = false,
 ) {
-  arenaRoot.updateMatrixWorld(true);
+  const count = precomputed ? sourceData?.count : requestedCount;
+  let merged = null;
+  let bounds;
+  let center;
+  let extent;
+  let sampler = null;
+  let positions;
 
-  const geometries = [];
-  arenaRoot.traverse((object) => {
-    if (!object.isMesh) {
-      return;
+  if (precomputed) {
+    if (
+      !sourceData?.positions ||
+      sourceData.positions.length !== count * 3 ||
+      !Array.isArray(sourceData.min) ||
+      !Array.isArray(sourceData.max)
+    ) {
+      throw new Error("Invalid precomputed point-cloud data");
     }
-    const source = object.geometry.index
-      ? object.geometry.toNonIndexed()
-      : object.geometry.clone();
-    for (const name of Object.keys(source.attributes)) {
-      if (name !== "position") {
-        source.deleteAttribute(name);
+    bounds = new THREE.Box3(
+      new THREE.Vector3().fromArray(sourceData.min),
+      new THREE.Vector3().fromArray(sourceData.max),
+    );
+    center = bounds.getCenter(new THREE.Vector3());
+    extent = bounds.getSize(new THREE.Vector3());
+    positions = sourceData.positions;
+  } else {
+    sourceData.updateMatrixWorld(true);
+    const geometries = [];
+    sourceData.traverse((object) => {
+      if (!object.isMesh) {
+        return;
       }
+      const source = object.geometry.index
+        ? object.geometry.toNonIndexed()
+        : object.geometry.clone();
+      for (const name of Object.keys(source.attributes)) {
+        if (name !== "position") {
+          source.deleteAttribute(name);
+        }
+      }
+      source.applyMatrix4(object.matrixWorld);
+      geometries.push(source);
+    });
+    if (geometries.length === 0) {
+      throw new Error("Cannot sample a point cloud from a scene without meshes");
     }
-    source.applyMatrix4(object.matrixWorld);
-    geometries.push(source);
-  });
+    merged = mergeGeometries(geometries, false);
+    geometries.forEach((geometry) => geometry.dispose());
+    if (!merged) {
+      throw new Error("Cannot merge source geometry for point-cloud sampling");
+    }
+    merged.computeBoundingBox();
+    bounds = merged.boundingBox.clone();
+    center = bounds.getCenter(new THREE.Vector3());
+    extent = bounds.getSize(new THREE.Vector3());
+    sampler = new MeshSurfaceSampler(new THREE.Mesh(merged)).build();
+    positions = new Float32Array(count * 3);
+  }
 
-  const merged = mergeGeometries(geometries, false);
-  geometries.forEach((geometry) => geometry.dispose());
-  merged.computeBoundingBox();
-
-  const bounds = merged.boundingBox.clone();
-  const center = bounds.getCenter(new THREE.Vector3());
-  const extent = bounds.getSize(new THREE.Vector3());
   const shellRadius = Math.max(extent.x, extent.y, extent.z) * 1.15;
   // recenter: 采样坐标平移到包围盒中心, 使点云绕自身中心旋转 (否则绕世界原点公转)。
   // 场地点云不能开: 扫描转场要求点位置与实体世界坐标对齐。
-  const pivot = recenter ? center.clone() : new THREE.Vector3();
-
-  const sampler = new MeshSurfaceSampler(new THREE.Mesh(merged)).build();
-
-  const positions = new Float32Array(count * 3);
+  const pivot = !precomputed && recenter ? center.clone() : new THREE.Vector3();
   const scatter = new Float32Array(count * 3);
   const delays = new Float32Array(count);
   const randoms = new Float32Array(count);
@@ -160,10 +189,12 @@ export function createPointCloud(
   const target = new THREE.Vector3();
 
   for (let i = 0; i < count; i++) {
-    sampler.sample(target);
-    positions[i * 3] = target.x - pivot.x;
-    positions[i * 3 + 1] = target.y - pivot.y;
-    positions[i * 3 + 2] = target.z - pivot.z;
+    if (sampler) {
+      sampler.sample(target);
+      positions[i * 3] = target.x - pivot.x;
+      positions[i * 3 + 1] = target.y - pivot.y;
+      positions[i * 3 + 2] = target.z - pivot.z;
+    }
 
     // 初始位置: 视野四周的压扁球壳
     const u = Math.random() * 2 - 1;
@@ -196,7 +227,7 @@ export function createPointCloud(
     }
   }
 
-  if (recenter) {
+  if (!precomputed && recenter) {
     bounds.translate(pivot.clone().negate());
     center.set(0, 0, 0);
   }
@@ -292,7 +323,15 @@ export function createPointCloud(
     dispose() {
       geometry.dispose();
       material.dispose();
-      merged.dispose();
+      merged?.dispose();
     },
   };
+}
+
+export function createPointCloud(arenaRoot, options) {
+  return buildPointCloud(arenaRoot, options, false);
+}
+
+export function createPointCloudFromData(data, options) {
+  return buildPointCloud(data, options, true);
 }

@@ -58,6 +58,7 @@ export const VISUAL_CONFIG = {
       textDropOutPx: 88, // 淡出结束位置的向下偏移 (px)
     },
 
+    cameraFov: 103.37, // 与 timeline_0 导出相机一致, 避免后台相机就绪时构图跳变
     zoom: 1.6, // 点云整体放大倍率 (相机拉近)
     initialPitchDeg: 10, // 初始摄像机俯角 (度, 相对水平面向下)
     autoRotateSpeed: 0.1, // 点云常态旋转速度 (弧度/秒, 实际由相机环绕实现)
@@ -147,6 +148,14 @@ export const VISUAL_CONFIG = {
   },
 
   arena: {
+    symmetry: {
+      // Blender 的 Z-up 导出为 glTF 后已转换成 Three.js 的 Y-up。
+      rotationAxis: "y",
+      rotationRadians: Math.PI,
+      sourceMaterialPrefix: "EMISSION_BLUE",
+      opponentMaterialPrefix: "EMISSION_RED",
+      opponentEmissive: 0xff294d,
+    },
     glow: {
       red: {
         materialPrefix: "EMISSION_RED",
@@ -156,7 +165,7 @@ export const VISUAL_CONFIG = {
           intensity: 10,
           distance: 26,
           decay: 2,
-          position: [11, 3, 7],
+          position: [-11, 3, 7],
         },
       },
       blue: {
@@ -167,7 +176,7 @@ export const VISUAL_CONFIG = {
           intensity: 18,
           distance: 30,
           decay: 2,
-          position: [-10, 4, -8],
+          position: [10, 4, -8],
         },
       },
       pulse: {
