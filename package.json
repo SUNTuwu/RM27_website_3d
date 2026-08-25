@@ -11,13 +11,27 @@
     "validate:assets": "node scripts/validate-assets.mjs",
     "verify:staged": "node scripts/verify-staged-loading.mjs",
     "verify:visual": "node scripts/verify-visual.mjs",
-    "check": "npm run validate:assets && npm run build"
+    "verify:zoom": "node scripts/verify-zoom-parallax.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run validate:assets && npm run typecheck && npm run build"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "framer-motion": "^13.1.1",
+    "lucide-react": "^1.34.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^3.6.0",
     "three": "^0.185.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.0",
     "playwright-core": "^1.62.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
     "vite": "^8.2.1"
   }
 }

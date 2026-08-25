@@ -296,46 +296,52 @@ try {
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(outputDirectory, "07-full-progress.png") });
 
-  // SCRUB -> END: the folder-shaped document layer rises over a sticky 3D stage.
-  await page.mouse.wheel(0, 600);
-  await waitState(page, "end", 10_000);
-  await page.waitForFunction(() => {
-    const unitSite = document.querySelector("#unit-site");
-    const top = unitSite.getBoundingClientRect().top;
+  // SCRUB -> END: the Zoom Parallax document intro rises over a sticky 3D stage.
+  // 先挂轮询再触发滚轮: 档案内容变重后 SwiftShader 首轮光栅化较慢,
+  // 后置挂载会错过 560ms 的上升窗口。
+  const revealWindow = page.waitForFunction(() => {
+    const documentIntro = document.querySelector("#zoom-parallax-root");
+    const top = documentIntro.getBoundingClientRect().top;
     return top > window.innerHeight * 0.08 && top < window.innerHeight * 0.92;
   });
+  await page.mouse.wheel(0, 600);
+  await waitState(page, "end", 10_000);
+  await revealWindow;
   const revealLayout = await page.evaluate(() => ({
     appTop: document.querySelector("#app").getBoundingClientRect().top,
     canvasTop: document.querySelector("#scene-canvas").getBoundingClientRect().top,
-    unitTop: document.querySelector("#unit-site").getBoundingClientRect().top,
+    documentTop: document.querySelector("#zoom-parallax-root").getBoundingClientRect().top,
     viewportHeight: window.innerHeight,
-    folderOpacity: getComputedStyle(
-      document.querySelector("#unit-site"),
-      "::before",
-    ).opacity,
-    folderShape: getComputedStyle(
-      document.querySelector("#unit-site"),
-      "::before",
-    ).clipPath,
+    introBackground: getComputedStyle(
+      document.querySelector("#zoom-parallax-section"),
+    ).backgroundColor,
+    zoomActive:
+      document.querySelector("[data-zoom-parallax]")?.dataset.active === "true",
   }));
   await page.screenshot({ path: path.join(outputDirectory, "08-document-reveal.png") });
   failIf(
     Math.abs(revealLayout.appTop) > 1 ||
       revealLayout.canvasTop >= -1 ||
       Math.abs(revealLayout.canvasTop) >=
-        (revealLayout.viewportHeight - revealLayout.unitTop) * 0.4 ||
-      revealLayout.unitTop <= 0 ||
-      revealLayout.unitTop >= revealLayout.viewportHeight,
+        (revealLayout.viewportHeight - revealLayout.documentTop) * 0.4 ||
+      revealLayout.documentTop <= 0 ||
+      revealLayout.documentTop >= revealLayout.viewportHeight,
     "END reveal moves the 3D canvas upward more slowly than the 2D layer",
   );
   failIf(
-    revealLayout.folderOpacity !== "1" || revealLayout.folderShape === "none",
-    "END reveal exposes the folder-shaped upper edge",
+    !revealLayout.zoomActive ||
+      revealLayout.introBackground !== "rgba(0, 0, 0, 0)",
+    "END reveal activates the Zoom Parallax intro over a transparent backdrop",
   );
   await page.waitForFunction(() => {
     const root = document.documentElement;
-    const unitTop = document.querySelector("#unit-site").getBoundingClientRect().top;
-    return !root.classList.contains("is-document-transitioning") && Math.abs(unitTop) < 2;
+    const documentTop = document
+      .querySelector("#zoom-parallax-root")
+      .getBoundingClientRect().top;
+    return (
+      !root.classList.contains("is-document-transitioning") &&
+      Math.abs(documentTop) < 2
+    );
   });
   const documentMode = await page.evaluate(() => ({
     active: document.documentElement.classList.contains("is-document-mode"),
@@ -425,11 +431,18 @@ try {
     "01-explore.png",
     "04-scrub-start.png",
     "05-focus.png",
-    "08-document-reveal.png",
   ]) {
     const details = await stat(path.join(outputDirectory, name));
     failIf(details.size < 40_000, `${name} looks non-blank (${details.size} bytes)`);
   }
+  // 交接帧大面积为档案星空底 (深黑高压缩率), 阈值单独放宽
+  const revealShot = await stat(
+    path.join(outputDirectory, "08-document-reveal.png"),
+  );
+  failIf(
+    revealShot.size < 20_000,
+    `08-document-reveal.png looks non-blank (${revealShot.size} bytes)`,
+  );
 
   await context.close();
 

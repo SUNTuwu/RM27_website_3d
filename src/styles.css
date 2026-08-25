@@ -41,7 +41,7 @@
   --hud-control-hatch: rgba(127, 212, 255, 0.16);
 }
 
-* {
+:where(*:not(#zoom-parallax-root *):not(#stagger-testimonials-root *)) {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -1297,54 +1297,9 @@ body {
 
 /* ---------- Timeline end handoff ---------- */
 
-.timeline-end-cue {
-  position: absolute;
-  z-index: 45;
-  left: 18px;
-  right: 18px;
-  bottom: 0;
-  min-height: 38px;
-  padding: 0 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border-top: 1px solid rgba(224, 230, 226, 0.28);
-  background: rgba(2, 3, 4, 0.9);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(100%);
-  transition:
-    opacity 0.35s ease,
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.35s ease;
-  pointer-events: none;
-  user-select: none;
-}
-
-#app[data-state="scrub"][data-timeline-complete="true"] .timeline-end-cue,
-#app[data-state="end"] .timeline-end-cue {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-#app[data-state="scrub"][data-timeline-complete="true"] .hint-bar,
-#app[data-state="scrub"][data-timeline-complete="true"] .timeline-hud {
-  bottom: 52px;
-}
-
 #app[data-state="end"] .hint-bar {
   opacity: 0;
   visibility: hidden;
-}
-
-.timeline-end-cue__en {
-  letter-spacing: 0;
-  white-space: nowrap;
-  font-family: var(--font-en);
-  font-size: 20px;
-  color: rgba(239, 243, 240, 0.88);
 }
 
 /* ---------- 2D document handoff ---------- */
@@ -1352,9 +1307,12 @@ body {
 .unit-site {
   position: relative;
   z-index: 70;
+  /* 负 margin 让档案提前 100svh 进入，与图集缩放末段同时进行 */
+  margin-top: -100svh;
   min-height: 100vh;
   min-height: 100svh;
-  background: #000;
+  background: #f7f9fb;
+  color: #0b0f17;
   isolation: isolate;
   box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.72);
 }
@@ -1423,23 +1381,5 @@ html.is-document-mode .unit-site::after {
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
   .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
-
-  .timeline-end-cue {
-    left: 0;
-    right: 0;
-    min-height: 48px;
-    padding: 7px 18px;
-    flex-wrap: wrap;
-    row-gap: 3px;
-  }
-
-}
-
-@media (max-width: 600px) {
-  .timeline-end-cue__en {
-    width: 100%;
-    text-align: center;
-    white-space: normal;
-  }
 
 }

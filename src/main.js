@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./tailwind.css";
 
 import * as THREE from "three";
 
@@ -22,6 +23,9 @@ import { createLookAroundController } from "./timeline/lookAroundController.js";
 import { createFocusController } from "./focus/focusController.js";
 import { createHud } from "./ui/hud.js";
 import { createPulseGuide } from "./ui/pulseGuide.js";
+import { createUnitSite } from "./ui/unitSite.js";
+import { mountZoomParallax } from "./ui/zoomParallax";
+import { mountStaggerTestimonials } from "./ui/staggerTestimonials";
 import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
@@ -42,6 +46,17 @@ function scheduleLowPriority(callback) {
 }
 
 const hud = createHud();
+
+mountZoomParallax();
+mountStaggerTestimonials();
+
+// 2D 战队档案 (unit-site) 与 3D 状态机解耦: 移动端不 boot 时也可用。
+// 桌面端 boot 完成后会把返回按钮接到 returnToTimeline 上。
+const unitSiteUi = createUnitSite({
+  onReturnToArena: () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  },
+});
 
 function releasePageScroll() {
   document.documentElement.classList.remove("is-scroll-locked");
@@ -71,6 +86,7 @@ async function boot() {
   hud.setState("boot");
   const canvas = document.querySelector("#scene-canvas");
   const unitSite = document.querySelector("#unit-site");
+  const documentIntro = document.querySelector("#zoom-parallax-root") ?? unitSite;
   const stage = createStage(canvas, VISUAL_CONFIG);
   const freeCamera = stage.freeCamera;
   const exploreFov = Number(VISUAL_CONFIG.explore.cameraFov);
@@ -638,7 +654,7 @@ async function boot() {
   let documentRevealInProgress = false;
 
   function updateDocumentParallax(scrollY = window.scrollY) {
-    const revealDistance = Math.max(unitSite.offsetTop, 1);
+    const revealDistance = Math.max(documentIntro.offsetTop, 1);
     const progress = Math.min(Math.max(scrollY / revealDistance, 0), 1);
     const canvasShift =
       -window.innerHeight * DOCUMENT_CANVAS_PARALLAX_RATIO * progress;
@@ -661,7 +677,7 @@ async function boot() {
     stopDocumentReveal();
     const root = document.documentElement;
     const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
-    const targetY = Math.min(unitSite.offsetTop, maxScrollY);
+    const targetY = Math.min(documentIntro.offsetTop, maxScrollY);
     const startY = window.scrollY;
     const distance = targetY - startY;
 
@@ -735,6 +751,7 @@ async function boot() {
     }
     timeline.setAutoDrive(false);
     setState("end");
+    window.dispatchEvent(new Event("enterprize:zoom-activate"));
     document.documentElement.classList.add("is-document-mode");
     releasePageScroll();
     updateDocumentParallax();
@@ -753,6 +770,9 @@ async function boot() {
     setState("scrub");
     hud.setTimeline(timeline.progress);
   }
+
+  // 档案末端 "RETURN TO THE ARENA" 按钮 = 滚轮回顶的显式入口
+  unitSiteUi.setReturnHandler(returnToTimeline);
 
   // SCAN 相机混合: 先接入 cameraTimeOffset 姿态, 再贴合当前预设轨迹
   const scanHandoffPos = new THREE.Vector3();

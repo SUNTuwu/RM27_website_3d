@@ -221,7 +221,6 @@ export function createHud() {
   const timelineHud = document.querySelector("#timeline-hud");
   const timelineFill = document.querySelector("#timeline-fill");
   const timelinePct = document.querySelector("#timeline-pct");
-  const timelineEndCue = document.querySelector("#timeline-end-cue");
   const loadingScreen = document.querySelector("#loading-screen");
   const loadingFill = document.querySelector("#loading-bar-fill");
   const loadingPercent = document.querySelector("#loading-percent");
@@ -287,11 +286,9 @@ export function createHud() {
     },
     setTimeline(progress) {
       const percent = Math.round(progress * 100);
-      const isComplete = progress >= 0.999;
       timelineFill.style.width = `${percent}%`;
       timelinePct.textContent = `${String(percent).padStart(3, "0")}%`;
-      app.dataset.timelineComplete = String(isComplete);
-      timelineEndCue?.setAttribute("aria-hidden", String(!isComplete));
+      app.dataset.timelineComplete = String(progress >= 0.999);
     },
     setExploreModel(index, total, name, desc) {
       exploreName.textContent = name;

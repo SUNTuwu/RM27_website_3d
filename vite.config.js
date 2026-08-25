@@ -1,5 +1,8 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { cpSync } from "node:fs";
+import { fileURLToPath, URL } from "node:url";
 import { resolve } from "node:path";
 
 function copyRuntimeAssets() {
@@ -19,7 +22,12 @@ function copyRuntimeAssets() {
 }
 
 export default defineConfig({
-  plugins: [copyRuntimeAssets()],
+  plugins: [react(), tailwindcss(), copyRuntimeAssets()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   server: {
     host: true,
     port: 5173,
