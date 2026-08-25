@@ -6,6 +6,8 @@
     <meta name="description" content="ENTERPRIZE RoboMaster 招新 3D 交互演示" />
     <meta name="theme-color" content="#05070d" />
     <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://player.bilibili.com" />
+    <link rel="dns-prefetch" href="https://player.bilibili.com" />
     <link rel="stylesheet" href="/src/archive.css" />
     <title>ENTERPRIZE / ROBOMASTER</title>
   </head>
@@ -180,15 +182,15 @@
         id="archive-hero"
         data-chapter
         data-num="00"
-        data-name="ARCHIVE"
-        data-cn="档案首页"
-        aria-label="档案首页"
+        data-name="ENTERPRIZE"
+        data-cn="我们是谁"
+        aria-label="我们是谁"
       >
         <div class="archive-wrap">
           <div class="archive-hero__inner reveal">
             <div class="archive-hero__copy">
-              <p class="archive-eyebrow">ARCHIVE ACCESS GRANTED // 档案解密</p>
-              <h2 class="archive-hero__title">THE ARCHIVE</h2>
+              <p class="archive-eyebrow">WHO WE ARE // 我们是谁</p>
+              <h2 class="archive-hero__title">ENTERPRIZE</h2>
               <p class="archive-hero__cn">机甲档案 · 全面解密</p>
               <p class="archive-hero__lead">
                 你已掠过赛场上空，看过点云聚成钢铁、飞镖划破夜空。<br />
@@ -215,8 +217,93 @@
             </div>
             <figure class="archive-hero__media">
               <img src="/assets/images/archive/arena-fleet-web.jpg" alt="ENTERPRIZE 战队机器人列阵" />
+              <img
+                class="archive-hero__logo"
+                src="/assets/icon/ENTERPRIZE_white_logo.png"
+                alt="ENTERPRIZE 队徽"
+                loading="lazy"
+                decoding="async"
+              />
             </figure>
           </div>
+        </div>
+      </section>
+
+      <!-- 影像 MEDIA：居中主视频 + 三列高光回放 -->
+      <section class="archive-media" id="archive-media" aria-label="影像记录">
+        <div class="archive-wrap">
+          <div class="archive-sub reveal">
+            <span class="archive-sub__chip">MEDIA // FOOTAGE</span>
+            <h3 class="archive-sub__title">影像记录</h3>
+          </div>
+        </div>
+
+        <div class="archive-media__content">
+          <p class="archive-media__label reveal">
+            <b>REEL 01</b><span>招新影像 // RECRUITMENT FILM</span>
+          </p>
+          <div class="archive-media__feature">
+            <div class="archive-media__player reveal">
+              <iframe
+                src="https://player.bilibili.com/player.html?isOutside=true&aid=117127650547916&bvid=BV1yU8c6WErJ&cid=41099529159&p=1"
+                scrolling="no"
+                frameborder="0"
+                allowfullscreen="true"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                title="ENTERPRIZE 招新影像"
+              ></iframe>
+            </div>
+            <p class="archive-media__note">
+              视频经 Bilibili 官方播放器流式嵌入；内容与版权说明以
+              <a href="https://www.bilibili.com/video/BV1yU8c6WErJ/" target="_blank" rel="noopener">原视频页面</a>为准。
+            </p>
+          </div>
+
+          <p class="archive-media__label reveal">
+            <b>REEL 02</b><span>高光回放 // MATCH HIGHLIGHTS</span>
+          </p>
+          <div class="archive-media__grid" aria-label="高光回放视频">
+            <div class="archive-media__player reveal">
+              <iframe
+                src="https://player.bilibili.com/player.html?isOutside=true&aid=116702650109820&bvid=BV19j7D6LEsU&cid=38907086848&p=1"
+                scrolling="no"
+                frameborder="0"
+                allowfullscreen="true"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                title="ENTERPRIZE 高光回放 1"
+              ></iframe>
+            </div>
+            <div class="archive-media__player reveal" style="--rd: 90ms">
+              <iframe
+                src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1"
+                scrolling="no"
+                frameborder="0"
+                allowfullscreen="true"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                title="ENTERPRIZE 高光回放 2"
+              ></iframe>
+            </div>
+            <div class="archive-media__player reveal" style="--rd: 180ms">
+              <iframe
+                src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1"
+                scrolling="no"
+                frameborder="0"
+                allowfullscreen="true"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                title="ENTERPRIZE 高光回放 3"
+              ></iframe>
+            </div>
+          </div>
+          <p class="archive-media__note">
+            视频经 Bilibili 官方播放器流式嵌入；内容与版权说明以
+            <a href="https://www.bilibili.com/video/BV19j7D6LEsU/" target="_blank" rel="noopener">视频 1</a>、
+            <a href="https://www.bilibili.com/video/BV1HBHyeGEQT/" target="_blank" rel="noopener">视频 2</a>、
+            <a href="https://www.bilibili.com/video/BV1TP8jzSEVA/" target="_blank" rel="noopener">视频 3</a>的原页面为准。
+          </p>
         </div>
       </section>
 
@@ -237,95 +324,60 @@
               <span class="archive-head__rule" aria-hidden="true"></span>
               <span class="archive-head__tag">// TEAM</span>
             </div>
-            <h2 class="archive-head__title">WHO WE ARE</h2>
+            <h2 class="archive-head__title">WHERE DO WE COME FROM</h2>
             <p class="archive-head__cn">队伍信息 — 电路末端，连接的是人</p>
           </header>
 
           <div class="archive-circuit">
             <div class="archive-circuit__row archive-circuit__row--left reveal">
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/mechanics-blueprint.png')">
-                <span class="archive-flag__index">T-01 // SINCE 2015</span>
-                <h3>最老牌</h3>
+                <span class="archive-flag__index">2015 // SET SAIL</span>
+                <h3>舰队启航</h3>
                 <span class="archive-flag__en">ESTABLISHED 2015</span>
-                <p>2015 年成立，全球最早踏上 RoboMaster 赛场的队伍之一，代表香港科技大学征战至今。</p>
+                <p>HKUST RoboMaster Team 成立，全球最早踏上 RoboMaster 赛场的队伍之一，代表香港科技大学征战至今。</p>
               </article>
             </div>
             <div class="archive-circuit__row archive-circuit__row--right reveal" style="--rd: 80ms">
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/embedded-control-blueprint.png')">
-                <span class="archive-flag__index">T-02 // ON BOTH FRONTS</span>
-                <h3>赛场与工程并进</h3>
-                <span class="archive-flag__en">RESULTS &amp; ENGINEERING</span>
-                <p>2019 全球总决赛 12 强；2025 联盟赛浙江站 3V3 冠军、超级对抗赛全国二等奖；2026 联盟赛安徽站甲级二等奖。</p>
+                <span class="archive-flag__index">2018 // FIRST CROWN</span>
+                <h3>国际赛区冠军</h3>
+                <span class="archive-flag__en">SUPERCAPACITOR OPEN-SOURCED</span>
+                <p>国际赛区冠军 · 超级电容方案首次开源，改变全圈供电设计。</p>
               </article>
             </div>
             <div class="archive-circuit__row archive-circuit__row--left reveal" style="--rd: 160ms">
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/hardware-blueprint.png')">
-                <span class="archive-flag__index">T-03 // OPEN BY DEFAULT</span>
-                <h3>最开放</h3>
-                <span class="archive-flag__en">35+ PUBLIC REPOS</span>
-                <p>35 个公开 GitHub 仓库：超级电容、功率控制、雷达算法、装配工具——把作品做成整个社区可复用的工程资产。</p>
+                <span class="archive-flag__index">2019 // GLOBAL TOP 12</span>
+                <h3>全球十二强</h3>
+                <span class="archive-flag__en">BEST IN TEAM HISTORY</span>
+                <p>国际赛区冠军 · 全球总决赛 <b>12 强</b>（173 支队伍，队史最佳）。</p>
               </article>
             </div>
             <div class="archive-circuit__row archive-circuit__row--right reveal" style="--rd: 240ms">
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/algorithm-blueprint.png')">
-                <span class="archive-flag__index">T-04 // A WORLD CREW</span>
-                <h3>最国际</h3>
-                <span class="archive-flag__en">GLOBAL MEMBERS</span>
-                <p>队员来自不同国家与地区，被官方称为“万国博览队伍”；中英双语工作环境，从香港连接全球赛场。</p>
+                <span class="archive-flag__index">2021 // OVERSEAS NO.1</span>
+                <h3>中期评估第一</h3>
+                <span class="archive-flag__en">RMUC MIDTERM 203 PTS</span>
+                <p>RMUC 中期评估 203 分 · <b>港澳台及海外队伍第 1 名</b>。</p>
               </article>
             </div>
             <div class="archive-circuit__row archive-circuit__row--left reveal" style="--rd: 320ms">
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/mechanics-blueprint.png')">
-                <span class="archive-flag__index">T-05 // DREAM TEAM HUB</span>
-                <h3>学校背书</h3>
-                <span class="archive-flag__en">HKUST SUPPORT</span>
-                <p>HKUST 工学院 Dream Team Hub 四大学生战队之一，以学分项目课程运行，获学院资源支持。</p>
+                <span class="archive-flag__index">2024 // GUANGDONG 3V3</span>
+                <h3>3V3 一等奖</h3>
+                <span class="archive-flag__en">OPEN-SOURCE AWARD</span>
+                <p>联盟赛广东站 3V3 一等奖 · 超级电容控制器获赛季开源奖三等奖。</p>
               </article>
             </div>
             <div class="archive-circuit__row archive-circuit__row--right reveal" style="--rd: 400ms">
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/embedded-control-blueprint.png')">
-                <span class="archive-flag__index">T-06 // MENTORSHIP</span>
-                <h3>老带新</h3>
-                <span class="archive-flag__en">TRAINING + GUIDANCE</span>
-                <p>系统化新生培训（B站 20+ 期公开教程）+ 现役队员一对一引导，零基础也能成长为独当一面的工程师。</p>
+                <span class="archive-flag__index">2025—2026 // PEAK FORM</span>
+                <h3>巅峰赛季</h3>
+                <span class="archive-flag__en">CHAMPIONS &amp; NATIONAL AWARDS</span>
+                <p>浙江站 3V3 <b>冠军</b> · 超级对抗赛全国 <b>二等奖</b> · 雷达局均易伤 1618.3s <b>全国第一</b> · 2026 安徽站 <b>甲级二等奖（十六强）</b>，持续进化中。</p>
               </article>
             </div>
           </div>
-
-          <div class="archive-sub reveal">
-            <span class="archive-sub__chip">LOG // 2015—2026</span>
-            <h3 class="archive-sub__title">十年战绩</h3>
-          </div>
-          <ol class="archive-timeline">
-            <li class="reveal">
-              <span class="archive-timeline__year">2015</span>
-              <p>舰队启航 — HKUST RoboMaster Team 成立。</p>
-            </li>
-            <li class="reveal">
-              <span class="archive-timeline__year">2018</span>
-              <p>国际赛区冠军 · 超级电容方案首次开源，改变全圈供电设计。</p>
-            </li>
-            <li class="archive-timeline__peak reveal">
-              <span class="archive-timeline__year">2019</span>
-              <p>国际赛区冠军 · 全球总决赛 <b>12 强</b>（173 支队伍，队史最佳）。</p>
-            </li>
-            <li class="reveal">
-              <span class="archive-timeline__year">2021</span>
-              <p>RMUC 中期评估 203 分 · <b>港澳台及海外队伍第 1 名</b>。</p>
-            </li>
-            <li class="reveal">
-              <span class="archive-timeline__year">2024</span>
-              <p>联盟赛广东站 3V3 一等奖 · 超级电容控制器获赛季开源奖三等奖。</p>
-            </li>
-            <li class="archive-timeline__peak reveal">
-              <span class="archive-timeline__year">2025</span>
-              <p>联盟赛浙江站 3V3 <b>冠军</b> · 超级对抗赛全国赛 <b>二等奖</b> · 雷达局均易伤 1618.3s <b>全国第一</b> · 工程四级矿兑换速度 Top1 · 入选全明星赛。</p>
-            </li>
-            <li class="reveal">
-              <span class="archive-timeline__year">2026</span>
-              <p>联盟赛安徽站 <b>甲级二等奖（十六强）</b> · 新赛季持续进化中。</p>
-            </li>
-          </ol>
         </div>
       </section>
 
@@ -350,15 +402,36 @@
         aria-label="兵种体系"
       >
         <div class="archive-wrap">
+
           <header class="archive-head reveal">
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.02</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
               <span class="archive-head__tag">// UNITS</span>
             </div>
-            <h2 class="archive-head__title">MACHINE ARCHIVE</h2>
+            <h2 class="archive-head__title">ROBOT ARCHIVE</h2>
             <p class="archive-head__cn">兵种体系 — 钢铁图鉴</p>
           </header>
+
+                    <!-- What is RoboMaster: 重装同款横向媒体框; 视频链接与嵌入方式和参考站完全一致 -->
+          <div class="archive-sub reveal">
+            <span class="archive-sub__chip">THE GAME // 赛事速览</span>
+            <h3 class="archive-sub__title">什么是 RoboMaster 机甲大师赛</h3>
+          </div>
+          <div class="archive-media-row archive-media-row--intro reveal" style="margin-top: 26px">
+            <div class="archive-media-row__visual archive-media-row__visual--video">
+              <iframe src="https://player.bilibili.com/player.html?isOutside=true&aid=115122454469835&bvid=BV1rMaVzTEh1&cid=32069389984&p=1" scrolling="no" frameborder="0" allowfullscreen="true" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="ENTERPRIZE 公开视频资料"></iframe>
+            </div>
+            <div class="archive-media-row__body">
+              <span class="archive-media-row__index">WHAT IS ROBOMASTER // 赛事介绍</span>
+              <h3 class="archive-media-row__title">什么是 RoboMaster</h3>
+              <span class="archive-media-row__en">机甲大师赛 · 全球大学生机器人对抗赛</span>
+              <p class="archive-media-row__desc">
+                RoboMaster 机甲大师赛是由 DJI 大疆发起并主办的全球大学生机器人对抗赛:参赛队伍需要自主研发英雄、工程、步兵、哨兵、空中机器人、飞镖系统与雷达站等兵种,在实体赛场展开多兵种协同的实弹射击对抗,以击毁对方基地为最终目标。赛事覆盖机械、硬件、电控与算法的完整工程链路,被誉为工程师的实战赛场。ENTERPRIZE 自 2015 年起代表香港科技大学征战至今——左侧视频是战队的公开影像资料。
+              </p>
+              <p class="archive-media-row__note">视频通过 Bilibili 官方播放器嵌入,内容与版权说明以原视频页面为准。</p>
+            </div>
+          </div>
 
           <!-- 兵种图文揭示: GIF 嵌入大字, 滚动展开, 表达缺一不可 -->
           <div class="unit-reveal" id="unit-reveal" data-unit-reveal aria-label="各兵种缺一不可">
@@ -386,7 +459,7 @@
                 <span class="unit-reveal__text">弹雨巡弋</span>
               </div>
               <div class="unit-reveal__line unit-reveal__line--plain">
-                <span class="unit-reveal__text">缺一不可</span>
+                <span class="unit-reveal__text">你的选择是什么?</span>
               </div>
               <div class="unit-reveal__line unit-reveal__line--plain">
                 <span class="unit-reveal__text unit-reveal__text--en">CHOOSE YOUR HERO</span>
@@ -672,6 +745,15 @@
         data-cn="重返赛场"
         aria-label="重返 3D 赛场"
       >
+        <img
+          class="archive-return__bg"
+          src="/assets/images/others/back.jpg"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+        />
+        <span class="archive-return__fade" aria-hidden="true"></span>
         <span class="archive-return__ghost archive-return__ghost--left" data-ghost="left" aria-hidden="true">重返</span>
         <span class="archive-return__ghost archive-return__ghost--right" data-ghost="right" aria-hidden="true">战场</span>
         <div class="archive-wrap archive-return__inner">

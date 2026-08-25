@@ -149,21 +149,22 @@
 }
 
 .archive-hero__inner {
-  display: grid;
-  grid-template-columns: minmax(560px, 46vw) 1fr;
+  position: relative;
   min-height: 100vh;
   min-height: 100svh;
   background: var(--archive-card);
 }
 
 .archive-hero__copy {
+  position: relative;
+  z-index: 1;
   padding: clamp(56px, 8vh, 96px) clamp(32px, 4vw, 64px) clamp(56px, 8vh, 96px)
     clamp(28px, 4vw, 72px);
   color: var(--archive-card-ink);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: var(--archive-card);
+  max-width: 760px;
 }
 
 .archive-eyebrow {
@@ -237,8 +238,9 @@
 }
 
 .archive-hero__media {
-  position: relative;
-  min-height: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
 }
 
@@ -251,7 +253,7 @@
   display: block;
 }
 
-/* 右侧图片左边缘斜向透明过渡进白色卡片 */
+/* 左侧文字区压浅色罩，右侧保留照片细节 */
 .archive-hero__media::before {
   content: "";
   position: absolute;
@@ -260,9 +262,9 @@
   background: linear-gradient(
     100deg,
     var(--archive-card) 0%,
-    rgba(244, 247, 251, 0.85) 10%,
-    rgba(244, 247, 251, 0.35) 20%,
-    transparent 32%
+    rgba(244, 247, 251, 0.92) 30%,
+    rgba(244, 247, 251, 0.55) 52%,
+    transparent 74%
   );
   pointer-events: none;
 }
@@ -277,6 +279,36 @@
     transparent 40%
   );
   pointer-events: none;
+}
+
+/* 悬浮在右侧照片中央的队徽 */
+.archive-hero__media .archive-hero__logo {
+  position: absolute;
+  z-index: 3;
+  inset: 0 9% 0 auto;
+  margin: auto 0;
+  width: min(34%, 280px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 42px rgba(0, 0, 0, 0.45));
+  animation: archive-hero-logo-float 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes archive-hero-logo-float {
+  0%,
+  100% {
+    transform: translateY(-10px);
+  }
+  50% {
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-hero__media .archive-hero__logo {
+    animation: none;
+  }
 }
 
 .archive-scrollcue {
@@ -470,74 +502,112 @@
   max-width: 520px;
 }
 
-/* 时间线 */
-.archive-timeline {
+/* ============ 影像 MEDIA：暗色板块 + 渐变过渡 ============ */
+
+.archive-media {
   position: relative;
-  list-style: none;
-  padding-left: 38px;
-  margin-top: 24px;
+  padding: 0 0 72px;
+  background: #0a0e16;
+  color: #eef3fb;
 }
 
-.archive-timeline::before {
+/* WHO WE ARE → 影像记录：从浅色主视觉过渡到暗色媒体区 */
+.archive-media::before {
   content: "";
-  position: absolute;
-  left: 9px;
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-  background: linear-gradient(
-    180deg,
-    var(--archive-red),
-    var(--archive-blue),
-    var(--archive-line)
-  );
-}
-
-.archive-timeline li {
-  position: relative;
-  padding: 26px 0 26px 36px;
-  border-bottom: 1px solid var(--archive-line);
-}
-
-.archive-timeline li::before {
-  content: "";
-  position: absolute;
-  left: -34px;
-  top: 34px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--archive-bg);
-  border: 3px solid var(--archive-cyan);
-}
-
-.archive-timeline__year {
-  font-family: var(--archive-font-en);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--archive-cyan);
   display: block;
-  margin-bottom: 8px;
+  height: clamp(90px, 14vh, 170px);
+  background: linear-gradient(180deg, #f7f9fb 0%, rgba(244, 247, 251, 0.7) 28%, #0a0e16 100%);
 }
 
-.archive-timeline__peak .archive-timeline__year {
+/* 暗底上的子标题配色 */
+.archive-media .archive-sub {
+  margin-top: 12px;
+}
+
+.archive-media .archive-sub__chip {
+  color: rgba(238, 243, 251, 0.55);
+  border-color: rgba(238, 243, 251, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.archive-media .archive-sub__title {
+  color: #eef3fb;
+}
+
+.archive-media__content {
+  width: min(1500px, 94vw);
+  margin: 0 auto;
+}
+
+.archive-media__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+  margin: 48px 0 14px;
+  font-family: var(--archive-font-en);
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: rgba(238, 243, 251, 0.5);
+}
+
+.archive-media__label b {
   color: var(--archive-red);
+  font-size: 15px;
+  letter-spacing: 2px;
 }
 
-.archive-timeline__peak::before {
-  border-color: var(--archive-red);
-  background: var(--archive-red);
-  box-shadow: 0 0 16px rgba(255, 45, 77, 0.5);
+/* Bilibili 官方播放器流式嵌入 */
+.archive-media__player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000000;
 }
 
-.archive-timeline p {
-  font-size: 17px;
-  line-height: 1.9;
-  color: var(--archive-ink-dim);
+.archive-media__feature {
+  width: min(1120px, 100%);
+  margin: 0 auto;
 }
 
-.archive-timeline p b {
-  color: var(--archive-ink);
+.archive-media__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 1.4vw, 22px);
+}
+
+.archive-media__grid .archive-media__player {
+  max-height: none;
+}
+
+.archive-media__player iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.archive-media__note {
+  position: relative;
+  z-index: 1;
+  padding-top: 12px;
+  font-size: 12px;
+  color: rgba(238, 243, 251, 0.42);
+}
+
+.archive-media__note a {
+  color: rgba(238, 243, 251, 0.62);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .archive-media__grid {
+    grid-template-columns: 1fr;
+    width: min(680px, 100%);
+    margin: 0 auto;
+  }
 }
 
 /* ============ 横幅 ============ */
@@ -816,6 +886,37 @@
   color: #46536a;
 }
 
+/* What is RoboMaster: 媒体框的视频变体 (嵌入方式与参考站一致: 懒加载 iframe) */
+.archive-media-row__visual iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+}
+
+.archive-media-row__note {
+  margin-top: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #8a95a5;
+}
+
+.archive-media-row__visual--video {
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+  align-self: stretch;
+}
+
+@media (min-width: 1081px) {
+  .archive-media-row__visual--video {
+    aspect-ratio: auto;
+    min-height: 480px;
+  }
+}
+
 /* ============ 03 JOIN: 部门纵向大卡片 ============ */
 
 .archive-depts {
@@ -832,18 +933,18 @@
   gap: 40px;
   align-items: center;
   padding: 48px 52px;
-  background-color: var(--archive-card);
+  background-color: #05070d;
   background-image:
     linear-gradient(
       100deg,
-      rgba(244, 247, 251, 0.97) 0%,
-      rgba(244, 247, 251, 0.93) 52%,
-      rgba(244, 247, 251, 0.8) 100%
+      rgba(5, 7, 13, 0.94) 0%,
+      rgba(5, 7, 13, 0.78) 52%,
+      rgba(5, 7, 13, 0.52) 100%
     ),
     var(--dept-img, none);
   background-size: cover;
   background-position: center;
-  color: var(--archive-card-ink);
+  color: #f2f6ff;
   border-radius: 0;
   box-shadow: var(--archive-shadow);
   overflow: hidden;
@@ -867,9 +968,9 @@
   background-image:
     linear-gradient(
       100deg,
-      rgba(244, 247, 251, 0.93) 0%,
-      rgba(244, 247, 251, 0.85) 52%,
-      rgba(244, 247, 251, 0.62) 100%
+      rgba(5, 7, 13, 0.9) 0%,
+      rgba(5, 7, 13, 0.68) 52%,
+      rgba(5, 7, 13, 0.42) 100%
     ),
     var(--dept-img, none);
 }
@@ -885,7 +986,9 @@
 .archive-dept__body h3 {
   font-size: clamp(36px, 4vw, 56px);
   font-weight: 800;
+  color: #ffffff;
   margin-bottom: 10px;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
 }
 
 .archive-dept__body .archive-dept__en {
@@ -900,13 +1003,13 @@
 .archive-dept__body p {
   font-size: 17px;
   line-height: 1.9;
-  color: #46536a;
+  color: rgba(226, 236, 250, 0.88);
   margin-bottom: 10px;
 }
 
 .archive-dept__body .archive-dept__req {
   font-size: 14px;
-  color: #7a8699;
+  color: rgba(226, 236, 250, 0.7);
   font-style: italic;
 }
 
@@ -1282,11 +1385,47 @@
   overflow: hidden;
 }
 
+/* 重返战场背景: 低透明度赛场照片 + 上沿渐变衔接上一章
+   (替代通用的章节斜切折线分隔, 保证图像边缘柔和过渡) */
+.archive-chapter.archive-return::before,
+.archive-chapter.archive-return::after {
+  content: none;
+}
+
+.archive-return__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  opacity: 0.24;
+  pointer-events: none;
+  user-select: none;
+}
+
+.archive-return__fade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--archive-bg) 0%,
+    rgba(5, 7, 13, 0.82) 9%,
+    rgba(5, 7, 13, 0.45) 26%,
+    rgba(5, 7, 13, 0.38) 58%,
+    rgba(5, 7, 13, 0.72) 88%,
+    var(--archive-bg) 100%
+  );
+}
+
 /* 两侧半透明中文大字: 滚动时向外扩散显现 (JS 驱动 --ghost-p) */
 .archive-return__ghost {
   position: absolute;
   top: 26%;
-  z-index: 1;
+  z-index: 2;
   font-family: var(--archive-font-cn);
   font-size: clamp(96px, 17vw, 300px);
   font-weight: 900;
@@ -1395,6 +1534,8 @@
 }
 
 .archive-footer {
+  position: relative;
+  z-index: 2;
   width: 100%;
   padding: 56px 0;
   border-top: 1px solid var(--archive-line);
@@ -1516,22 +1657,20 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
 /* ============ 响应式 ============ */
 
 @media (max-width: 1080px) {
-  .archive-hero__inner {
-    grid-template-columns: 1fr;
-  }
-
-  .archive-hero__media {
-    order: -1;
-    min-height: 44vh;
-  }
-
   .archive-hero__media::before {
     background: linear-gradient(
-      0deg,
+      100deg,
       var(--archive-card) 0%,
-      rgba(244, 247, 251, 0.85) 14%,
-      transparent 34%
+      rgba(244, 247, 251, 0.94) 42%,
+      rgba(244, 247, 251, 0.72) 68%,
+      rgba(244, 247, 251, 0.35) 100%
     );
+  }
+
+  .archive-hero__media .archive-hero__logo {
+    width: min(42%, 200px);
+    inset: auto 6% 8% auto;
+    margin: 0;
   }
 
   .archive-scrollcue {
@@ -1588,6 +1727,10 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
     grid-template-columns: 1fr;
     gap: 18px;
     clip-path: none;
+  }
+
+  .archive-media__player {
+    max-height: none;
   }
 
   .archive-nav {
