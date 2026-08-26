@@ -26,6 +26,7 @@ import { createPulseGuide } from "./ui/pulseGuide.js";
 import { createUnitSite } from "./ui/unitSite.js";
 import { mountZoomParallax } from "./ui/zoomParallax";
 import { mountStaggerTestimonials } from "./ui/staggerTestimonials";
+import { mountGlowingChannels } from "./ui/glowingChannels";
 import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
@@ -49,6 +50,7 @@ const hud = createHud();
 
 mountZoomParallax();
 mountStaggerTestimonials();
+mountGlowingChannels();
 
 // 2D 战队档案 (unit-site) 与 3D 状态机解耦: 移动端不 boot 时也可用。
 // 桌面端 boot 完成后会把返回按钮接到 returnToTimeline 上。

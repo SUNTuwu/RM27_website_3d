@@ -37,5 +37,11 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        opensource: fileURLToPath(new URL("./open-source.html", import.meta.url)),
+      },
+    },
   },
 });

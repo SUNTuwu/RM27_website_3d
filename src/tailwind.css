@@ -57,30 +57,37 @@
   #zoom-parallax-root *::after,
   #stagger-testimonials-root *,
   #stagger-testimonials-root *::before,
-  #stagger-testimonials-root *::after {
+  #stagger-testimonials-root *::after,
+  #glowing-channels-root *,
+  #glowing-channels-root *::before,
+  #glowing-channels-root *::after {
     box-sizing: border-box;
   }
 
   #zoom-parallax-root :where(*),
-  #stagger-testimonials-root :where(*) {
+  #stagger-testimonials-root :where(*),
+  #glowing-channels-root :where(*) {
     margin: 0;
     padding: 0;
   }
 
   #zoom-parallax-root :where(h1, h2, h3, h4, h5, h6),
-  #stagger-testimonials-root :where(h1, h2, h3, h4, h5, h6) {
+  #stagger-testimonials-root :where(h1, h2, h3, h4, h5, h6),
+  #glowing-channels-root :where(h1, h2, h3, h4, h5, h6) {
     font: inherit;
   }
 
   #zoom-parallax-root :where(button, input, select, textarea),
-  #stagger-testimonials-root :where(button, input, select, textarea) {
+  #stagger-testimonials-root :where(button, input, select, textarea),
+  #glowing-channels-root :where(button, input, select, textarea) {
     color: inherit;
     font: inherit;
     letter-spacing: inherit;
   }
 
   #zoom-parallax-root :where(img, svg),
-  #stagger-testimonials-root :where(img, svg) {
+  #stagger-testimonials-root :where(img, svg),
+  #glowing-channels-root :where(img, svg) {
     display: block;
     vertical-align: middle;
   }

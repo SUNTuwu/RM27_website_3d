@@ -27,7 +27,8 @@
   color: var(--archive-ink);
   isolation: isolate;
   box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.72);
-  overflow-x: hidden;
+  /* clip 不像 hidden 会把 overflow-y 计算为 auto, 上沿文件夹折线才能露出 */
+  overflow-x: clip;
 }
 
 .archive-wrap {
@@ -519,24 +520,23 @@
   background: linear-gradient(180deg, #f7f9fb 0%, rgba(244, 247, 251, 0.7) 28%, #0a0e16 100%);
 }
 
-/* 暗底上的子标题配色 */
-.archive-media .archive-sub {
-  margin-top: 12px;
-}
-
-.archive-media .archive-sub__chip {
-  color: rgba(238, 243, 251, 0.55);
-  border-color: rgba(238, 243, 251, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.archive-media .archive-sub__title {
-  color: #eef3fb;
-}
-
 .archive-media__content {
   width: min(1500px, 94vw);
   margin: 0 auto;
+}
+
+/* 暗色媒体区里的章节标题: 保留与原子标题相同的上间距 */
+.archive-media .archive-head {
+  margin-top: 12px;
+}
+
+/* 影像记录标题与 REEL 01 之间: 去掉 wrap 底部留白, 压缩首个 label 上间距 */
+.archive-media .archive-wrap {
+  padding-bottom: 0;
+}
+
+.archive-media__content > .archive-media__label:first-child {
+  margin-top: 24px;
 }
 
 .archive-media__label {
@@ -886,35 +886,11 @@
   color: #46536a;
 }
 
-/* What is RoboMaster: 媒体框的视频变体 (嵌入方式与参考站一致: 懒加载 iframe) */
-.archive-media-row__visual iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-  background: #000;
-}
-
 .archive-media-row__note {
   margin-top: 20px;
   font-size: 13px;
   line-height: 1.8;
   color: #8a95a5;
-}
-
-.archive-media-row__visual--video {
-  min-height: 0;
-  aspect-ratio: 16 / 9;
-  align-self: stretch;
-}
-
-@media (min-width: 1081px) {
-  .archive-media-row__visual--video {
-    aspect-ratio: auto;
-    min-height: 480px;
-  }
 }
 
 /* ============ 03 JOIN: 部门纵向大卡片 ============ */
@@ -1013,28 +989,32 @@
   font-style: italic;
 }
 
-/* 获得 / 需要 */
+/* 获得 / 需要 —— 白字悬浮于黑底, 横屏细线分区 */
 .archive-duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 36px;
-  margin: 48px 0;
+  gap: 0;
+  margin: 56px 0;
 }
 
 .archive-duo__col {
-  background: var(--archive-card);
-  color: var(--archive-card-ink);
-  border: 1px solid rgba(11, 15, 23, 0.06);
-  border-radius: 24px;
-  padding: 44px 40px;
-  box-shadow: var(--archive-shadow);
+  padding: 8px 56px 8px 0;
+}
+
+.archive-duo__col + .archive-duo__col {
+  border-left: 1px solid var(--archive-line);
+  padding: 8px 0 8px 56px;
+}
+
+.archive-duo .archive-sub {
+  margin: 0 0 30px;
 }
 
 .archive-list {
   list-style: none;
   display: grid;
-  gap: 18px;
-  margin-top: 20px;
+  gap: 16px;
+  margin-top: 8px;
 }
 
 .archive-list li {
@@ -1042,7 +1022,7 @@
   padding-left: 30px;
   font-size: 16px;
   line-height: 1.85;
-  color: #46536a;
+  color: var(--archive-ink-dim);
 }
 
 .archive-list li::before {
@@ -1054,6 +1034,251 @@
   height: 10px;
   border-radius: 50%;
   background: var(--archive-red);
+  box-shadow: 0 0 10px rgba(255, 45, 77, 0.55);
+}
+
+.archive-list--need li::before {
+  background: var(--archive-blue);
+  box-shadow: 0 0 10px rgba(46, 155, 255, 0.55);
+}
+
+/* ============ 03 JOIN: 舰载科技面板 (移植自 RM2027 招新页) ============ */
+
+.archive-tech {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
+  margin: 56px 0 40px;
+}
+
+.archive-tech__panel {
+  position: relative;
+  background: rgba(120, 160, 210, 0.05);
+  border: 1px solid var(--archive-line);
+  box-shadow: var(--archive-shadow);
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.archive-tech__panel:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--archive-shadow-lg);
+}
+
+.archive-tech__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--pc, var(--archive-cyan));
+  color: #04121a;
+  padding: 9px 20px;
+  font-family: var(--archive-font-en);
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.archive-tech__cap {
+  margin-left: auto;
+  background: rgba(4, 6, 14, 0.25);
+  border-radius: 99px;
+  padding: 2px 12px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.archive-tech__body {
+  padding: 22px 26px 24px;
+}
+
+.archive-tech__body p {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--archive-ink-dim);
+}
+
+.archive-tech__body p b {
+  color: var(--archive-cyan);
+  font-weight: 700;
+}
+
+.archive-tech__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.archive-tech__tags span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--archive-font-en);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--archive-cyan);
+  border: 1px solid rgba(127, 212, 255, 0.32);
+  background: rgba(127, 212, 255, 0.06);
+  padding: 3px 10px;
+}
+
+.archive-tech__tags span::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background: var(--pc, var(--archive-cyan));
+  flex: none;
+}
+
+.archive-tech__readout {
+  margin-top: 16px;
+  font-family: var(--archive-font-en);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--archive-cyan);
+}
+
+.archive-tech__readout b {
+  color: var(--archive-gold);
+  font-weight: 400;
+}
+
+.archive-tech__figure {
+  background: rgba(120, 160, 210, 0.05);
+  border: 1px solid var(--archive-line);
+  border-left: 4px solid var(--archive-cyan);
+  padding: 28px 32px 30px;
+  box-shadow: var(--archive-shadow);
+}
+
+.archive-tech__figure h4 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--archive-cyan);
+  margin-bottom: 18px;
+}
+
+.archive-tech__figure img {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--archive-line);
+}
+
+.archive-tech__note {
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--archive-ink-faint);
+}
+
+/* ============ 03 JOIN: 开源墙 ============ */
+
+.archive-lead {
+  max-width: 840px;
+  margin: -12px 0 44px;
+  font-size: 17px;
+  line-height: 1.95;
+  color: var(--archive-ink-dim);
+}
+
+.archive-repos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.archive-repo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: rgba(120, 160, 210, 0.05);
+  border: 1px solid var(--archive-line);
+  border-left: 4px solid var(--archive-blue);
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.archive-repo:hover {
+  transform: translateX(8px);
+  border-color: rgba(127, 212, 255, 0.5);
+  border-left-color: var(--archive-cyan);
+  text-decoration: none;
+}
+
+.archive-repo__name {
+  display: block;
+  font-family: var(--archive-font-en);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--archive-ink);
+  margin-bottom: 6px;
+}
+
+.archive-repo__desc {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--archive-ink-dim);
+}
+
+.archive-repo__star {
+  font-family: var(--archive-font-en);
+  font-size: 13px;
+  color: var(--archive-gold);
+  white-space: nowrap;
+}
+
+.archive-note a {
+  color: rgba(238, 243, 251, 0.62);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ============ 03 JOIN: 新生培训卡片 ============ */
+
+.archive-training {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin: 56px 0 40px;
+}
+
+.archive-training__card {
+  position: relative;
+  background: rgba(120, 160, 210, 0.05);
+  border: 1px solid var(--archive-line);
+  border-top: 4px solid var(--pc, var(--archive-cyan));
+  padding: 30px 30px 32px;
+  box-shadow: var(--archive-shadow);
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.archive-training__card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--archive-shadow-lg);
+}
+
+.archive-training__en {
+  display: block;
+  font-family: var(--archive-font-en);
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  color: var(--pc, var(--archive-cyan));
+  margin-bottom: 14px;
+}
+
+.archive-training__card h4 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--archive-ink);
+  margin-bottom: 12px;
+}
+
+.archive-training__card p {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--archive-ink-dim);
 }
 
 /* ============ FAQ 对话框 ============ */
@@ -1061,12 +1286,15 @@
 .archive-faq {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  align-items: flex-start;
+  gap: 26px;
   margin: 48px 0 64px;
 }
 
 .archive-faq__item {
   position: relative;
+  width: fit-content;
+  max-width: min(760px, 100%);
   background: var(--archive-card);
   color: var(--archive-card-ink);
   border: 1px solid rgba(11, 15, 23, 0.06);
@@ -1088,6 +1316,16 @@
   border-right: 1px solid rgba(11, 15, 23, 0.06);
   border-bottom: 1px solid rgba(11, 15, 23, 0.06);
   transform: rotate(45deg);
+}
+
+/* 偶数气泡靠右, 小尾巴换到右侧, 形成对话感 */
+.archive-faq__item:nth-child(even) {
+  align-self: flex-end;
+}
+
+.archive-faq__item:nth-child(even)::before {
+  left: auto;
+  right: 38px;
 }
 
 .archive-faq__item:hover {
@@ -1151,113 +1389,125 @@
   margin-bottom: 16px;
 }
 
-/* ============ 入队步骤 ============ */
+/* ============ 入队航线: 横向时间线 + 旗帜节点 ============ */
 
 .archive-steps {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 22px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
   list-style: none;
-  margin: 48px 0 64px;
+  margin: 64px 0;
 }
 
 .archive-steps li {
-  background: var(--archive-card);
-  color: var(--archive-card-ink);
-  border: 1px solid rgba(11, 15, 23, 0.06);
-  border-radius: 22px;
-  padding: 36px 30px;
-  box-shadow: var(--archive-shadow);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
 }
 
-.archive-steps li:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--archive-shadow-lg);
+/* 航线分段: 每站从自己节点中心 (x=7, y=64) 连到下一站节点中心 (gap=40) */
+.archive-steps li::before {
+  content: "";
+  position: absolute;
+  top: 64px;
+  left: 7px;
+  right: -47px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--archive-red), var(--archive-blue));
+  opacity: 0.45;
+  pointer-events: none;
 }
 
-.archive-steps__num {
-  font-family: var(--archive-font-en);
-  font-size: clamp(48px, 5vw, 72px);
-  font-weight: 400;
-  color: var(--archive-red);
+/* 每行末站不再向右延伸 */
+.archive-steps li:nth-child(3n)::before {
+  display: none;
+}
+
+.archive-steps__mast {
+  position: relative;
   display: block;
-  margin-bottom: 16px;
+  height: 70px;
+  margin-bottom: 26px;
+}
+
+.archive-steps__flag {
+  position: absolute;
+  top: 0;
+  left: 7px;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 22px 0 14px;
+  font-family: var(--archive-font-en);
+  font-size: 15px;
+  letter-spacing: 2px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--archive-red), #a3122c);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 11px) 50%, 100% 100%, 0 100%);
+  transition: transform 0.3s ease;
+}
+
+.archive-steps__pole {
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  bottom: 6px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--archive-ink-faint),
+    rgba(111, 127, 153, 0.25)
+  );
+}
+
+.archive-steps__node {
+  position: absolute;
+  left: 1px;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--archive-bg);
+  border: 2px solid var(--archive-red);
+  box-shadow: 0 0 12px rgba(255, 45, 77, 0.55);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.archive-steps li:nth-child(even) .archive-steps__flag {
+  background: linear-gradient(135deg, var(--archive-blue), #1456a0);
+}
+
+.archive-steps li:nth-child(even) .archive-steps__node {
+  border-color: var(--archive-blue);
+  box-shadow: 0 0 12px rgba(46, 155, 255, 0.55);
+}
+
+.archive-steps li:hover .archive-steps__flag {
+  transform: translateX(5px);
+}
+
+.archive-steps li:hover .archive-steps__node {
+  transform: scale(1.25);
+}
+
+.archive-steps__time {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--archive-gold);
+  margin-bottom: 10px;
 }
 
 .archive-steps h4 {
-  font-size: clamp(22px, 2.4vw, 30px);
+  font-size: clamp(20px, 2vw, 26px);
   font-weight: 700;
-  margin-bottom: 14px;
+  color: var(--archive-ink);
+  margin-bottom: 12px;
 }
 
 .archive-steps p {
   font-size: 15px;
   line-height: 1.85;
-  color: #46536a;
-}
-
-/* ============ 联系渠道 ============ */
-
-.archive-channels {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
-  margin: 48px 0 64px;
-}
-
-.archive-channel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--archive-card);
-  color: var(--archive-card-ink);
-  border: 1px solid rgba(11, 15, 23, 0.06);
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: var(--archive-shadow);
-  text-decoration: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.archive-channel:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--archive-shadow-lg);
-}
-
-.archive-channel__label {
-  font-family: var(--archive-font-en);
-  font-size: 12px;
-  letter-spacing: 2px;
-  color: #8a95a5;
-}
-
-.archive-channel b {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.archive-channel__copy,
-.archive-channel__go {
-  align-self: flex-start;
-  margin-top: 12px;
-  font-family: var(--archive-font-en);
-  font-size: 12px;
-  letter-spacing: 2px;
-  color: #0e7fbd;
-  background: transparent;
-  border: 1px solid rgba(11, 15, 23, 0.14);
-  padding: 7px 16px;
-  border-radius: 99px;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.archive-channel__copy:hover,
-.archive-channel__go:hover {
-  background: var(--archive-red);
-  border-color: var(--archive-red);
-  color: #fff;
+  color: var(--archive-ink-dim);
 }
 
 /* ============ 兵种图文揭示 (GIF 嵌入大字, 滚动 scrub 展开) ============ */
@@ -1533,6 +1783,43 @@
   color: var(--archive-ink-faint);
 }
 
+/* 开源档案库入口: 斜切 HUD 次按钮, 与 open-source 页同款 */
+.archive-return__os {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+  padding: 13px 26px;
+  border: 1px solid rgba(46, 155, 255, 0.45);
+  background: rgba(46, 155, 255, 0.06);
+  color: var(--archive-cyan);
+  text-decoration: none;
+  transform: skewX(-16deg);
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.archive-return__os > * {
+  transform: skewX(16deg);
+}
+
+.archive-return__os:hover {
+  transform: translateY(-2px) skewX(-16deg);
+  border-color: var(--archive-red);
+  background: rgba(255, 45, 77, 0.08);
+}
+
+.archive-return__os-cn {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--archive-ink);
+}
+
+.archive-return__os-en {
+  font-family: var(--archive-font-en);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
 .archive-footer {
   position: relative;
   z-index: 2;
@@ -1546,6 +1833,360 @@
 
 .archive-footer b {
   color: var(--archive-ink);
+}
+
+/* ============ 开源档案库大箭头 CTA ============ */
+
+.archive-os-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 34px;
+  padding: 26px 34px;
+  border: 1px solid rgba(46, 155, 255, 0.4);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(127, 212, 255, 0.05) 0 1px,
+      transparent 1px 10px
+    ),
+    rgba(46, 155, 255, 0.05);
+  clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 0 100%);
+  color: var(--archive-ink);
+  text-decoration: none;
+  transition: border-color 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
+}
+
+.archive-os-cta:hover {
+  border-color: var(--archive-red);
+  background-color: rgba(255, 45, 77, 0.08);
+  transform: translateX(6px);
+}
+
+.archive-os-cta__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archive-os-cta__cn {
+  font-size: clamp(20px, 2.4vw, 28px);
+  font-weight: 700;
+}
+
+.archive-os-cta__en {
+  font-family: var(--archive-font-en);
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--archive-cyan);
+}
+
+.archive-os-cta__arrow {
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1;
+  color: var(--archive-red);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.archive-os-cta:hover .archive-os-cta__arrow {
+  transform: translateX(10px);
+  color: var(--archive-cyan);
+}
+
+/* ============ 兵种堆叠图集: 横屏贴边 / 斜线分割 / 悬停展开 ============
+   双层 clip-path: 外层红蓝渐变留出 2px 斜线描边, 内层图片裁切 */
+
+.unit-stack {
+  --cut: 44px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-top: 24px;
+  display: flex;
+  height: min(74vh, 640px);
+  min-height: 440px;
+  overflow: hidden;
+}
+
+.unit-slot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  margin-left: calc(var(--cut) * -1);
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    calc(100% - var(--cut)) 100%,
+    0 100%
+  );
+  background: linear-gradient(180deg, var(--archive-red), var(--archive-blue));
+  cursor: pointer;
+  transition: flex-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.unit-slot:first-child {
+  margin-left: 0;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
+}
+
+.unit-slot:last-child {
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.unit-slot:hover,
+.unit-slot:focus-visible,
+.unit-slot.is-active {
+  flex-grow: 3.4;
+}
+
+.unit-slot:focus-visible {
+  outline: none;
+}
+
+.unit-slot__media {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    calc(var(--cut) + 2px) 0,
+    100% 0,
+    calc(100% - var(--cut)) 100%,
+    2px 100%
+  );
+  background: #0a0e16;
+}
+
+.unit-slot:first-child .unit-slot__media {
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
+}
+
+.unit-slot:last-child .unit-slot__media {
+  clip-path: polygon(calc(var(--cut) + 2px) 0, 100% 0, 100% 100%, 2px 100%);
+}
+
+.unit-slot__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.82) brightness(0.72);
+  transform: scale(1.06);
+  transition: filter 0.45s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.unit-slot:hover .unit-slot__media img,
+.unit-slot:focus-visible .unit-slot__media img,
+.unit-slot.is-active .unit-slot__media img {
+  filter: saturate(1) brightness(0.95);
+  transform: scale(1);
+}
+
+/* 科技感斜线纹理, 悬停时点亮 */
+.unit-slot__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(127, 212, 255, 0.08) 0 1px,
+    transparent 1px 10px
+  );
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+
+.unit-slot:hover .unit-slot__media::after,
+.unit-slot:focus-visible .unit-slot__media::after,
+.unit-slot.is-active .unit-slot__media::after {
+  opacity: 1;
+}
+
+.unit-slot__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    0deg,
+    rgba(5, 7, 13, 0.88) 0%,
+    rgba(5, 7, 13, 0.32) 34%,
+    transparent 62%
+  );
+  pointer-events: none;
+}
+
+.unit-slot__info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 22px 18px 20px calc(var(--cut) * 0.4 + 18px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.unit-slot__index {
+  font-family: var(--archive-font-en);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--archive-cyan);
+  white-space: nowrap;
+}
+
+.unit-slot__name {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--archive-ink);
+  white-space: nowrap;
+  transition: font-size 0.45s ease;
+}
+
+.unit-slot:hover .unit-slot__name,
+.unit-slot:focus-visible .unit-slot__name,
+.unit-slot.is-active .unit-slot__name {
+  font-size: clamp(30px, 3vw, 44px);
+}
+
+.unit-slot__en {
+  margin-top: 4px;
+  font-family: var(--archive-font-en);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--archive-ink-dim);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease 0.08s, transform 0.4s ease 0.08s;
+}
+
+.unit-slot__desc {
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--archive-ink-dim);
+  max-width: 420px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease 0.14s, transform 0.4s ease 0.14s;
+}
+
+.unit-slot:hover .unit-slot__en,
+.unit-slot:hover .unit-slot__desc,
+.unit-slot:focus-visible .unit-slot__en,
+.unit-slot:focus-visible .unit-slot__desc,
+.unit-slot.is-active .unit-slot__en,
+.unit-slot.is-active .unit-slot__desc {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 未知兵种: 问号白墨在深色斜纹底上 */
+.unit-slot--unknown .unit-slot__media {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 45, 77, 0.07) 0 1px,
+      transparent 1px 12px
+    ),
+    #0a0e16;
+}
+
+/* 原图是黑墨 + 透明底, 反相成白墨 */
+.unit-slot--unknown .unit-slot__media img {
+  object-fit: contain;
+  padding: 12%;
+  filter: invert(1) brightness(0.55);
+}
+
+.unit-slot--unknown:hover .unit-slot__media img,
+.unit-slot--unknown:focus-visible .unit-slot__media img,
+.unit-slot--unknown.is-active .unit-slot__media img {
+  filter: invert(1) brightness(1) drop-shadow(0 0 26px rgba(255, 45, 77, 0.4));
+}
+
+.unit-slot--unknown .unit-slot__index {
+  color: var(--archive-red);
+}
+
+/* 末格文字避开右侧固定章节导航 */
+.unit-slot:last-child .unit-slot__info {
+  padding-right: 96px;
+}
+
+/* 移动端: 改为纵向手风琴, 斜切落在每条的上沿 */
+@media (max-width: 900px) {
+  .unit-stack {
+    --cut: 26px;
+    flex-direction: column;
+    height: 760px;
+    min-height: 0;
+  }
+
+  .unit-slot {
+    margin-left: 0;
+    margin-top: calc(var(--cut) * -1);
+    clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%);
+  }
+
+  .unit-slot:first-child {
+    margin-top: 0;
+    clip-path: none;
+  }
+
+  .unit-slot:last-child {
+    clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%);
+  }
+
+  .unit-slot:hover,
+  .unit-slot:focus-visible,
+  .unit-slot.is-active {
+    flex-grow: 3.8;
+  }
+
+  .unit-slot__media {
+    clip-path: polygon(0 calc(var(--cut) + 2px), 100% 2px, 100% 100%, 0 100%);
+  }
+
+  .unit-slot:first-child .unit-slot__media {
+    clip-path: none;
+  }
+
+  .unit-slot:last-child .unit-slot__media {
+    clip-path: polygon(0 calc(var(--cut) + 2px), 100% 2px, 100% 100%, 0 100%);
+  }
+
+  .unit-slot__info {
+    padding: 14px 18px calc(var(--cut) + 12px);
+    flex-direction: row;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .unit-slot__name {
+    font-size: 22px;
+  }
+
+  .unit-slot:hover .unit-slot__name,
+  .unit-slot:focus-visible .unit-slot__name,
+  .unit-slot.is-active .unit-slot__name {
+    font-size: 26px;
+  }
+
+  .unit-slot__desc {
+    flex-basis: 100%;
+    margin-top: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit-slot,
+  .unit-slot__media img,
+  .unit-slot__en,
+  .unit-slot__desc,
+  .unit-slot__name {
+    transition: none;
+  }
 }
 
 /* ============ 导航与进度 ============ */
@@ -1698,10 +2339,79 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
   }
 
   .archive-grid--2,
-  .archive-duo,
-  .archive-steps,
-  .archive-channels {
+  .archive-duo {
     grid-template-columns: 1fr;
+  }
+
+  /* 竖屏: 舰载科技 / 开源墙 / 新生培训 均堆叠为单列 */
+  .archive-tech,
+  .archive-repos,
+  .archive-training {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-tech__figure {
+    padding: 22px 20px 24px;
+  }
+
+  /* 竖屏: 去掉竖向分隔线, 改为上下堆叠 + 横向细线 */
+  .archive-duo__col {
+    padding: 8px 0;
+  }
+
+  .archive-duo__col + .archive-duo__col {
+    border-left: none;
+    border-top: 1px solid var(--archive-line);
+    margin-top: 32px;
+    padding: 40px 0 8px;
+  }
+
+  /* 竖屏: 航线改为纵向时间线, 旗帜内联、节点挂到左侧竖线上 */
+  .archive-steps {
+    grid-template-columns: 1fr;
+    gap: 44px;
+    padding-left: 36px;
+  }
+
+  .archive-steps::before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 20px;
+    bottom: 20px;
+    left: 7px;
+    right: auto;
+    width: 2px;
+    height: auto;
+    background: linear-gradient(
+      180deg,
+      var(--archive-red),
+      var(--archive-blue)
+    );
+    opacity: 0.4;
+  }
+
+  .archive-steps li::before {
+    display: none;
+  }
+
+  .archive-steps__mast {
+    height: auto;
+    margin-bottom: 14px;
+  }
+
+  .archive-steps__flag {
+    position: static;
+  }
+
+  .archive-steps__pole {
+    display: none;
+  }
+
+  .archive-steps__node {
+    left: -35px;
+    top: 11px;
+    bottom: auto;
   }
 
   .archive-media-row {
@@ -1741,6 +2451,43 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
 @media (max-width: 600px) {
   .archive-stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ============ What is RoboMaster: 媒体框视频变体 ============
+   嵌入方式与参考站一致 (懒加载 bilibili iframe)。
+   置于文件末尾: 需要压过上方媒体查询里的 min-height:300px 等规则。
+   行框恒为 100vw 全幅, 因此 iframe 高度直接用 56.25vw (16:9),
+   避免 aspect-ratio 在网格内在尺寸计算中反向推导宽度导致溢出。 */
+.archive-media-row--intro .archive-media-row__visual--video {
+  min-width: 0;
+  min-height: 0;
+}
+
+.archive-media-row--intro .archive-media-row__visual--video iframe {
+  display: block;
+  width: 100%;
+  height: 56.25vw;
+  border: 0;
+  background: #000;
+}
+
+@media (max-width: 1080px) {
+  /* 桌面右内边距 172px 会把网格轨道 min-content 撑出视口, 窄屏收敛 */
+  .archive-media-row--intro .archive-media-row__body {
+    padding: 40px 28px 44px;
+  }
+}
+
+@media (min-width: 1081px) {
+  .archive-media-row--intro .archive-media-row__visual--video {
+    min-height: 480px;
+  }
+
+  .archive-media-row--intro .archive-media-row__visual--video iframe {
+    position: absolute;
+    inset: 0;
+    height: 100%;
   }
 }
 

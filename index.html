@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN" class="is-scroll-locked">
   <head>
     <meta charset="UTF-8" />
@@ -96,7 +96,7 @@
           <span class="focus-panel__rule" aria-hidden="true"></span>
           <span class="focus-panel__cn">英雄机器人</span>
           <p class="focus-panel__desc">
-            地面主力输出兵种, 发射 42mm 弹丸, 可对前哨站与基地造成高额伤害,
+            地面主力输出兵种， 发射 42mm 弹丸, 可对前哨站与基地造成高额伤害,
             是推进战线的核心火力单位。
           </p>
         </div>
@@ -232,10 +232,15 @@
       <!-- 影像 MEDIA：居中主视频 + 三列高光回放 -->
       <section class="archive-media" id="archive-media" aria-label="影像记录">
         <div class="archive-wrap">
-          <div class="archive-sub reveal">
-            <span class="archive-sub__chip">MEDIA // FOOTAGE</span>
-            <h3 class="archive-sub__title">影像记录</h3>
-          </div>
+          <header class="archive-head reveal">
+            <div class="archive-head__meta">
+              <span class="archive-head__chip">MEDIA</span>
+              <span class="archive-head__rule" aria-hidden="true"></span>
+              <span class="archive-head__tag">// FOOTAGE</span>
+            </div>
+            <h2 class="archive-head__title">ON THE RECORD</h2>
+            <p class="archive-head__cn">影像记录 — 招新影像与高光回放</p>
+          </header>
         </div>
 
         <div class="archive-media__content">
@@ -420,16 +425,16 @@
           </div>
           <div class="archive-media-row archive-media-row--intro reveal" style="margin-top: 26px">
             <div class="archive-media-row__visual archive-media-row__visual--video">
-              <iframe src="https://player.bilibili.com/player.html?isOutside=true&aid=115122454469835&bvid=BV1rMaVzTEh1&cid=32069389984&p=1" scrolling="no" frameborder="0" allowfullscreen="true" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="ENTERPRIZE 公开视频资料"></iframe>
+              <iframe src="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1" scrolling="no" frameborder="0" allowfullscreen="true" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="什么是 RoboMaster"></iframe>
             </div>
             <div class="archive-media-row__body">
               <span class="archive-media-row__index">WHAT IS ROBOMASTER // 赛事介绍</span>
               <h3 class="archive-media-row__title">什么是 RoboMaster</h3>
               <span class="archive-media-row__en">机甲大师赛 · 全球大学生机器人对抗赛</span>
               <p class="archive-media-row__desc">
-                RoboMaster 机甲大师赛是由 DJI 大疆发起并主办的全球大学生机器人对抗赛:参赛队伍需要自主研发英雄、工程、步兵、哨兵、空中机器人、飞镖系统与雷达站等兵种,在实体赛场展开多兵种协同的实弹射击对抗,以击毁对方基地为最终目标。赛事覆盖机械、硬件、电控与算法的完整工程链路,被誉为工程师的实战赛场。ENTERPRIZE 自 2015 年起代表香港科技大学征战至今——左侧视频是战队的公开影像资料。
+                RoboMaster 机甲大师赛是由 DJI 大疆发起并主办的全球大学生机器人对抗赛：参赛队伍需要自主研发英雄、工程、步兵、哨兵、空中机器人、飞镖系统与雷达站等兵种，在实体赛场展开多兵种协同的实弹射击对抗，以击毁对方基地为最终目标。赛事覆盖机械、硬件、电控与算法的完整工程链路，被誉为工程师的实战赛场。ENTERPRIZE 自 2015 年起代表香港科技大学征战至今，随附视频为战队公开影像资料。
               </p>
-              <p class="archive-media-row__note">视频通过 Bilibili 官方播放器嵌入,内容与版权说明以原视频页面为准。</p>
+              <p class="archive-media-row__note">视频通过 Bilibili 官方播放器嵌入，内容与版权说明以原视频页面为准。</p>
             </div>
           </div>
 
@@ -470,51 +475,90 @@
             </div>
           </div>
 
-          <div class="archive-grid archive-grid--2">
-            <article class="archive-card archive-card--unit reveal">
-              <span class="archive-card__index">UNIT-01</span>
-              <h3>英雄机器人</h3>
-              <span class="archive-card__en">HERO // 攻城之王</span>
-              <p>地面主力输出，发射 42mm 大弹丸，可对前哨站与基地造成高额伤害，是推进战线的核心火力单位。</p>
+          <!-- 兵种堆叠图集: 横屏左右贴边, 斜线分割, 悬停聚焦展开 -->
+          <div class="unit-stack reveal" role="list" aria-label="兵种图鉴, 悬停展开详情">
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/hero.jpg" alt="英雄机器人" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-01</span>
+                <h3 class="unit-slot__name">英雄</h3>
+                <span class="unit-slot__en">HERO // 攻城之王</span>
+                <p class="unit-slot__desc">地面主力输出，发射 42mm 大弹丸，可对前哨站与基地造成高额伤害，是推进战线的核心火力单位。</p>
+              </div>
             </article>
-            <article class="archive-card archive-card--unit reveal" style="--rd: 90ms">
-              <span class="archive-card__index">UNIT-02</span>
-              <h3>工程机器人</h3>
-              <span class="archive-card__en">ENGINEER // 经济命脉</span>
-              <p>唯一可获取经济的单位：开采、存储、兑换能量单元，甚至瞬间复活阵亡队友。每一环都是胜负手。</p>
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/engineer.jpg" alt="工程机器人" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-02</span>
+                <h3 class="unit-slot__name">工程</h3>
+                <span class="unit-slot__en">ENGINEER // 经济命脉</span>
+                <p class="unit-slot__desc">唯一可获取经济的单位：开采、存储、兑换能量单元，甚至瞬间复活阵亡队友。每一环都是胜负手。</p>
+              </div>
             </article>
-            <article class="archive-card archive-card--unit reveal">
-              <span class="archive-card__index">UNIT-03</span>
-              <h3>步兵机器人</h3>
-              <span class="archive-card__en">INFANTRY // 巡弋骑士</span>
-              <p>机动与火力均衡的地面中坚：游走、牵制、收割——战线的每一寸推进，都由步兵的弹雨写就。</p>
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/infantry.jpg" alt="步兵机器人" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-03</span>
+                <h3 class="unit-slot__name">步兵</h3>
+                <span class="unit-slot__en">INFANTRY // 巡弋骑士</span>
+                <p class="unit-slot__desc">机动与火力均衡的地面中坚：游走、牵制、收割——战线的每一寸推进，都由步兵的弹雨写就。</p>
+              </div>
             </article>
-            <article class="archive-card archive-card--unit reveal" style="--rd: 90ms">
-              <span class="archive-card__index">UNIT-04 · NEW</span>
-              <h3>重装</h3>
-              <span class="archive-card__en">HEAVY UNIT // 27 赛季新兵种</span>
-              <p>工程与英雄合并而成，兼具工具作业与 42mm 弹丸发射能力；发射模块局内解锁安装，属性随装配等级提升。</p>
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/sentry.jpg" alt="哨兵机器人" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-04</span>
+                <h3 class="unit-slot__name">哨兵</h3>
+                <span class="unit-slot__en">SENTRY // 钢铁哨卫</span>
+                <p class="unit-slot__desc">部署于基地前沿的全自动防御单位：自主索敌、自主开火，用算法守住基地的最后一道防线。</p>
+              </div>
+            </article>
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/drone.jpg" alt="空中机器人" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-05</span>
+                <h3 class="unit-slot__name">空中</h3>
+                <span class="unit-slot__en">DRONE // 制空之眼</span>
+                <p class="unit-slot__desc">赛场唯一的空中单位：越过地形实施高空打击与视野支援，是打破地面僵局的立体变量。</p>
+              </div>
+            </article>
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/dart.jpg" alt="飞镖系统" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-06</span>
+                <h3 class="unit-slot__name">飞镖</h3>
+                <span class="unit-slot__en">DART // 超视距狙击</span>
+                <p class="unit-slot__desc">从己方半场发射的精确制导弹体，跨越整个赛场直击前哨站与基地，一击改写战局。</p>
+              </div>
+            </article>
+            <article class="unit-slot" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/radar.jpg" alt="雷达站" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-07</span>
+                <h3 class="unit-slot__name">雷达</h3>
+                <span class="unit-slot__en">RADAR // 全局之眼</span>
+                <p class="unit-slot__desc">固定式感知中枢：解算全场目标位置并与全队共享，让所有机器人看见同一张战场。</p>
+              </div>
+            </article>
+            <article class="unit-slot unit-slot--unknown" role="listitem" tabindex="0">
+              <span class="unit-slot__media"><img src="/assets/images/robot_list/问号.webp" alt="未知兵种" loading="lazy" decoding="async" /></span>
+              <span class="unit-slot__scrim" aria-hidden="true"></span>
+              <div class="unit-slot__info">
+                <span class="unit-slot__index">UNIT-??</span>
+                <h3 class="unit-slot__name">???</h3>
+                <span class="unit-slot__en">NEXT UNIT // 情报解密中</span>
+                <p class="unit-slot__desc">27 赛季新兵种档案尚未解密——下一台机器，也许由你亲手造出来。</p>
+              </div>
             </article>
           </div>
 
-          <p class="archive-note reveal">
-            哨兵、空中机器人、飞镖系统、雷达站……完整兵种体系，可在档案尽头重返 3D 赛场，点击模型逐一读取。
-          </p>
-
-          <!-- 横向图片 + 文字一体框 -->
-          <div class="archive-media-row reveal">
-            <div class="archive-media-row__visual">
-              <img src="/assets/images/hero/英雄.gif" alt="重装兵种 42mm 弹丸发射演示" />
-            </div>
-            <div class="archive-media-row__body">
-              <span class="archive-media-row__index">FOCUS // 新兵种前瞻</span>
-              <h3 class="archive-media-row__title">重装 · HEAVY UNIT</h3>
-              <span class="archive-media-row__en">27 赛季全新兵种</span>
-              <p class="archive-media-row__desc">
-                原工程与英雄机器人合并，称为“重装”兵种。新兵种兼具原工程机器人的工具使用能力与原英雄机器人的 42mm 弹丸发射能力。42mm 弹丸发射模块为队伍自研的独立外置模块，存放在资源区，开局不在机器人上，需要局内解锁后安装，仍受经济体系约束。重装兵种的属性随装配等级提升，不使用常规的等级体系。
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -617,29 +661,211 @@
           <div id="stagger-testimonials-root"></div>
 
           <div class="archive-sub reveal">
+            <span class="archive-sub__chip">SYSTEMS // 舰载科技</span>
+            <h3 class="archive-sub__title">舰载科技 · 你将亲手打造</h3>
+          </div>
+          <div class="archive-tech">
+            <article class="archive-tech__panel reveal" style="--pc: var(--archive-gold)">
+              <header class="archive-tech__head">
+                SYS.PWR-01 · 超级电容功率系统<span class="archive-tech__cap">ONLINE</span>
+              </header>
+              <div class="archive-tech__body">
+                <p>战队招牌技术，2018 年首次开源、让超级电容正式走上 RM 赛场。八年间每赛季迭代：RM2024 完全开源获赛季开源奖三等奖；RM2025 电容组 + 无线充电系统获 RM AWARD 候选。全赛季零超功率扣血、稳定飞坡。</p>
+                <div class="archive-tech__tags">
+                  <span>电源拓扑</span><span>BUCK-BOOST</span><span>KiCad</span><span>无线充电</span>
+                </div>
+                <p class="archive-tech__readout">OVERPOWER PENALTY: <b>0</b> · FLYING RAMP: <b>STABLE</b></p>
+              </div>
+            </article>
+            <article class="archive-tech__panel reveal" style="--pc: var(--archive-cyan); --rd: 90ms">
+              <header class="archive-tech__head">
+                SYS.VIS-02 · 单目雷达站视觉算法<span class="archive-tech__cap">#1 NATIONAL</span>
+              </header>
+              <div class="archive-tech__body">
+                <p>2025 赛季局均易伤时间 1618.3s、单局最高 1912.1s，<b>全国赛+复活赛双第一</b>。YOLOv12 三级检测 + 射线投射三维定位 + 匈牙利匹配追踪，数据集与代码全部 MIT 开源。</p>
+                <div class="archive-tech__tags">
+                  <span>YOLOv12</span><span>3D 定位</span><span>多目标追踪</span><span>TensorRT</span>
+                </div>
+                <p class="archive-tech__readout">AVG VULNERABILITY: <b>1618.3s</b> · PEAK: <b>1912.1s</b></p>
+              </div>
+            </article>
+            <article class="archive-tech__panel reveal" style="--pc: var(--archive-red); --rd: 180ms">
+              <header class="archive-tech__head">
+                SYS.MOB-03 · 串联轮腿 &amp; 舵轮<span class="archive-tech__cap">FEATURED</span>
+              </header>
+              <div class="archive-tech__body">
+                <p>RM2025 串联轮腿步兵（中心供弹构型）获 RoboMaster 官方专题报道；自研无 CNC / 全 CNC 舵轮方案与减速箱，轮式机械臂工程机器人实现 <b>5.8s 四级矿</b>兑换。</p>
+                <div class="archive-tech__tags">
+                  <span>轮腿平衡</span><span>舵轮</span><span>机械臂</span><span>SolidWorks</span>
+                </div>
+                <p class="archive-tech__readout">MINERAL L4 EXCHANGE: <b>5.8s</b> · TOP 1</p>
+              </div>
+            </article>
+            <article class="archive-tech__panel reveal" style="--pc: var(--archive-blue); --rd: 270ms">
+              <header class="archive-tech__head">
+                SYS.ENG-04 · 工程装配算法 RM2026<span class="archive-tech__cap">IN DEV</span>
+              </header>
+              <div class="archive-tech__body">
+                <p>面向新赛季能量单元装配任务（靠近、插入、拨动、翻转）的全流程方案：装配站视觉定位、接近规划、约束运动规划与仿真验证，数据集与权重在 Hugging Face 公开。</p>
+                <div class="archive-tech__tags">
+                  <span>视觉定位</span><span>运动规划</span><span>仿真验证</span><span>Hugging Face</span>
+                </div>
+                <p class="archive-tech__readout">MISSION: <b>IN DEVELOPMENT</b> · SEASON: <b>RM2026</b></p>
+              </div>
+            </article>
+          </div>
+
+          <div class="archive-sub reveal">
+            <span class="archive-sub__chip">OPEN SOURCE // 开源墙</span>
+            <h3 class="archive-sub__title">开源，是我们的传统</h3>
+          </div>
+          <p class="archive-lead reveal">
+            从 2016 年起，我们把每一赛季的代码、硬件、机械图纸与培训资料全部开源。你的作品将被整个 RoboMaster 社区阅读、引用、点 Star——这是比简历更有说服力的工程师名片。
+          </p>
+          <div class="archive-repos">
+            <a class="archive-repo reveal" href="https://github.com/hkustenterprize/RM2023-SuperCapacitor" target="_blank" rel="noopener">
+              <span class="archive-repo__meta">
+                <span class="archive-repo__name">RM2023-SuperCapacitor</span>
+                <span class="archive-repo__desc">数控超级电容方案 · GPL-3.0</span>
+              </span>
+              <span class="archive-repo__star">★ 80</span>
+            </a>
+            <a class="archive-repo reveal" style="--rd: 60ms" href="https://github.com/hkustenterprize/RM2024-PowerModule" target="_blank" rel="noopener">
+              <span class="archive-repo__meta">
+                <span class="archive-repo__name">RM2024-PowerModule</span>
+                <span class="archive-repo__desc">功率控制模块（舵轮/轮腿/全自动调参）· C++</span>
+              </span>
+              <span class="archive-repo__star">★ 75</span>
+            </a>
+            <a class="archive-repo reveal" style="--rd: 120ms" href="https://github.com/hkustenterprize/RM2024-SuperCapacitorController" target="_blank" rel="noopener">
+              <span class="archive-repo__meta">
+                <span class="archive-repo__name">RM2024-SuperCapacitorController</span>
+                <span class="archive-repo__desc">超级电容控制器软硬件完全开源 · 赛季开源奖三等奖</span>
+              </span>
+              <span class="archive-repo__star">★ 65</span>
+            </a>
+            <a class="archive-repo reveal" style="--rd: 180ms" href="https://github.com/hkustenterprize/RM2025-Radar-Algorithm" target="_blank" rel="noopener">
+              <span class="archive-repo__meta">
+                <span class="archive-repo__name">RM2025-Radar-Algorithm</span>
+                <span class="archive-repo__desc">单目雷达站视觉算法（含数据集）· MIT</span>
+              </span>
+              <span class="archive-repo__star">★ 62</span>
+            </a>
+            <a class="archive-repo reveal" style="--rd: 240ms" href="https://github.com/hkustenterprize/RM2025-Wireless-JLink" target="_blank" rel="noopener">
+              <span class="archive-repo__meta">
+                <span class="archive-repo__name">RM2025-Wireless-JLink</span>
+                <span class="archive-repo__desc">全志 V3S 无线 JLink 烧录器 · 成本约 30 元</span>
+              </span>
+              <span class="archive-repo__star">★ 25</span>
+            </a>
+            <a class="archive-repo reveal" style="--rd: 300ms" href="https://github.com/hkustenterprize/RM2026-Engineer-Assembly-Algorithm" target="_blank" rel="noopener">
+              <span class="archive-repo__meta">
+                <span class="archive-repo__name">RM2026-Engineer-Assembly-Algorithm</span>
+                <span class="archive-repo__desc">工程机器人装配算法（新赛季，在研）· Python</span>
+              </span>
+              <span class="archive-repo__star">★ 15</span>
+            </a>
+          </div>
+          <a class="archive-os-cta reveal" href="/open-source.html">
+            <span class="archive-os-cta__text">
+              <span class="archive-os-cta__cn">进入开源档案库</span>
+              <span class="archive-os-cta__en">OPEN SOURCE ARCHIVE // 32 PROJECTS</span>
+            </span>
+            <span class="archive-os-cta__arrow" aria-hidden="true">⟶</span>
+          </a>
+          <p class="archive-note reveal">
+            还有更多：主控板、无线充电、手持装甲板、交换机、培训模板……尽在
+            <a href="https://github.com/hkustenterprize" target="_blank" rel="noopener">github.com/hkustenterprize</a>
+            与
+            <a href="https://bbs.robomaster.com/article/54254" target="_blank" rel="noopener">论坛开源汇总帖</a>（阅读 2.1 万+）。
+          </p>
+
+          <div class="archive-sub reveal">
+            <span class="archive-sub__chip">TRAINING // 新生培训</span>
+            <h3 class="archive-sub__title">系统化新生培训</h3>
+          </div>
+          <div class="archive-training">
+            <article class="archive-training__card reveal" style="--pc: var(--archive-red)">
+              <span class="archive-training__en">20+ PUBLIC EPISODES</span>
+              <h4>20+ 期公开教程</h4>
+              <p>Embedded（时钟/UART/CAN/PID/FreeRTOS/Git）、Mechanics（SolidWorks I–III、机械设计）、Hardware（KiCad/电源/原理图/Layout）三大方向全套视频教程，B站公开可查。</p>
+            </article>
+            <article class="archive-training__card reveal" style="--pc: var(--archive-cyan); --rd: 120ms">
+              <span class="archive-training__en">MENTORSHIP</span>
+              <h4>老带新机制</h4>
+              <p>零基础友好：教程面向零基础设计，现役队员全程引导，历届不少非工科背景队员（商学院/理学院）也成长为骨干。</p>
+            </article>
+            <article class="archive-training__card reveal" style="--pc: var(--archive-gold); --rd: 240ms">
+              <span class="archive-training__en">OPEN MATERIALS</span>
+              <h4>培训资料开源</h4>
+              <p>新生培训资料连续多赛季对外开源（RM2022 硬件教程、2025/2026 赛季新生培训资料），帮助你的同时也帮助整个社区。</p>
+            </article>
+          </div>
+
+          <div class="archive-sub reveal">
             <span class="archive-sub__chip">FLIGHT PLAN // 入队航线</span>
-            <h3 class="archive-sub__title">四站，抵达 ENTERPRIZE</h3>
+            <h3 class="archive-sub__title">入队航线</h3>
           </div>
           <ol class="archive-steps">
             <li class="reveal">
-              <span class="archive-steps__num">01</span>
+              <span class="archive-steps__mast" aria-hidden="true">
+                <span class="archive-steps__flag">STANDBY</span>
+                <span class="archive-steps__pole"></span>
+                <span class="archive-steps__node"></span>
+              </span>
+              <span class="archive-steps__time">现在</span>
               <h4>获取开招提醒</h4>
-              <p>RM2027 正式报名时间待公布；现在可关注公众号、加入 QQ 招新群或邮件咨询，开招后第一时间收到报名表。</p>
+              <p>关注公众号、加入 QQ 招新群或发送邮件；正式安排发布后，从任一官方渠道获取报名入口。</p>
             </li>
             <li class="reveal" style="--rd: 90ms">
-              <span class="archive-steps__num">02</span>
-              <h4>新生培训</h4>
-              <p>按部门方向参加系列 Tutorial（机械/硬件/电控/算法），老队员带教，快速上手工程基础。</p>
+              <span class="archive-steps__mast" aria-hidden="true">
+                <span class="archive-steps__flag">APPLICATION</span>
+                <span class="archive-steps__pole"></span>
+                <span class="archive-steps__node"></span>
+              </span>
+              <span class="archive-steps__time">约 9—10 月</span>
+              <h4>报名与选择方向</h4>
+              <p>填写基本信息和可投入时间，结合兴趣选择机械、硬件、电控或算法方向；零基础同样可以报名。</p>
             </li>
             <li class="reveal" style="--rd: 180ms">
-              <span class="archive-steps__num">03</span>
-              <h4>RDC 校内赛</h4>
-              <p>参加机器人设计大赛（约 11 月）：组队造机器人真实对抗——2023 年 180+ 人参赛、13 支队伍同场竞技。</p>
+              <span class="archive-steps__mast" aria-hidden="true">
+                <span class="archive-steps__flag">TRAINING</span>
+                <span class="archive-steps__pole"></span>
+                <span class="archive-steps__node"></span>
+              </span>
+              <span class="archive-steps__time">招新期</span>
+              <h4>新生培训</h4>
+              <p>参加部门 Tutorial 和实践任务，由现役队员带教，建立完成机器人项目所需的基础能力。</p>
             </li>
             <li class="reveal" style="--rd: 270ms">
-              <span class="archive-steps__num">04</span>
-              <h4>面试 &amp; 入队</h4>
-              <p>面试看热情、责任心与协作能力；通过后进入项目组，在真实研发、联调与比赛中逐步承担角色。</p>
+              <span class="archive-steps__mast" aria-hidden="true">
+                <span class="archive-steps__flag">TRIAL</span>
+                <span class="archive-steps__pole"></span>
+                <span class="archive-steps__node"></span>
+              </span>
+              <span class="archive-steps__time">约 11 月</span>
+              <h4>基础考核与 RDC</h4>
+              <p>通过阶段任务检验学习成果，并在 Robot Design Contest 中组队设计、制造和调试机器人。</p>
+            </li>
+            <li class="reveal" style="--rd: 360ms">
+              <span class="archive-steps__mast" aria-hidden="true">
+                <span class="archive-steps__flag">ONBOARDING</span>
+                <span class="archive-steps__pole"></span>
+                <span class="archive-steps__node"></span>
+              </span>
+              <span class="archive-steps__time">RDC 后</span>
+              <h4>面试与入队</h4>
+              <p>围绕热情、责任心、协作与实践复盘交流；通过后加入部门和具体项目组。</p>
+            </li>
+            <li class="reveal" style="--rd: 450ms">
+              <span class="archive-steps__mast" aria-hidden="true">
+                <span class="archive-steps__flag">SEASON</span>
+                <span class="archive-steps__pole"></span>
+                <span class="archive-steps__node"></span>
+              </span>
+              <span class="archive-steps__time">次年春夏</span>
+              <h4>进入完整赛季</h4>
+              <p>参与需求评审、研发、整机联调、开源整理与赛场保障，逐步承担稳定的项目角色。</p>
             </li>
           </ol>
           <p class="archive-note reveal">时间线参考往年节奏（招新约 9—10 月，RDC 约 11 月）；RM2027 具体安排以公众号通知为准。</p>
@@ -700,38 +926,7 @@
             <span class="archive-sub__chip">CHANNELS // 联系渠道</span>
             <h3 class="archive-sub__title">留下你的坐标</h3>
           </div>
-          <div class="archive-channels">
-            <div class="archive-channel reveal">
-              <span class="archive-channel__label">QQ 招新群</span>
-              <b>581184202</b>
-              <button class="archive-channel__copy" type="button" data-copy="581184202">COPY</button>
-            </div>
-            <a class="archive-channel reveal" style="--rd: 60ms" href="mailto:robomasterhkust@gmail.com?subject=RM2027%20%E6%8B%9B%E6%96%B0%E5%92%A8%E8%AF%A2">
-              <span class="archive-channel__label">EMAIL</span>
-              <b>robomasterhkust@gmail.com</b>
-              <span class="archive-channel__go">WRITE ⟶</span>
-            </a>
-            <div class="archive-channel reveal" style="--rd: 120ms">
-              <span class="archive-channel__label">微信公众号</span>
-              <b>HKUST ENTERPRIZE</b>
-              <span class="archive-channel__go">FOLLOW</span>
-            </div>
-            <a class="archive-channel reveal" style="--rd: 180ms" href="https://space.bilibili.com/634988052" target="_blank" rel="noopener">
-              <span class="archive-channel__label">BILIBILI</span>
-              <b>港科大ENTERPRIZE战队</b>
-              <span class="archive-channel__go">WATCH ⟶</span>
-            </a>
-            <a class="archive-channel reveal" style="--rd: 240ms" href="https://github.com/hkustenterprize" target="_blank" rel="noopener">
-              <span class="archive-channel__label">GITHUB</span>
-              <b>hkustenterprize</b>
-              <span class="archive-channel__go">STAR ⟶</span>
-            </a>
-            <a class="archive-channel reveal" style="--rd: 300ms" href="https://www.instagram.com/hkust_enterprize_robomaster/" target="_blank" rel="noopener">
-              <span class="archive-channel__label">INSTAGRAM</span>
-              <b>@hkust_enterprize_robomaster</b>
-              <span class="archive-channel__go">FOLLOW ⟶</span>
-            </a>
-          </div>
+          <div id="glowing-channels-root"></div>
         </div>
       </section>
 
@@ -768,6 +963,10 @@
             <span class="archive-return__btn-en">RETURN TO THE ARENA</span>
           </button>
           <p class="archive-return__hint reveal" style="--rd: 340ms">SCROLL UP TO RETURN · 向上滚动同样返回</p>
+          <a class="archive-return__os reveal" style="--rd: 420ms" href="/open-source.html">
+            <span class="archive-return__os-cn">开源档案库</span>
+            <span class="archive-return__os-en">OPEN SOURCE ARCHIVE ⟶</span>
+          </a>
         </div>
         <footer class="archive-footer">
           <p><b>ENTERPRIZE</b> · HKUST RoboMaster Team · EST. 2015</p>

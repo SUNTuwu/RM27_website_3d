@@ -1334,41 +1334,23 @@ html.is-document-mode #scene-canvas {
   position: absolute;
   left: 0;
   width: 100%;
+  z-index: 3;
   pointer-events: none;
-  opacity: 0;
-  clip-path: polygon(
-    0 100%,
-    0 62%,
-    5% 62%,
-    7% 0,
-    29% 0,
-    32% 62%,
-    100% 62%,
-    100% 100%
-  );
+  clip-path: polygon(0 100%, 0 55%, 6% 55%, 8% 0, 26% 0, 29% 55%, 100% 55%, 100% 100%);
 }
 
+/* 档案上沿文件夹折线: 与章节间折线同款红蓝描边, 填充跟随 HERO 浅色主视觉 */
 .unit-site::before {
-  top: -50px;
-  height: 51px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 45, 77, 0.82) 0%,
-    rgba(127, 212, 255, 0.9) 30%,
-    rgba(120, 160, 210, 0.38) 100%
-  );
-  filter: drop-shadow(0 -8px 18px rgba(46, 155, 255, 0.16));
+  top: -92px;
+  height: 92px;
+  background: linear-gradient(90deg, var(--archive-red), var(--archive-blue));
 }
 
 .unit-site::after {
-  top: -48px;
-  height: 49px;
-  background: #000;
-}
-
-html.is-document-mode .unit-site::before,
-html.is-document-mode .unit-site::after {
-  opacity: 1;
+  top: -90px;
+  height: 90px;
+  background: var(--archive-card);
+  box-shadow: 0 -25px 50px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 900px) {

@@ -307,6 +307,22 @@ function setupFaq(root) {
 
 /* ---------- 主装配 ---------- */
 
+/* 兵种图集: 触屏无 hover, 点按切换展开态 (桌面 hover 由 CSS 处理) */
+function setupUnitStack(root) {
+  const stack = root.querySelector(".unit-stack");
+  if (!stack) {
+    return;
+  }
+  const slots = [...stack.querySelectorAll(".unit-slot")];
+  slots.forEach((slot) => {
+    slot.addEventListener("click", () => {
+      const active = slot.classList.contains("is-active");
+      slots.forEach((item) => item.classList.remove("is-active"));
+      slot.classList.toggle("is-active", !active);
+    });
+  });
+}
+
 export function createUnitSite({ onReturnToArena } = {}) {
   const root = document.querySelector("#unit-site");
   if (!root) {
@@ -323,6 +339,7 @@ export function createUnitSite({ onReturnToArena } = {}) {
   setupProgress(root, root.querySelector("#archive-progress-fill"));
   setupArchiveActivation(root);
   setupUnitReveal(root);
+  setupUnitStack(root);
   setupReturnGhosts(root);
   setupFaq(root);
 
@@ -330,30 +347,6 @@ export function createUnitSite({ onReturnToArena } = {}) {
     const returnButton = event.target.closest('[data-action="return-arena"]');
     if (returnButton) {
       returnHandler();
-      return;
-    }
-    const copyButton = event.target.closest("[data-copy]");
-    if (copyButton) {
-      const text = copyButton.dataset.copy;
-      const done = () => {
-        copyButton.textContent = "COPIED";
-        copyButton.classList.add("is-copied");
-        setTimeout(() => {
-          copyButton.textContent = "COPY";
-          copyButton.classList.remove("is-copied");
-        }, 1600);
-      };
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text).then(done, () => {});
-      } else {
-        const helper = document.createElement("textarea");
-        helper.value = text;
-        document.body.appendChild(helper);
-        helper.select();
-        document.execCommand("copy");
-        helper.remove();
-        done();
-      }
     }
   });
 

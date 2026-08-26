@@ -20,7 +20,7 @@ const browser = await chromium.launch({ executablePath, headless: true });
 
 async function capture(name, viewport) {
   const page = await browser.newPage({ viewport });
-  await page.goto(targetUrl, { waitUntil: "networkidle" });
+  await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".archive-media-row--intro iframe", {
     timeout: 15_000,
   });
@@ -35,13 +35,43 @@ async function capture(name, viewport) {
   const stats = await page.evaluate(() => {
     const frame = document.querySelector(".archive-media-row--intro iframe");
     const rect = frame.getBoundingClientRect();
-    const heavy = document.querySelector(
-      "#archive-units .archive-media-row:not(.archive-media-row--intro)",
-    );
+    const heavy = [
+      ...document.querySelectorAll("#archive-units .archive-media-row"),
+    ].find((el) => !el.classList.contains("archive-media-row--intro"));
+    const row = document.querySelector(".archive-media-row--intro");
+    const visual = row.querySelector(".archive-media-row__visual");
+    const rowRect = row.getBoundingClientRect();
+    const visualRect = visual.getBoundingClientRect();
+    const body = row.querySelector(".archive-media-row__body");
+    const bodyChildren = [...body.children].map((el) => ({
+      cls: el.className,
+      minW: getComputedStyle(el).minWidth,
+      scrollW: el.scrollWidth,
+      rectW: Math.round(el.getBoundingClientRect().width),
+    }));
+    const diag = {
+      rowCols: getComputedStyle(row).gridTemplateColumns,
+      rowDisplay: getComputedStyle(row).display,
+      bodyMinW: getComputedStyle(body).minWidth,
+      bodyScrollW: body.scrollWidth,
+      bodyRectW: Math.round(body.getBoundingClientRect().width),
+      bodyChildren,
+      visualMinH: getComputedStyle(visual).minHeight,
+      visualMinW: getComputedStyle(visual).minWidth,
+      visualJustify: getComputedStyle(visual).justifySelf,
+      visualAlign: getComputedStyle(visual).alignSelf,
+      framePos: getComputedStyle(frame).position,
+      frameWidthCss: getComputedStyle(frame).width,
+      frameAspect: getComputedStyle(frame).aspectRatio,
+    };
     return {
+      diag,
       src: frame.getAttribute("src"),
       loading: frame.loading,
       box: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+      rowBox: `${Math.round(rowRect.width)}x${Math.round(rowRect.height)}`,
+      visualBox: `${Math.round(visualRect.width)}x${Math.round(visualRect.height)}`,
+      rowsFound: document.querySelectorAll("#archive-units .archive-media-row").length,
       clientWidth: document.documentElement.clientWidth,
       wrapWidth: Math.round(
         document.querySelector("#archive-units .archive-wrap").getBoundingClientRect().width,
