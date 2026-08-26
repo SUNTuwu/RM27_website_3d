@@ -11,55 +11,93 @@ function easeInOutCubic(x) {
 }
 
 /**
- * 兵种聚焦状态 (FOCUS):
- * enter -> 相机从当前姿态 tween 到机器人旁锚点
- * active -> 拖拽围绕机器人观察, 松手弹簧回中
- * exit  -> 相机 tween 回 timeline_0 冻结进度的相机姿态
+ * 兵种聚焦状态 (FOCUS), 支持多个机器人目标 (蓝方编队 + robot_1):
+ * enter(i) -> 相机从当前姿态 tween 到目标 i 旁锚点
+ * active   -> 拖拽围绕机器人观察, 松手弹簧回中
+ * exit     -> 相机 tween 回 timeline_0 冻结进度的相机姿态
+ * 每个目标有独立的地面光环 (SCRUB 中脉冲高亮) 与点击命中代理 (按包围盒自适应)。
  */
-export function createFocusController({ camera, robotRoot, scene, distance = 2.9 }) {
-  const bounds = new THREE.Box3().setFromObject(robotRoot);
-  const anchor = bounds.getCenter(new THREE.Vector3());
+export function createFocusController({
+  camera,
+  targets,
+  scene,
+  distanceRatio = 1.2,
+}) {
+  const targetStates = targets.map((target, index) => {
+    // 更新祖先矩阵 (红侧 teamRoot 带 π 旋转), 否则包围盒用旧矩阵计算
+    target.root.updateWorldMatrix(true, true);
+    const bounds = new THREE.Box3().setFromObject(target.root);
+    const anchor = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const radius = Math.max(size.x, size.z, 0.4);
+    const anchorBaseY = anchor.y;
 
-  // 地面光环 (高亮提示)
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.52, 0.74, 64),
-    new THREE.MeshBasicMaterial({
-      color: 0x2e9bff,
-      transparent: true,
-      opacity: 0,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    }),
-  );
-  ring.name = "robot_focus_ring";
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(anchor.x, 0.035, anchor.z);
-  ring.renderOrder = 5;
-  scene.add(ring);
+    // 地面光环 (高亮提示)
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(radius * 0.72, radius * 0.98, 64),
+      new THREE.MeshBasicMaterial({
+        color: target.ringColor ?? 0x2e9bff,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    ring.name = `robot_focus_ring_${target.key}`;
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(anchor.x, 0.035, anchor.z);
+    ring.renderOrder = 5;
+    scene.add(ring);
 
-  // 点击命中代理 (占位机器人网格很小, 用隐形圆柱放大命中区域)
-  const proxy = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.95, 0.95, 2.4, 12),
-    new THREE.MeshBasicMaterial({ visible: false }),
-  );
-  proxy.name = "robot_focus_proxy";
-  proxy.position.copy(anchor);
-  scene.add(proxy);
+    // 点击命中代理 (隐形圆柱放大命中区域, 尺寸随机器人包围盒自适应)
+    const proxy = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        radius * 1.25,
+        radius * 1.25,
+        Math.max(size.y * 2, 1.2),
+        12,
+      ),
+      new THREE.MeshBasicMaterial({ visible: false }),
+    );
+    proxy.name = `robot_focus_proxy_${target.key}`;
+    proxy.userData.focusTargetIndex = index;
+    proxy.position.copy(anchor);
+    scene.add(proxy);
 
-  // 机器人自发光高亮
-  const robotMaterials = new Set();
-  robotRoot.traverse((object) => {
-    if (!object.isMesh) {
-      return;
+    // 机器人自发光高亮 (可选: 编队机器人有常亮白色自发光, 不再覆盖)
+    const materials = new Set();
+    target.root.traverse((object) => {
+      if (!object.isMesh) {
+        return;
+      }
+      const list = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+      list.filter(Boolean).forEach((material) => materials.add(material));
+    });
+    const highlightMaterials = target.highlightMaterials !== false;
+    if (highlightMaterials) {
+      materials.forEach((material) => {
+        material.emissive.set(0x2e9bff);
+        material.emissiveIntensity = 0;
+      });
     }
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.filter(Boolean).forEach((material) => robotMaterials.add(material));
+
+    return {
+      target,
+      anchor,
+      anchorBaseY,
+      ring,
+      proxy,
+      materials,
+      highlightMaterials,
+      distance: Math.max(radius * distanceRatio, 0.6),
+    };
   });
-  robotMaterials.forEach((material) => {
-    material.emissive.set(0x2e9bff);
-    material.emissiveIntensity = 0;
-  });
+
+  let activeIndex = 0;
+  const trackWorldPos = new THREE.Vector3();
 
   const startPos = new THREE.Vector3();
   const startQuat = new THREE.Quaternion();
@@ -83,23 +121,34 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
   let modeChangeCallback = null;
 
   function computeAnchorPose() {
-    horizontal.copy(camera.position).sub(anchor);
+    const state = targetStates[activeIndex];
+    horizontal.copy(camera.position).sub(state.anchor);
     horizontal.y = 0;
     if (horizontal.lengthSq() < 1e-4) {
       horizontal.set(0, 0, 1);
     }
     horizontal.normalize();
     endPos
-      .copy(anchor)
-      .addScaledVector(horizontal, distance)
+      .copy(state.anchor)
+      .addScaledVector(horizontal, state.distance)
       .add(new THREE.Vector3(0, FOCUS_HEIGHT, 0));
-    lookMatrix.lookAt(endPos, anchor, up);
+    lookMatrix.lookAt(endPos, state.anchor, up);
     endQuat.setFromRotationMatrix(lookMatrix);
   }
 
   return {
-    anchor,
-    proxy,
+    get anchor() {
+      return targetStates[activeIndex].anchor;
+    },
+    get anchors() {
+      return targetStates.map((state) => state.anchor);
+    },
+    get proxies() {
+      return targetStates.map((state) => state.proxy);
+    },
+    get activeIndex() {
+      return activeIndex;
+    },
     get mode() {
       return mode;
     },
@@ -107,11 +156,12 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
       modeChangeCallback = callback;
     },
     /** 进入聚焦: 捕获自由相机当前姿态，并以此作为过渡起点 */
-    enter(startedAt) {
+    enter(index, startedAt) {
+      activeIndex = THREE.MathUtils.clamp(index, 0, targetStates.length - 1);
       computeAnchorPose();
       startPos.copy(camera.position);
       startQuat.copy(camera.quaternion);
-      restOffset.copy(endPos).sub(anchor);
+      restOffset.copy(endPos).sub(targetStates[activeIndex].anchor);
       currentOffset.copy(restOffset);
       mode = "entering";
       modeTime = 0;
@@ -157,11 +207,25 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
     update(delta, elapsed) {
       highlight += (highlightTarget - highlight) * (1 - Math.exp(-delta * 4));
       const pulse = 0.5 + 0.5 * Math.sin(elapsed * 3.2);
-      ring.material.opacity = highlight * (0.15 + 0.15 * pulse); // 光环降低 50%
-      ring.scale.setScalar(1 + 0.08 * pulse);
-      robotMaterials.forEach((material) => {
-        material.emissiveIntensity = highlight * (0.35 + 0.45 * pulse); // 高亮降低 50%
+      targetStates.forEach((state) => {
+        // 带动画的机器人 (infantry/sentry) 会在场地内移动: 光环/代理/锚点跟随根节点
+        if (state.target.trackNode) {
+          state.target.trackNode.getWorldPosition(trackWorldPos);
+          state.anchor.set(trackWorldPos.x, state.anchorBaseY, trackWorldPos.z);
+          state.ring.position.set(trackWorldPos.x, 0.035, trackWorldPos.z);
+          state.proxy.position.copy(state.anchor);
+        }
+        state.ring.material.opacity = highlight * (0.15 + 0.15 * pulse); // 光环降低 50%
+        state.ring.scale.setScalar(1 + 0.08 * pulse);
+        if (state.highlightMaterials) {
+          state.materials.forEach((material) => {
+            material.emissiveIntensity =
+              highlight * (0.35 + 0.45 * pulse); // 高亮降低 50%
+          });
+        }
       });
+
+      const active = targetStates[activeIndex];
 
       if (mode === "entering" || mode === "exiting") {
         modeTime += delta;
@@ -189,17 +253,19 @@ export function createFocusController({ camera, robotRoot, scene, distance = 2.9
           // 松手慢速回中
           currentOffset.lerp(restOffset, 1 - Math.exp(-delta * RECENTER_RATE));
         }
-        camera.position.copy(anchor).add(currentOffset);
-        camera.lookAt(anchor);
+        camera.position.copy(active.anchor).add(currentOffset);
+        camera.lookAt(active.anchor);
       }
     },
     dispose() {
-      scene.remove(ring);
-      scene.remove(proxy);
-      ring.geometry.dispose();
-      ring.material.dispose();
-      proxy.geometry.dispose();
-      proxy.material.dispose();
+      targetStates.forEach((state) => {
+        scene.remove(state.ring);
+        scene.remove(state.proxy);
+        state.ring.geometry.dispose();
+        state.ring.material.dispose();
+        state.proxy.geometry.dispose();
+        state.proxy.material.dispose();
+      });
     },
   };
 }

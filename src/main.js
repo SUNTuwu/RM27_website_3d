@@ -166,47 +166,133 @@ async function boot() {
   let exploreSwitchRequest = 0;
   let scanRequested = false;
 
-  // ---------- FOCUS 右侧图片卡 (兵种档案幻灯片) ----------
-  const focusSlides = [
-    {
-      image: assetUrl("images/hero/wheel-leg-4-web.jpg"),
-      title: "WHEEL-LEG / 赛场实拍",
-      desc: "轮腿构型机器人在赛场中央区域的机动瞬间, 兼具轮式速度与腿式越障能力。",
-    },
-    {
-      image: assetUrl("images/hero/arena-fleet.jpg"),
-      title: "BASE / 基地与前哨",
-      desc: "蓝方基地与前哨站全景, 机器人列阵待命, 等待开局倒计时。",
-    },
-    {
-      image: assetUrl("images/hero/rm2024-supercapacitor-controller.webp"),
-      title: "SUPERCAP / 超级电容控制器",
-      desc: "RM2024 超级电容控制器与电容组, 为底盘爆发机动提供瞬时大功率输出。",
-    },
-  ];
+  // ---------- FOCUS 右侧图片卡 (每个可聚焦机器人一组幻灯片, 首图用各兵种的 0.jpg) ----------
+  const focusSlidesByKey = {
+    robot: [
+      {
+        image: assetUrl("images/hero/wheel-leg-4-web.jpg"),
+        title: "WHEEL-LEG / 赛场实拍",
+        desc: "轮腿构型机器人在赛场中央区域的机动瞬间, 兼具轮式速度与腿式越障能力。",
+      },
+      {
+        image: assetUrl("images/hero/arena-fleet.jpg"),
+        title: "BASE / 基地与前哨",
+        desc: "蓝方基地与前哨站全景, 机器人列阵待命, 等待开局倒计时。",
+      },
+      {
+        image: assetUrl("images/hero/rm2024-supercapacitor-controller.webp"),
+        title: "SUPERCAP / 超级电容控制器",
+        desc: "RM2024 超级电容控制器与电容组, 为底盘爆发机动提供瞬时大功率输出。",
+      },
+    ],
+    hero: [
+      {
+        image: assetUrl("images/hero/arena-fleet.jpg"),
+        title: "HERO / 英雄机器人",
+        desc: "英雄机器人列阵待命, 大弹丸吊射是远程火力核心。",
+      },
+      {
+        image: assetUrl("images/hero/英雄.gif"),
+        title: "HERO / 赛场机动",
+        desc: "英雄机器人在赛场上的机动与瞄准瞬间。",
+      },
+      {
+        image: assetUrl("images/hero/英雄1.gif"),
+        title: "HERO / 火力输出",
+        desc: "大口径弹丸远程打击, 改变战局的关键一击。",
+      },
+    ],
+    engineer: [
+      {
+        image: assetUrl("images/engineer/0.jpg"),
+        title: "ENGINEER / 工程机器人",
+        desc: "工程机器人负责取矿与救援, 是团队经济运转的保障。",
+      },
+      {
+        image: assetUrl("images/engineer/工程.webp"),
+        title: "ENGINEER / 机械臂作业",
+        desc: "多自由度机械臂完成矿石抓取与兑换。",
+      },
+      {
+        image: assetUrl("images/engineer/工程1.gif"),
+        title: "ENGINEER / 取矿实录",
+        desc: "工程机器人赛场取矿作业实录。",
+      },
+      {
+        image: assetUrl("images/engineer/工程2.gif"),
+        title: "ENGINEER / 兑换实录",
+        desc: "矿石兑换为团队带来持续经济收益。",
+      },
+    ],
+    infantry: [
+      {
+        image: assetUrl("images/infantry/0.jpg"),
+        title: "INFANTRY / 步兵机器人",
+        desc: "步兵机器人是正面交火的主力, 高射速小弹丸持续输出。",
+      },
+      {
+        image: assetUrl("images/infantry/步兵.gif"),
+        title: "INFANTRY / 正面交火",
+        desc: "步兵机器人在掩体间穿梭交火。",
+      },
+      {
+        image: assetUrl("images/infantry/步兵1.gif"),
+        title: "INFANTRY / 快速机动",
+        desc: "轻量化底盘带来的快速转场能力。",
+      },
+      {
+        image: assetUrl("images/infantry/步兵2.gif"),
+        title: "INFANTRY / 集火推进",
+        desc: "多机集火推进, 撕开对方防线。",
+      },
+    ],
+    sentry: [
+      {
+        image: assetUrl("images/sentry/0.jpg"),
+        title: "SENTRY / 哨兵机器人",
+        desc: "哨兵机器人全自动巡逻防守, 是基地前的最后防线。",
+      },
+      {
+        image: assetUrl("images/sentry/哨兵.gif"),
+        title: "SENTRY / 自动索敌",
+        desc: "哨兵机器人自动索敌与反击实录。",
+      },
+    ],
+  };
   let focusSlideIndex = 0;
   let focusMediaInitialized = false;
+  let activeFocusKey = "robot";
   const preloadedFocusSlides = new Set();
 
+  function activeFocusSlides() {
+    return focusSlidesByKey[activeFocusKey] ?? focusSlidesByKey.robot;
+  }
+
   function preloadFocusSlide(index) {
-    const normalized = ((index % focusSlides.length) + focusSlides.length) % focusSlides.length;
-    if (preloadedFocusSlides.has(normalized)) {
+    const slides = activeFocusSlides();
+    const normalized = ((index % slides.length) + slides.length) % slides.length;
+    const cacheKey = `${activeFocusKey}:${normalized}`;
+    if (preloadedFocusSlides.has(cacheKey)) {
       return;
     }
-    preloadedFocusSlides.add(normalized);
+    preloadedFocusSlides.add(cacheKey);
     scheduleLowPriority(() => {
       const preload = new Image();
       preload.decoding = "async";
       preload.fetchPriority = "low";
-      preload.src = focusSlides[normalized].image;
+      preload.src = slides[normalized].image;
     });
   }
 
   function switchFocusSlide(step) {
-    const total = focusSlides.length;
+    const slides = activeFocusSlides();
+    const total = slides.length;
+    if (total === 0) {
+      return;
+    }
     focusSlideIndex = ((focusSlideIndex + step) % total + total) % total;
     focusMediaInitialized = true;
-    hud.setFocusMedia(focusSlideIndex, total, focusSlides[focusSlideIndex]);
+    hud.setFocusMedia(focusSlideIndex, total, slides[focusSlideIndex]);
     preloadFocusSlide(focusSlideIndex + 1);
   }
 
@@ -223,6 +309,8 @@ async function boot() {
   let report = null;
   let timeline = null;
   let focus = null;
+  let focusTargets = [];
+  let robotGuides = [];
   let arenaInstance = null;
   let robotSquadInstance = null;
   let emissiveMaterials = [];
@@ -503,7 +591,7 @@ async function boot() {
         engineer: loaded.engineer,
         infantry: loaded.infantry,
         sentry: loaded.sentry,
-      }, VISUAL_CONFIG.arena.symmetry);
+      }, { ...VISUAL_CONFIG.arena.symmetry, ...VISUAL_CONFIG.robots });
       await ensureExploreCloud(exploreModels[1]);
 
       [
@@ -553,12 +641,53 @@ async function boot() {
         Math.max(SCAN_DURATION - 0.1, 0),
       );
 
+      // FOCUS 目标: robot_1 + 红蓝编队机器人全部可点击 (红侧光环用红色);
+      // guide = SCRUB 屏幕点击引导圈, 只给 蓝engineer/蓝infantry/红hero/红sentry
+      const focusPanels = {
+        robot: { name: "ROBOT_1", index: "#00", cn: "点云标定机器人", desc: "FOCUS 视角标定用占位机器人, 整机点云重建采样源。" },
+        hero: { name: "HERO", index: "#01", cn: "英雄机器人", desc: "地面主力输出兵种, 发射 42mm 弹丸, 可对前哨站与基地造成高额伤害, 是推进战线的核心火力单位。" },
+        engineer: { name: "ENGINEER", index: "#02", cn: "工程机器人", desc: "资源调度与救援保障单位, 机械臂完成取矿兑换, 为团队提供持续经济来源。" },
+        infantry: { name: "INFANTRY", index: "#03", cn: "步兵机器人", desc: "正面交火主力兵种, 高射速 17mm 弹丸持续输出, 灵活穿梭于掩体之间。" },
+        sentry: { name: "SENTRY", index: "#04", cn: "哨兵机器人", desc: "全自动巡逻防守单位, 自动索敌反击, 是基地与前哨站前的最后防线。" },
+      };
+      const squad = robotSquadInstance;
+      const squadTarget = (key, side) => ({
+        key: side === "red" ? `${key}-red` : key,
+        name: focusPanels[key].name,
+        root: side === "red" ? squad.redRobots[key] : squad.blueRobots[key],
+        ringColor: side === "red" ? 0xff2d4d : 0x2e9bff,
+        highlightMaterials: false,
+        trackNode: squad.trackNodes[side][key],
+        panel: focusPanels[key],
+      });
+      focusTargets = [
+        { key: "robot", name: "ROBOT_1", root: loaded.robot.scene, panel: focusPanels.robot },
+        { ...squadTarget("hero", "blue") },
+        { ...squadTarget("engineer", "blue"), guide: "#2e9bff" },
+        { ...squadTarget("infantry", "blue"), guide: "#2e9bff" },
+        { ...squadTarget("sentry", "blue") },
+        { ...squadTarget("hero", "red"), guide: "#ff2d4d" },
+        { ...squadTarget("engineer", "red") },
+        { ...squadTarget("infantry", "red") },
+        { ...squadTarget("sentry", "red"), guide: "#ff2d4d" },
+      ];
       focus = createFocusController({
         camera: freeCamera,
-        robotRoot: loaded.robot.scene,
+        targets: focusTargets,
         scene: stage.scene,
-        distance: VISUAL_CONFIG.focus.distance,
+        distanceRatio: VISUAL_CONFIG.focus.distanceRatio,
       });
+      // 点击引导圈 (SCRUB 中跟随各自投影): 只有 guide 字段的目标才创建
+      robotGuides = focusTargets.map((target) =>
+        target.guide
+          ? createPulseGuide({
+              size: clickGuideConfig.sizePx,
+              rhythmSeconds: clickGuideConfig.rhythmSeconds,
+              fadeSeconds: clickGuideConfig.fadeSeconds,
+              color: target.guide,
+            })
+          : null,
+      );
       focus.setOnModeChange((mode, finished) => {
         if (mode === "idle" && finished === "exiting" && state === "focus") {
           delete appElement.dataset.focusLeaving;
@@ -984,12 +1113,24 @@ async function boot() {
     });
   }
 
-  function enterFocus() {
+  function enterFocus(targetIndex = 0) {
     if (state !== "scrub") {
       return;
     }
+    // 切到该机器人的面板信息与幻灯片组, 从第一张 (0.jpg) 开始
+    const target = focusTargets[targetIndex];
+    if (target?.panel) {
+      hud.setFocusUnit(target.panel);
+    }
+    activeFocusKey = (target?.key ?? "robot").replace(
+      /-red$/,
+      "",
+    );
+    focusSlideIndex = 0;
+    focusMediaInitialized = false;
+    ensureFocusMedia();
     setState("focus");
-    focus.enter(elapsedNow); // 从环视或 timeline 的当前画面姿态进入
+    focus.enter(targetIndex, elapsedNow); // 从环视或 timeline 的当前画面姿态进入
   }
 
   const appElement = document.querySelector("#app");
@@ -1025,12 +1166,8 @@ async function boot() {
   const clickGuideProjected = new THREE.Vector3();
   let exploreLastClickAt = 0;
 
-  // SCRUB (overview) 机器人点击引导圈: 复用同一组件, 跟随机器人原点投影
-  const robotGuide = createPulseGuide({
-    size: clickGuideConfig.sizePx,
-    rhythmSeconds: clickGuideConfig.rhythmSeconds,
-    fadeSeconds: clickGuideConfig.fadeSeconds,
-  });
+  // SCRUB (overview) 机器人点击引导圈: 每个 FOCUS 目标一个, 跟随各自原点投影
+  // (实例在 prepareDeferredAssets 创建 focus 后生成, 见 robotGuides)
   const robotGuideProjected = new THREE.Vector3();
 
   function handleClick(event) {
@@ -1063,8 +1200,9 @@ async function boot() {
       }
     } else if (state === "scrub") {
       raycaster.setFromCamera(pointerNdc, freeCamera);
-      if (raycaster.intersectObject(focus.proxy, false).length > 0) {
-        enterFocus();
+      const hits = raycaster.intersectObjects(focus.proxies, false);
+      if (hits.length > 0) {
+        enterFocus(hits[0].object.userData.focusTargetIndex ?? 0);
       }
     }
   }
@@ -1344,25 +1482,35 @@ async function boot() {
       clickGuide.hide();
     }
 
-    // 机器人点击引导圈: SCRUB 状态每帧跟随机器人原点投影, 相机背后或出屏即隐藏
+    // 机器人点击引导圈: SCRUB 状态每帧跟随各机器人原点投影, 相机背后或出屏即隐藏
     if (state === "scrub" && focus) {
-      robotGuideProjected.copy(focus.anchor).project(freeCamera);
-      const guideX = ((robotGuideProjected.x + 1) / 2) * window.innerWidth;
-      const guideY = ((1 - robotGuideProjected.y) / 2) * window.innerHeight;
-      const guideOnScreen =
-        robotGuideProjected.z < 1 &&
-        guideX > 40 &&
-        guideX < window.innerWidth - 40 &&
-        guideY > 40 &&
-        guideY < window.innerHeight - 40;
-      if (guideOnScreen) {
-        robotGuide.setPosition(guideX, guideY);
-        robotGuide.show();
-      } else if (robotGuide.visible) {
-        robotGuide.hide();
-      }
-    } else if (robotGuide.visible) {
-      robotGuide.hide();
+      focus.anchors.forEach((anchor, index) => {
+        const guide = robotGuides[index];
+        if (!guide) {
+          return;
+        }
+        robotGuideProjected.copy(anchor).project(freeCamera);
+        const guideX = ((robotGuideProjected.x + 1) / 2) * window.innerWidth;
+        const guideY = ((1 - robotGuideProjected.y) / 2) * window.innerHeight;
+        const guideOnScreen =
+          robotGuideProjected.z < 1 &&
+          guideX > 40 &&
+          guideX < window.innerWidth - 40 &&
+          guideY > 40 &&
+          guideY < window.innerHeight - 40;
+        if (guideOnScreen) {
+          guide.setPosition(guideX, guideY);
+          guide.show();
+        } else if (guide.visible) {
+          guide.hide();
+        }
+      });
+    } else {
+      robotGuides.forEach((guide) => {
+        if (guide?.visible) {
+          guide.hide();
+        }
+      });
     }
 
     // 红蓝强调灯电平滑动: scan 时全开 (白色灯不参与)
@@ -1542,6 +1690,21 @@ async function boot() {
         y: ((1 - projected.y) / 2) * window.innerHeight,
         behind: projected.z > 1,
       };
+    },
+    focusTargetScreenPositions() {
+      if (!focus) {
+        return [];
+      }
+      return focus.anchors.map((anchor, index) => {
+        const projected = anchor.clone().project(freeCamera);
+        return {
+          index,
+          key: focusTargets[index]?.key ?? null,
+          x: ((projected.x + 1) / 2) * window.innerWidth,
+          y: ((1 - projected.y) / 2) * window.innerHeight,
+          behind: projected.z > 1,
+        };
+      });
     },
   };
   console.info("[ENTERPRIZE] demo ready, points:", cloud.count);

@@ -243,6 +243,10 @@ export function createHud() {
   const focusIndex = document.querySelector("#focus-index");
   const focusTitle = document.querySelector("#focus-title");
   const focusSlideDesc = document.querySelector("#focus-slide-desc");
+  const focusNameMain = document.querySelector(".focus-panel__name-main");
+  const focusNameIndex = document.querySelector(".focus-panel__name-index");
+  const focusCn = document.querySelector(".focus-panel__cn");
+  const focusDesc = document.querySelector(".focus-panel__desc");
   const focusPrev = document.querySelector("#focus-prev");
   const focusNext = document.querySelector("#focus-next");
   const keyPrev = document.querySelector("#key-prev");
@@ -336,6 +340,13 @@ export function createHud() {
         focusImage.src = slide.image;
       }
       focusImage.alt = slide.title ?? "";
+    },
+    /** FOCUS 面板头部: 按当前聚焦机器人更新兵种名/编号/中文名/简介 */
+    setFocusUnit({ name, index, cn, desc }) {
+      if (focusNameMain) focusNameMain.textContent = name;
+      if (focusNameIndex) focusNameIndex.textContent = index;
+      if (focusCn) focusCn.textContent = cn;
+      if (focusDesc) focusDesc.textContent = desc;
     },
     setFocusSwitchHandler(handler) {
       focusPrev.addEventListener("click", (event) => {

@@ -59,6 +59,17 @@ export function createLookAroundController({ camera, pivot, config }) {
       orbitPivot.y + height,
       orbitPivot.z + radius * Math.sin(orbitYaw),
     );
+    // 3D 距离约束: 半径钳制只管水平分量, 这里把相机到场地中心的
+    // 直线距离也钳制在 [distanceMin, distanceMax], 不管 timeline 相机多远多近
+    if (Number.isFinite(config.distanceMin) && Number.isFinite(config.distanceMax)) {
+      orbitPosition.sub(orbitPivot);
+      const distance = THREE.MathUtils.clamp(
+        orbitPosition.length(),
+        config.distanceMin,
+        config.distanceMax,
+      );
+      orbitPosition.setLength(distance).add(orbitPivot);
+    }
     lookMatrix.lookAt(orbitPosition, orbitPivot, worldUp);
     orbitQuaternion.setFromRotationMatrix(lookMatrix);
   }

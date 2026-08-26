@@ -146,7 +146,14 @@ export const VISUAL_CONFIG = {
 
   // FOCUS 兵种聚焦视角
   focus: {
-    distance: 0.8, // 相机到机器人的水平距离 (米), 越小离机器人越近 (原 2.9)
+    distanceRatio: 1.2, // 相机水平距离 = 机器人最大水平边 * 该比例 (保底 0.6 米)
+  },
+
+  // 红蓝编队机器人 (hero/engineer/infantry/sentry, robots/robotSquad.js)
+  robots: {
+    scale: 1.4, // 原地放大倍率 (插入 scale wrapper, 不影响摆放坐标与动画轨道)
+    selfGlowColor: 0xffffff, // 机身白色自发光 (非灯条材质), 解决太暗看不清
+    selfGlowIntensity: 0.14, // 自发光强度 (0 关闭; 过大会洗掉机身贴图)
   },
 
   pointCloud: {
@@ -258,6 +265,8 @@ export const VISUAL_CONFIG = {
       yawSpeed: 0.0032, // 水平拖动 -> 环绕角速度 (弧度/像素)
       radiusMin: 12, // 环绕半径下限
       radiusMax: 40, // 环绕半径上限 (半径取 timeline 相机到场地中心的水平距离, 钳制在此区间)
+      distanceMin: 14, // 环视相机到场地中心的直线距离下限 (米)
+      distanceMax: 30, // 直线距离上限 (米); 不管 timeline 相机停在多远, 环视距离都钳制在此区间
       holdSeconds: 2, // 松手后无输入保持环视的时长, 之后才开始回中
       blendInSpeed: 4, // 拖入环视的过渡速度
       blendOutSpeed: 1.6, // 松手回中的过渡速度

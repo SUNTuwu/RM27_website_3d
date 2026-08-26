@@ -9,6 +9,7 @@ export function createPulseGuide({
   size = 120,
   rhythmSeconds = 1.6,
   fadeSeconds = 0.45,
+  color,
 } = {}) {
   const element = document.createElement("div");
   element.className = "pulse-guide";
@@ -16,6 +17,10 @@ export function createPulseGuide({
   element.style.setProperty("--pulse-guide-size", `${size}px`);
   element.style.setProperty("--pulse-guide-rhythm", `${rhythmSeconds}s`);
   element.style.setProperty("--pulse-guide-fade", `${fadeSeconds}s`);
+  if (color) {
+    element.style.setProperty("--pulse-guide-ring", color);
+    element.style.setProperty("--pulse-guide-core", color);
+  }
 
   const ringA = document.createElement("span");
   ringA.className = "pulse-guide__ring";

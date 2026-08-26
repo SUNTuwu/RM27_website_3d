@@ -19,6 +19,9 @@ export function createRobotSquad(
     sourceMaterialPrefix = "EMISSION_BLUE",
     opponentMaterialPrefix = "EMISSION_RED",
     opponentEmissive = 0xff294d,
+    scale = 1,
+    selfGlowColor = 0xffffff,
+    selfGlowIntensity = 0,
   } = {},
 ) {
   const squadRoot = new THREE.Group();
@@ -35,14 +38,33 @@ export function createRobotSquad(
   const mixers = [];
   const materials = new Set();
   const teamMaterials = { blue: [], red: [] };
+  const blueRobots = {};
+  const redRobots = {};
+  // 带动画机器人的根节点 (FOCUS 光环/命中代理需要每帧跟随其世界位置)
+  const trackNodes = { blue: {}, red: {} };
 
   for (const [key, gltf] of Object.entries(robots)) {
     if (!gltf?.scene) {
       continue;
     }
 
-    // Object3D.clone 共享几何/贴图/材质, 红蓝两侧不重复占显存
     const blueScene = gltf.scene;
+    // 原地放大: 在顶层节点与网格之间插入 wrapper, 只放大几何;
+    // 不动节点自身的 t/r/s — 摆放坐标与动画轨道 (含 scale 轨道) 都不受影响
+    if (scale !== 1) {
+      blueScene.children.forEach((node) => {
+        const wrapper = new THREE.Group();
+        wrapper.name = `${node.name}_scale_wrapper`;
+        wrapper.scale.setScalar(scale);
+        while (node.children.length > 0) {
+          wrapper.add(node.children[0]);
+        }
+        node.add(wrapper);
+      });
+    }
+    blueRobots[key] = blueScene;
+
+    // Object3D.clone 共享几何/贴图/材质, 红蓝两侧不重复占显存
     const redScene = blueScene.clone(true);
     blueScene.name = `${key}_blue`;
     redScene.name = `${key}_red`;
@@ -69,6 +91,18 @@ export function createRobotSquad(
 
     blueTeamRoot.add(blueScene);
     redTeamRoot.add(redScene);
+    redRobots[key] = redScene;
+
+    // 动画 clip 作用的首个节点 = 运动根节点 (infantry/sentry 会在场地内移动)
+    const clips = gltf.animations ?? [];
+    const animatedNodeName = clips
+      .flatMap((clip) => clip.tracks)
+      .map((track) => THREE.PropertyBinding.parseTrackName(track.name).nodeName)
+      .find(Boolean);
+    if (animatedNodeName) {
+      trackNodes.blue[key] = blueScene.getObjectByName(animatedNodeName);
+      trackNodes.red[key] = redScene.getObjectByName(animatedNodeName);
+    }
 
     // 材质清单覆盖红蓝两侧 (红侧已克隆, 两侧都接扫描裁剪平面)
     [blueScene, redScene].forEach((scene) => {
@@ -79,11 +113,21 @@ export function createRobotSquad(
         const list = Array.isArray(object.material)
           ? object.material
           : [object.material];
-        list.filter(Boolean).forEach((material) => materials.add(material));
+        list.filter(Boolean).forEach((material) => {
+          materials.add(material);
+          // 白色自发光: 非灯条材质整体提亮, 解决机器人太暗看不清
+          if (
+            selfGlowIntensity > 0 &&
+            !material.name?.startsWith("EMISSION") &&
+            material.emissive?.isColor
+          ) {
+            material.emissive.set(selfGlowColor);
+            material.emissiveIntensity = selfGlowIntensity;
+          }
+        });
       });
     });
 
-    const clips = gltf.animations ?? [];
     for (const scene of [blueScene, redScene]) {
       if (clips.length === 0) {
         break;
@@ -103,6 +147,9 @@ export function createRobotSquad(
   return {
     root: squadRoot,
     teamRoots: { blue: blueTeamRoot, red: redTeamRoot },
+    blueRobots,
+    redRobots,
+    trackNodes,
     teamMaterials,
     materials: [...materials],
     mixers,

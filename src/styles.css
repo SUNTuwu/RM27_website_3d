@@ -605,7 +605,7 @@ body {
 .pulse-guide__ring {
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(233, 241, 255, 0.9);
+  border: 1px solid var(--pulse-guide-ring, rgba(233, 241, 255, 0.9));
   border-radius: 50%;
   box-shadow:
     0 0 14px rgba(127, 212, 255, 0.3),
@@ -631,7 +631,7 @@ body {
   height: 6px;
   margin: -3px 0 0 -3px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--pulse-guide-core, var(--ink));
   box-shadow: 0 0 10px rgba(127, 212, 255, 0.85);
   animation: pulse-guide-core var(--pulse-guide-rhythm, 1.6s) ease-in-out infinite;
 }
