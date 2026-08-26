@@ -1,0 +1,113 @@
+import * as THREE from "three";
+
+import {
+  applyMaterialColor,
+  cloneObjectMaterials,
+} from "../core/materialVariants.js";
+
+/**
+ * 红蓝双方机器人编队:
+ * 蓝侧直接使用 glTF 原始场景 (初始摆放位姿已在导出时烘焙进节点);
+ * 红侧整体克隆后挂到绕 Y 轴旋转 π 的 teamRoot (与场地 arena 镜像策略一致,
+ * 用旋转而不是负 scale, 避免法线/缠绕方向翻转)。
+ * 红侧材质独立克隆, EMISSION_BLUE 灯条重着色为红方 EMISSION_RED。
+ * 带动画的机器人 (infantry/sentry) 每侧各一个 AnimationMixer 循环播放全部 clip。
+ */
+export function createRobotSquad(
+  robots,
+  {
+    sourceMaterialPrefix = "EMISSION_BLUE",
+    opponentMaterialPrefix = "EMISSION_RED",
+    opponentEmissive = 0xff294d,
+  } = {},
+) {
+  const squadRoot = new THREE.Group();
+  squadRoot.name = "robot_squad_root";
+
+  const blueTeamRoot = new THREE.Group();
+  blueTeamRoot.name = "robot_squad_blue";
+  blueTeamRoot.userData.team = "blue";
+  const redTeamRoot = new THREE.Group();
+  redTeamRoot.name = "robot_squad_red";
+  redTeamRoot.userData.team = "red";
+  redTeamRoot.rotation.y = Math.PI;
+
+  const mixers = [];
+  const materials = new Set();
+  const teamMaterials = { blue: [], red: [] };
+
+  for (const [key, gltf] of Object.entries(robots)) {
+    if (!gltf?.scene) {
+      continue;
+    }
+
+    // Object3D.clone 共享几何/贴图/材质, 红蓝两侧不重复占显存
+    const blueScene = gltf.scene;
+    const redScene = blueScene.clone(true);
+    blueScene.name = `${key}_blue`;
+    redScene.name = `${key}_red`;
+
+    // 红侧灯条换色: 先独立克隆材质, 再把 EMISSION_BLUE 重着色为红方
+    cloneObjectMaterials(redScene);
+    const isSourceTeamMaterial = (material) =>
+      material.name?.startsWith(sourceMaterialPrefix);
+    teamMaterials.blue.push(
+      ...applyMaterialColor(blueScene, {
+        match: isSourceTeamMaterial,
+        userData: { team: "blue" },
+      }),
+    );
+    teamMaterials.red.push(
+      ...applyMaterialColor(redScene, {
+        match: isSourceTeamMaterial,
+        emissive: opponentEmissive,
+        rename: (name) =>
+          name.replace(sourceMaterialPrefix, opponentMaterialPrefix),
+        userData: { team: "red" },
+      }),
+    );
+
+    blueTeamRoot.add(blueScene);
+    redTeamRoot.add(redScene);
+
+    // 材质清单覆盖红蓝两侧 (红侧已克隆, 两侧都接扫描裁剪平面)
+    [blueScene, redScene].forEach((scene) => {
+      scene.traverse((object) => {
+        if (!object.isMesh) {
+          return;
+        }
+        const list = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+        list.filter(Boolean).forEach((material) => materials.add(material));
+      });
+    });
+
+    const clips = gltf.animations ?? [];
+    for (const scene of [blueScene, redScene]) {
+      if (clips.length === 0) {
+        break;
+      }
+      const mixer = new THREE.AnimationMixer(scene);
+      clips.forEach((clip) => {
+        const action = mixer.clipAction(clip);
+        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.play();
+      });
+      mixers.push(mixer);
+    }
+  }
+
+  squadRoot.add(blueTeamRoot, redTeamRoot);
+
+  return {
+    root: squadRoot,
+    teamRoots: { blue: blueTeamRoot, red: redTeamRoot },
+    teamMaterials,
+    materials: [...materials],
+    mixers,
+    update(delta) {
+      mixers.forEach((mixer) => mixer.update(delta));
+    },
+  };
+}

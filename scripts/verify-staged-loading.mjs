@@ -66,6 +66,7 @@ try {
     "focus images are not requested during BOOT or ASSEMBLE",
   );
 
+  await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "explore", null, {
     timeout: 45_000,
   });

@@ -7,6 +7,12 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { VISUAL_CONFIG } from "../config.js";
 
 const MAX_PIXEL_RATIO = 2;
+// 触屏设备 GPU 较弱, 限制像素比以保帧率
+const COARSE_POINTER_MAX_PIXEL_RATIO = 1.5;
+
+function isCoarsePointer() {
+  return window.matchMedia("(pointer: coarse)").matches;
+}
 
 function updateCameraAspect(camera, width, height) {
   if (!camera?.isPerspectiveCamera) {
@@ -125,7 +131,10 @@ export function createStage(
   function resize() {
     const width = Math.max(canvas.clientWidth, 1);
     const height = Math.max(canvas.clientHeight, 1);
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    const cap = isCoarsePointer()
+      ? COARSE_POINTER_MAX_PIXEL_RATIO
+      : MAX_PIXEL_RATIO;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, cap);
 
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width, height, false);

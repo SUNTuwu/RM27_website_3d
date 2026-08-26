@@ -5,6 +5,32 @@
  * 颜色使用 0xRRGGBB，位置使用 Three.js 的 [x, y, z] 米制坐标。
  */
 export const VISUAL_CONFIG = {
+  // 2D 档案章节滚动 (ui/unitSite.js setupChapterSnap):
+  // 滚轮只改变滚动速度, 位置由惯性积分推进; 吸附点在滑行期间持续施加"吸引力",
+  // 进入吸引半径后被拉向目标并锁定; 向下吸引强, 向上吸引弱 (更容易继续向上逃离回 3D)
+  chapterSnap: {
+    // 吸附点选择器 (按 DOM 顺序解析; 首个命中元素即入口 hero, 用于走廊例外)
+    targets: [
+      ".archive-chapter",
+      ".archive-media",
+      ".archive-banner",
+      "#unit-reveal", // 「你的选择是什么? / CHOOSE YOUR HERO」
+    ],
+    // ---- 惯性 ----
+    impulseGain: 5.2, // 滚轮 deltaY -> 速度增益 (越大滚得越猛)
+    touchImpulseGain: 2.6, // 触摸拖动 -> 速度增益
+    maxSpeedPx: 4200, // 速度上限 (像素/秒)
+    dampingPerSecond: 3.2, // 指数阻尼系数 (越大惯性越短)
+    // ---- 吸引力 ----
+    attractRadiusDownRatio: 0.45, // 向下吸引半径 (视口高度比例)
+    attractRadiusUpRatio: 0.3, // 向上吸引半径 (视口高度比例, 较小 => 向上更容易滑过)
+    stiffnessDown: 5, // 向下吸引刚度 (弹簧加速度 = 刚度^2 * 距离 / 4)
+    stiffnessUp: 5, // 向上吸引刚度 (较弱)
+    // ---- 锁定 ----
+    lockRadiusPx: 26, // 距目标小于该值且速度足够低时锁定
+    lockSpeedPx: 90, // 锁定速度阈值 (像素/秒)
+  },
+
   // 点云阶段背景装饰环 (仿 Endfield lore 三层结构: 细圆 + 刻度环 + 反向厚弧):
   // ASSEMBLE 渐显进入, 进入 SCAN 渐隐退出, 期间各层缓慢旋转
   backRing: {
@@ -104,6 +130,8 @@ export const VISUAL_CONFIG = {
       arena: { fitScale: 1, rippleBoost: 1 },
       robot: { fitScale: 0.5, rippleBoost: 2 },
       dart: { fitScale: 0.7, rippleBoost: 2 },
+      infantry: { fitScale: 0.5, rippleBoost: 2 },
+      engineer: { fitScale: 0.5, rippleBoost: 2 },
     },
     // 切换动效: 双模型同步快速自转, 使用自下而上的屏幕空间蒙版交接
     switchTransition: {

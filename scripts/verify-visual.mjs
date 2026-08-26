@@ -100,6 +100,7 @@ try {
   console.log("[ok] demo booted");
 
   // BOOT -> ASSEMBLE -> EXPLORE
+  await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
   await waitState(page, "explore", 30_000);
   failIf(false, "state reached EXPLORE (point cloud assembled)");
   await page.waitForTimeout(400);

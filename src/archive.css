@@ -36,14 +36,14 @@
   z-index: 2;
   width: min(1500px, 94vw);
   margin: 0 auto;
-  padding: 10vh 0 12vh;
+  padding: 10vh 0 20vh; /* 加大板块间距, 配合强吸附 */
 }
 
 .archive-chapter {
   position: relative;
   min-height: 100vh;
   min-height: 100svh;
-  padding: 8vh 0 10vh;
+  padding: 8vh 0 14vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -286,9 +286,9 @@
 .archive-hero__media .archive-hero__logo {
   position: absolute;
   z-index: 3;
-  inset: 0 9% 0 auto;
+  inset: 0 22% 0 auto;
   margin: auto 0;
-  width: min(34%, 280px);
+  width: min(51%, 420px);
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 18px 42px rgba(0, 0, 0, 0.45));
@@ -507,7 +507,7 @@
 
 .archive-media {
   position: relative;
-  padding: 0 0 72px;
+  padding: 0 0 16vh;
   background: #0a0e16;
   color: #eef3fb;
 }
@@ -617,6 +617,8 @@
   width: 100vw;
   margin-left: calc(50% - 50vw);
   min-height: 72vh;
+  margin-top: 8vh;
+  margin-bottom: 8vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1844,24 +1846,26 @@
   gap: 24px;
   margin-top: 34px;
   padding: 26px 34px;
-  border: 1px solid rgba(46, 155, 255, 0.4);
+  padding-right: clamp(100px, 9vw, 150px); /* 避让右侧固定章节导航 */
+  border: 1px solid rgba(244, 247, 251, 0.55);
   background:
     repeating-linear-gradient(
       135deg,
-      rgba(127, 212, 255, 0.05) 0 1px,
+      rgba(11, 15, 23, 0.05) 0 1px,
       transparent 1px 10px
     ),
-    rgba(46, 155, 255, 0.05);
+    var(--archive-card);
   clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 0 100%);
-  color: var(--archive-ink);
+  color: var(--archive-card-ink);
   text-decoration: none;
-  transition: border-color 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .archive-os-cta:hover {
   border-color: var(--archive-red);
-  background-color: rgba(255, 45, 77, 0.08);
   transform: translateX(6px);
+  box-shadow: 0 24px 64px rgba(255, 45, 77, 0.28);
 }
 
 .archive-os-cta__text {
@@ -1873,13 +1877,14 @@
 .archive-os-cta__cn {
   font-size: clamp(20px, 2.4vw, 28px);
   font-weight: 700;
+  color: var(--archive-card-ink);
 }
 
 .archive-os-cta__en {
   font-family: var(--archive-font-en);
   font-size: 12px;
   letter-spacing: 3px;
-  color: var(--archive-cyan);
+  color: #5b6879;
 }
 
 .archive-os-cta__arrow {
@@ -2191,6 +2196,9 @@
 
 /* ============ 导航与进度 ============ */
 
+/* ============ 档案模式滚动吸附: 由 unitSite.js 的 JS 吸附实现 ============
+   (CSS proximity 阈值过小无法稳定锁定, mandatory 会阻断向上返回 3D) */
+
 .archive-nav {
   position: fixed;
   right: 26px;
@@ -2309,8 +2317,8 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
   }
 
   .archive-hero__media .archive-hero__logo {
-    width: min(42%, 200px);
-    inset: auto 6% 8% auto;
+    width: min(63%, 300px);
+    inset: auto 12% 8% auto;
     margin: 0;
   }
 

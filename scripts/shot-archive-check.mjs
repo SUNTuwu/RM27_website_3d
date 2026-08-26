@@ -1,4 +1,4 @@
-// 临时校验脚本: 强制进入档案模式, 截图 HERO 上沿折线与入队航线时间线
+﻿// 临时校验脚本: 强制进入档案模式, 截图 HERO 上沿折线与入队航线时间线
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -25,12 +25,16 @@ async function enterArchive(page) {
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready, null, {
     timeout: 60_000,
   });
+  await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
+  await page.waitForFunction(() => !document.querySelector("#intro-root"), null, {
+    timeout: 15_000,
+  });
   await page.evaluate(() => {
     document.documentElement.classList.remove("is-scroll-locked");
     document.documentElement.classList.add("is-document-mode");
     window.dispatchEvent(new Event("enterprize:zoom-activate"));
     document.querySelector("#unit-site")?.classList.add("is-archive-active");
-    for (const sel of ["#loading-screen", "#mobile-screen", ".explore-panel"]) {
+    for (const sel of ["#loading-screen", ".explore-panel"]) {
       const el = document.querySelector(sel);
       if (el) el.style.display = "none";
     }
@@ -47,11 +51,11 @@ async function shoot(page, name) {
     const y =
       document.querySelector("#archive-hero").getBoundingClientRect().top +
       window.scrollY -
-      140;
+      Math.round(window.innerHeight * 0.45);
     window.scrollTo(0, y);
   });
   await page.waitForTimeout(900);
-  await page.screenshot({ path: path.join(outputDirectory, `check-${name}-hero-fold.png`) });
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, `check-${name}-hero-fold.png`) });
 
   // 影像记录标题
   await page.evaluate(() => {
@@ -62,7 +66,7 @@ async function shoot(page, name) {
     window.scrollTo(0, y);
   });
   await page.waitForTimeout(900);
-  await page.screenshot({ path: path.join(outputDirectory, `check-${name}-media-head.png`) });
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, `check-${name}-media-head.png`) });
 
   // 影像记录底部 (原 ::after 渐变处)
   await page.evaluate(() => {
@@ -71,7 +75,7 @@ async function shoot(page, name) {
     window.scrollTo(0, y);
   });
   await page.waitForTimeout(900);
-  await page.screenshot({ path: path.join(outputDirectory, `check-${name}-media-bottom.png`) });
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, `check-${name}-media-bottom.png`) });
 
   // 入队航线时间线
   await page.evaluate(() => {
@@ -83,7 +87,7 @@ async function shoot(page, name) {
     window.scrollTo(0, y);
   });
   await page.waitForTimeout(900);
-  await page.screenshot({ path: path.join(outputDirectory, `check-${name}-steps.png`) });
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, `check-${name}-steps.png`) });
 }
 
 try {
@@ -93,6 +97,25 @@ try {
   });
   const page = await desktop.newPage();
   await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+
+  // ---------- 起始界面: 打字 -> 按钮 -> 跃迁 ----------
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready, null, {
+    timeout: 60_000,
+  });
+  await page.waitForTimeout(1400); // 打字中段
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-intro-typing.png") });
+  await page.mouse.click(720, 450); // 点击跳过打字
+  await page.waitForTimeout(1100); // 按钮弹出
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-intro-button.png") });
+  await page.click("#intro-root button");
+  await page.waitForTimeout(800); // 跃迁中段: 星线后掠 + 眩光
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-intro-warp.png") });
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "explore", null, {
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-intro-explore.png") });
+
   await enterArchive(page);
   await shoot(page, "desktop");
   await desktop.close();
@@ -105,17 +128,24 @@ try {
   });
   const mpage = await mobile.newPage();
   await mpage.goto(targetUrl, { waitUntil: "domcontentloaded" });
-  await mpage.waitForTimeout(2500); // 移动端降级, 无 3D boot
-  await mpage.evaluate(() => {
-    document.documentElement.classList.remove("is-scroll-locked");
-    document.documentElement.classList.add("is-document-mode");
-    document.querySelector("#unit-site")?.classList.add("is-archive-active");
-    for (const sel of ["#loading-screen", "#mobile-screen", ".explore-panel"]) {
-      const el = document.querySelector(sel);
-      if (el) el.style.display = "none";
-    }
+
+  // ---------- 移动端也跑完整 3D: 起始界面 -> 启航 -> EXPLORE ----------
+  await mpage.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready, null, {
+    timeout: 90_000,
+  });
+  await mpage.waitForTimeout(1400);
+  await mpage.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-mobile-intro-typing.png") });
+  await mpage.evaluate(() => document.querySelector("#intro-root")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await mpage.waitForTimeout(1100);
+  await mpage.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-mobile-intro-button.png") });
+  await mpage.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
+  await mpage.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "explore", null, {
+    timeout: 60_000,
   });
   await mpage.waitForTimeout(800);
+  await mpage.screenshot({ timeout: 60000, path: path.join(outputDirectory, "check-mobile-explore.png") });
+
+  await enterArchive(mpage);
   await shoot(mpage, "mobile");
   await mobile.close();
 } finally {

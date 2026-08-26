@@ -39,6 +39,14 @@ async function settle(page, duration = 850) {
 
 async function activateGallery(page) {
   await page.waitForSelector("[data-zoom-parallax]");
+  // 起始界面会遮住档案: 等 demo 就绪后自动启航, 并等转场结束卸载
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
+    timeout: 60_000,
+  });
+  await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
+  await page.waitForFunction(() => !document.querySelector("#intro-root"), null, {
+    timeout: 15_000,
+  });
   await page.evaluate(() => {
     document.documentElement.classList.remove("is-scroll-locked");
     document.documentElement.classList.add("is-document-mode");

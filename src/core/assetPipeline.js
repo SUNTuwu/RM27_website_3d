@@ -6,6 +6,10 @@ const ASSET_MANIFEST = Object.freeze({
   timeline: "models/timeline_0/arena.gltf",
   robot: "models/robot_1/robot_1.gltf",
   dart: "models/dart/dart.gltf",
+  hero: "models/hero/hero.gltf",
+  engineer: "models/engineer/engineer.gltf",
+  infantry: "models/infantry/infantry.gltf",
+  sentry: "models/sentry/sentry.gltf",
 });
 
 export const PROJECT_ASSET_KEYS = Object.freeze(Object.keys(ASSET_MANIFEST));
@@ -198,6 +202,14 @@ export function auditProjectAssets(
   const dartStats = assets.dart
     ? collectSceneStats(assets.dart.scene)
     : emptySceneStats();
+  // 红蓝编队机器人 (hero/engineer/infantry/sentry): 网格统计 + 通用空网格检查
+  const squadKeys = ["hero", "engineer", "infantry", "sentry"];
+  const squadStats = Object.fromEntries(
+    squadKeys.map((key) => [
+      key,
+      assets[key] ? collectSceneStats(assets[key].scene) : emptySceneStats(),
+    ]),
+  );
   const camera =
     assets.timeline?.cameras[0] ??
     assets.timeline?.scene.getObjectByProperty("isCamera", true) ??
@@ -236,13 +248,23 @@ export function auditProjectAssets(
   if (assets.dart && dartStats.meshes.length === 0) {
     issues.push("dart asset contains no renderable meshes");
   }
+  for (const key of squadKeys) {
+    if (assets[key] && squadStats[key].meshes.length === 0) {
+      issues.push(`${key} asset contains no renderable meshes`);
+    }
+  }
 
   const allMaterials = new Set([
     ...arenaStats.materials,
     ...timelineStats.materials,
     ...robotStats.materials,
     ...dartStats.materials,
+    ...squadKeys.flatMap((key) => squadStats[key].materials),
   ]);
+  const squadMeshCount = squadKeys.reduce(
+    (sum, key) => sum + squadStats[key].meshes.length,
+    0,
+  );
 
   return {
     arena: {
@@ -257,12 +279,17 @@ export function auditProjectAssets(
     },
     robot: robotStats,
     dart: dartStats,
+    hero: squadStats.hero,
+    engineer: squadStats.engineer,
+    infantry: squadStats.infantry,
+    sentry: squadStats.sentry,
     totals: {
       meshes:
         arenaStats.meshes.length +
         timelineStats.meshes.length +
         robotStats.meshes.length +
-        dartStats.meshes.length,
+        dartStats.meshes.length +
+        squadMeshCount,
       materials: allMaterials.size,
       emissive: arenaStats.emissiveMaterials.length,
     },

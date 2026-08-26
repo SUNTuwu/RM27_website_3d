@@ -15,6 +15,7 @@ const STATE_META = {
     index: "01",
     label: "POINT CLOUD",
     hint: "<b>CLICK</b> PULSE WAVE &nbsp;·&nbsp; <b>DRAG</b> ORBIT VIEW &nbsp;·&nbsp; <b>SCROLL</b> INITIATE SCAN",
+    touchHint: "<b>TAP</b> PULSE WAVE &nbsp;·&nbsp; <b>DRAG</b> ORBIT VIEW &nbsp;·&nbsp; <b>SWIPE UP</b> INITIATE SCAN",
   },
   scan: {
     index: "02",
@@ -25,11 +26,13 @@ const STATE_META = {
     index: "03",
     label: "TIMELINE_0",
     hint: "<b>SCROLL</b> DRIVE TIMELINE &nbsp;·&nbsp; <b>CLICK ROBOT</b> FOCUS UNIT",
+    touchHint: "<b>SWIPE</b> DRIVE TIMELINE &nbsp;·&nbsp; <b>TAP ROBOT</b> FOCUS UNIT",
   },
   focus: {
     index: "04",
     label: "UNIT FOCUS",
     hint: "<b>DRAG</b> ORBIT UNIT &nbsp;·&nbsp; <b>RELEASE</b> RECENTER &nbsp;·&nbsp; <b>SCROLL</b> EXIT FOCUS",
+    touchHint: "<b>DRAG</b> ORBIT UNIT &nbsp;·&nbsp; <b>RELEASE</b> RECENTER &nbsp;·&nbsp; <b>SWIPE UP</b> EXIT FOCUS",
   },
   end: {
     index: "05",
@@ -40,6 +43,7 @@ const STATE_META = {
 
 export function createHud() {
   const app = document.querySelector("#app");
+  const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
   const brandMarkConfig = VISUAL_CONFIG.explore.brandMark;
   const configuredBrandOpacity = Number(
     brandMarkConfig.opacity,
@@ -225,7 +229,6 @@ export function createHud() {
   const loadingFill = document.querySelector("#loading-bar-fill");
   const loadingPercent = document.querySelector("#loading-percent");
   const loadingDetail = document.querySelector("#loading-detail");
-  const mobileScreen = document.querySelector("#mobile-screen");
   const errorScreen = document.querySelector("#error-screen");
   const errorMessage = document.querySelector("#error-message");
   const fpsReadout = document.querySelector("#fps-readout");
@@ -255,7 +258,7 @@ export function createHud() {
       app.dataset.state = state;
       stateIndex.textContent = meta.index;
       stateLabel.textContent = meta.label;
-      hintText.innerHTML = meta.hint;
+      hintText.innerHTML = isCoarsePointer && meta.touchHint ? meta.touchHint : meta.hint;
       timelineHud.hidden = !(state === "scrub" || state === "focus");
       // 滚动引导: 进入 EXPLORE 后延迟 beginTimeOffsetSeconds 再激活 (出现时动画从 0 相位启动)
       if (scrollCueEl) {
@@ -346,11 +349,6 @@ export function createHud() {
     },
     setFps(value) {
       fpsReadout.textContent = `${value} FPS`;
-    },
-    showMobile() {
-      app.dataset.state = "mobile";
-      mobileScreen.hidden = false;
-      loadingScreen.classList.add("is-done");
     },
     showError(error) {
       errorScreen.hidden = false;

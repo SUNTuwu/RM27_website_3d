@@ -21,12 +21,14 @@ import { createBackRing } from "./pointcloud/backRing.js";
 import { createTimelineController } from "./timeline/timelineController.js";
 import { createLookAroundController } from "./timeline/lookAroundController.js";
 import { createFocusController } from "./focus/focusController.js";
+import { createRobotSquad } from "./robots/robotSquad.js";
 import { createHud } from "./ui/hud.js";
 import { createPulseGuide } from "./ui/pulseGuide.js";
 import { createUnitSite } from "./ui/unitSite.js";
 import { mountZoomParallax } from "./ui/zoomParallax";
 import { mountStaggerTestimonials } from "./ui/staggerTestimonials";
 import { mountGlowingChannels } from "./ui/glowingChannels";
+import { mountIntroScreen } from "./ui/introScreen";
 import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
@@ -68,21 +70,12 @@ function lockPageScroll() {
   document.documentElement.classList.add("is-scroll-locked");
 }
 
-const isMobileDevice =
-  window.matchMedia("(pointer: coarse)").matches ||
-  Math.min(window.innerWidth, window.innerHeight) < 760;
-
-if (isMobileDevice) {
-  // 移动端降级: 不初始化 WebGL, 不下载 glTF
-  hud.showMobile();
+// 移动端同样运行完整 3D 流程: 竖向滑动手势映射为滚轮等效操作, 渲染端按触屏降 pixel ratio
+boot().catch((error) => {
+  console.error("[ENTERPRIZE] Boot failed", error);
+  hud.showError(error);
   releasePageScroll();
-} else {
-  boot().catch((error) => {
-    console.error("[ENTERPRIZE] Boot failed", error);
-    hud.showError(error);
-    releasePageScroll();
-  });
-}
+});
 
 async function boot() {
   hud.setState("boot");
@@ -129,8 +122,6 @@ async function boot() {
   // ---------- EXPLORE 多模型点云 (左右切换) ----------
   const arenaMaxExtent = Math.max(cloud.extent.x, cloud.extent.y, cloud.extent.z);
   cloud.setRippleScale(VISUAL_CONFIG.explore.models.arena.rippleBoost);
-  let robotCloud = null;
-  let dartCloud = null;
 
   const exploreModels = [
     {
@@ -150,6 +141,20 @@ async function boot() {
       key: "dart",
       name: "DART",
       desc: "飞镖弹体表面采样点云, 保留 glTF 导出的姿态与外形细节。",
+      cloud: null,
+      loadPromise: null,
+    },
+    {
+      key: "infantry",
+      name: "INFANTRY",
+      desc: "步兵机器人整机表面采样点云, 源自带机构动画的高精度 glTF 模型。",
+      cloud: null,
+      loadPromise: null,
+    },
+    {
+      key: "engineer",
+      name: "ENGINEER",
+      desc: "工程机器人整机表面采样点云, 源自高精度 glTF 模型。",
       cloud: null,
       loadPromise: null,
     },
@@ -219,6 +224,7 @@ async function boot() {
   let timeline = null;
   let focus = null;
   let arenaInstance = null;
+  let robotSquadInstance = null;
   let emissiveMaterials = [];
   let contentMinX = minX;
   let contentMaxX = maxX;
@@ -296,11 +302,6 @@ async function boot() {
         });
         normalizeExploreCloud(modelCloud, entry.key);
         entry.cloud = modelCloud;
-        if (entry.key === "robot") {
-          robotCloud = modelCloud;
-        } else if (entry.key === "dart") {
-          dartCloud = modelCloud;
-        }
         return modelCloud;
       })
       .catch((error) => {
@@ -459,7 +460,15 @@ async function boot() {
     }
 
     deferredAssetsPromise = (async () => {
-      const loaded = await assetLoader.loadMany(["arena", "timeline", "robot"]);
+      const loaded = await assetLoader.loadMany([
+        "arena",
+        "timeline",
+        "robot",
+        "hero",
+        "engineer",
+        "infantry",
+        "sentry",
+      ]);
       arenaInstance = createSymmetricArena(
         loaded.arena,
         VISUAL_CONFIG.arena.symmetry,
@@ -467,7 +476,15 @@ async function boot() {
       loaded.arena = arenaInstance.asset;
       Object.assign(stagedAssets, loaded);
       report = auditProjectAssets(stagedAssets, {
-        required: ["arena", "timeline", "robot"],
+        required: [
+          "arena",
+          "timeline",
+          "robot",
+          "hero",
+          "engineer",
+          "infantry",
+          "sentry",
+        ],
       });
       if (report.issues.length) {
         throw new Error(`Asset audit failed: ${report.issues.join("; ")}`);
@@ -476,12 +493,24 @@ async function boot() {
       configureProjectAsset("arena", loaded.arena);
       configureProjectAsset("timeline", loaded.timeline);
       configureProjectAsset("robot", loaded.robot);
+      configureProjectAsset("hero", loaded.hero);
+      configureProjectAsset("engineer", loaded.engineer);
+      configureProjectAsset("infantry", loaded.infantry);
+      configureProjectAsset("sentry", loaded.sentry);
+      // 红蓝两侧编队: 蓝侧为导出原始位姿, 红侧绕 Y 轴旋转 π 镜像
+      robotSquadInstance = createRobotSquad({
+        hero: loaded.hero,
+        engineer: loaded.engineer,
+        infantry: loaded.infantry,
+        sentry: loaded.sentry,
+      }, VISUAL_CONFIG.arena.symmetry);
       await ensureExploreCloud(exploreModels[1]);
 
       [
         ...report.arena.materials,
         ...report.timeline.materials,
         ...report.robot.materials,
+        ...robotSquadInstance.materials,
       ].forEach((material) => {
         material.clippingPlanes = [scanPlane];
         material.clipShadows = false;
@@ -490,6 +519,7 @@ async function boot() {
         loaded.arena.scene,
         loaded.robot.scene,
         loaded.timeline.scene,
+        robotSquadInstance.root,
       );
 
       const timelineCamera = report.timeline.camera;
@@ -538,15 +568,18 @@ async function boot() {
 
       const timelineBounds = new THREE.Box3().setFromObject(loaded.timeline.scene);
       const robotBounds = new THREE.Box3().setFromObject(loaded.robot.scene);
+      const squadBounds = new THREE.Box3().setFromObject(robotSquadInstance.root);
       contentMinX = Math.min(
         cloud.bounds.min.x,
         timelineBounds.min.x,
         robotBounds.min.x,
+        squadBounds.min.x,
       );
       contentMaxX = Math.max(
         cloud.bounds.max.x,
         timelineBounds.max.x,
         robotBounds.max.x,
+        squadBounds.max.x,
       );
       scanPlane.constant = contentMinX - 1;
 
@@ -652,6 +685,7 @@ async function boot() {
 
   // ---------- 全局状态机 ----------
   let state = "boot";
+  let introControl = null;
   let documentRevealFrame = 0;
   let documentRevealInProgress = false;
 
@@ -1035,6 +1069,62 @@ async function boot() {
     }
   }
 
+  // ---------- 触屏手势: 竖向滑动映射为滚轮等效 ----------
+  // explore: 上滑发起 SCAN; scrub: 竖滑驱动 TIMELINE_0 (完成后上滑进入档案);
+  // focus: 上滑退出 FOCUS。水平滑动保持原有的环绕/环视拖拽。
+  const touchGesture = {
+    axis: null,
+    accumX: 0,
+    accumY: 0,
+    swipeAccum: 0,
+    dragTarget: null, // 轴向锁定为水平后才真正接管的控制器: "focus" | "scrub" | null
+  };
+
+  function startTouchDrag() {
+    if (touchGesture.dragTarget) {
+      return;
+    }
+    if (state === "focus") {
+      touchGesture.dragTarget = "focus";
+      focus.startDrag();
+    } else if (state === "scrub") {
+      touchGesture.dragTarget = "scrub";
+      lookAround.startDrag();
+    }
+  }
+
+  function endTouchDrag() {
+    if (touchGesture.dragTarget === "focus") {
+      focus.endDrag();
+    } else if (touchGesture.dragTarget === "scrub") {
+      lookAround.endDrag();
+    }
+    touchGesture.dragTarget = null;
+  }
+
+  function handleTouchSwipe(delta) {
+    if (state === "explore") {
+      touchGesture.swipeAccum = Math.max(0, touchGesture.swipeAccum + delta);
+      if (touchGesture.swipeAccum > 56) {
+        touchGesture.swipeAccum = Number.NEGATIVE_INFINITY; // 触发一次后本次手势内不再重复
+        requestScan();
+      }
+    } else if (state === "scrub") {
+      if (delta > 0 && lookAround.isIdle && timeline.isComplete) {
+        enterUnitArchive();
+        return;
+      }
+      if (lookAround.isIdle) {
+        timeline.addWheel(delta * 3.2);
+      }
+    } else if (state === "focus") {
+      touchGesture.swipeAccum = Math.max(0, touchGesture.swipeAccum + delta);
+      if (touchGesture.swipeAccum > 72) {
+        exitFocus();
+      }
+    }
+  }
+
   canvas.addEventListener("pointerdown", (event) => {
     pointer.down = true;
     pointer.x = event.clientX;
@@ -1042,10 +1132,19 @@ async function boot() {
     pointer.moved = 0;
     pointer.time = performance.now();
     canvas.setPointerCapture(event.pointerId);
-    if (state === "focus") {
-      focus.startDrag();
-    } else if (state === "scrub") {
-      lookAround.startDrag();
+    if (event.pointerType === "touch") {
+      // 触屏手势: 先不定轴向, 累积位移超过阈值后锁定 (水平=环绕/环视, 竖直=滚轮等效)
+      touchGesture.axis = null;
+      touchGesture.accumX = 0;
+      touchGesture.accumY = 0;
+      touchGesture.swipeAccum = 0;
+      touchGesture.dragTarget = null;
+    } else {
+      if (state === "focus") {
+        focus.startDrag();
+      } else if (state === "scrub") {
+        lookAround.startDrag();
+      }
     }
   });
 
@@ -1058,6 +1157,28 @@ async function boot() {
     pointer.x = event.clientX;
     pointer.y = event.clientY;
     pointer.moved += Math.abs(dx) + Math.abs(dy);
+    if (event.pointerType === "touch") {
+      touchGesture.accumX += dx;
+      touchGesture.accumY += dy;
+      if (
+        !touchGesture.axis &&
+        Math.max(Math.abs(touchGesture.accumX), Math.abs(touchGesture.accumY)) > 14
+      ) {
+        touchGesture.axis =
+          Math.abs(touchGesture.accumY) > Math.abs(touchGesture.accumX) * 1.2
+            ? "y"
+            : "x";
+      }
+      if (touchGesture.axis === "y") {
+        // 手指上滑 = 滚轮下滚 (delta 为正)
+        handleTouchSwipe(-dy);
+        return;
+      }
+      if (touchGesture.axis === "x") {
+        // 水平轴向才接管环视/FOCUS 拖拽, 避免 startDrag 导致 isIdle=false 挡住竖滑驱动时间轴
+        startTouchDrag();
+      }
+    }
     if (state === "explore") {
       orbit.drag(dx, dy);
     } else if (state === "focus") {
@@ -1069,15 +1190,30 @@ async function boot() {
 
   canvas.addEventListener("pointerup", (event) => {
     pointer.down = false;
-    if (state === "focus") {
-      focus.endDrag();
-    } else if (state === "scrub") {
-      lookAround.endDrag();
+    if (event.pointerType === "touch") {
+      endTouchDrag();
+    } else {
+      if (state === "focus") {
+        focus.endDrag();
+      } else if (state === "scrub") {
+        lookAround.endDrag();
+      }
     }
     const isClick =
       pointer.moved < 6 && performance.now() - pointer.time < 500;
     if (isClick) {
       handleClick(event);
+    }
+  });
+
+  canvas.addEventListener("pointercancel", (event) => {
+    pointer.down = false;
+    if (event.pointerType === "touch") {
+      endTouchDrag();
+    } else if (state === "focus") {
+      focus.endDrag();
+    } else if (state === "scrub") {
+      lookAround.endDrag();
     }
   });
 
@@ -1178,12 +1314,12 @@ async function boot() {
     const pointPixelRatio = stage.renderer.getPixelRatio();
     const viewportHeight = stage.renderer.domElement.height;
     cloud.update(elapsed, pointPixelRatio, viewportHeight);
-    if (robotCloud?.points.visible) {
-      robotCloud.update(elapsed, pointPixelRatio, viewportHeight);
-    }
-    if (dartCloud?.points.visible) {
-      dartCloud.update(elapsed, pointPixelRatio, viewportHeight);
-    }
+    // arena 之外的展示点云 (robot/dart/infantry/engineer) 仅在可见时更新
+    exploreModels.forEach((entry) => {
+      if (entry.cloud && entry.cloud !== cloud && entry.cloud.points.visible) {
+        entry.cloud.update(elapsed, pointPixelRatio, viewportHeight);
+      }
+    });
     if (backRing.group.visible) {
       backRing.update(delta);
     }
@@ -1241,6 +1377,8 @@ async function boot() {
 
     // 场地循环动画: gltf 内置 clip + 自发光呼吸
     arenaInstance?.update(delta);
+    // 编队机器人动画: infantry/sentry 的 gltf clip 红蓝两侧循环播放
+    robotSquadInstance?.update(delta);
     const glowPulse = VISUAL_CONFIG.arena.glow.pulse;
     emissiveMaterials.forEach(({ material, base }, index) => {
       material.emissiveIntensity =
@@ -1292,32 +1430,47 @@ async function boot() {
     }
   });
 
-  // ---------- 入场: ASSEMBLE ----------
+  // ---------- 入场: 起始界面 -> 启航 -> ASSEMBLE ----------
   // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
 
   hud.finishLoading();
-  setState("assemble");
-  // 左偏构图: 点云按 sideOffset 比例左移, 右侧面板展示模型名
-  viewOffsetX = window.innerWidth * VISUAL_CONFIG.explore.sideOffset;
-  // setViewOffset 的 y 与内容位移相反: 向下挪传负值
-  viewOffsetY = -window.innerHeight * VISUAL_CONFIG.explore.verticalOffset;
-  switchExploreModel(0);
-  // 背景装饰环随 ASSEMBLE 渐显进入
-  backRing.group.visible = true;
-  addTween({
-    duration: backRingConfig.fadeInSeconds,
-    onUpdate: (k) => {
-      backRing.setLevel(k);
-    },
-  });
-  addTween({
-    duration: ASSEMBLE_DURATION,
-    ease: (x) => x, // shader 内部已做逐点缓动, 进度线性推进
-    onUpdate: (k) => cloud.setProgress(k),
-    onComplete: () => setState("explore"),
-  });
+
+  let assembled = false;
+  const beginAssemble = () => {
+    if (assembled) {
+      return;
+    }
+    assembled = true;
+    setState("assemble");
+    // 左偏构图: 点云按 sideOffset 比例左移, 右侧面板展示模型名
+    viewOffsetX = window.innerWidth * VISUAL_CONFIG.explore.sideOffset;
+    // setViewOffset 的 y 与内容位移相反: 向下挪传负值
+    viewOffsetY = -window.innerHeight * VISUAL_CONFIG.explore.verticalOffset;
+    switchExploreModel(0);
+    // 背景装饰环随 ASSEMBLE 渐显进入
+    backRing.group.visible = true;
+    addTween({
+      duration: backRingConfig.fadeInSeconds,
+      onUpdate: (k) => {
+        backRing.setLevel(k);
+      },
+    });
+    addTween({
+      duration: ASSEMBLE_DURATION,
+      ease: (x) => x, // shader 内部已做逐点缓动, 进度线性推进
+      onUpdate: (k) => cloud.setProgress(k),
+      onComplete: () => setState("explore"),
+    });
+  };
+
+  // 点云聚拢由起始界面的「启航」按钮触发 (跃迁转场结束后渐隐)
+  const intro = mountIntroScreen({ onLaunch: beginAssemble });
+  introControl = intro?.control ?? null;
+  if (!intro) {
+    beginAssemble(); // 兜底: 容器缺失时直接进入聚拢
+  }
 
   // 手动首帧已经提交后再启动 P1，避免 glTF 与贴图竞争首屏关键请求。
   void prepareDeferredAssets().catch((error) => {
@@ -1328,6 +1481,9 @@ async function boot() {
   window.__ENTERPRIZE_DEMO__ = {
     ready: true,
     pointCount: cloud.count,
+    launchIntro() {
+      introControl?.launch();
+    },
     get state() {
       return state;
     },
@@ -1360,6 +1516,24 @@ async function boot() {
     },
     get arenaSymmetry() {
       return arenaInstance?.getDebugState() ?? null;
+    },
+    get robotSquad() {
+      if (!robotSquadInstance) {
+        return null;
+      }
+      const colorOf = (materials) =>
+        materials.map((material) => ({
+          name: material.name,
+          emissive: material.emissive?.getHexString?.() ?? null,
+        }));
+      return {
+        blue: colorOf(robotSquadInstance.teamMaterials.blue),
+        red: colorOf(robotSquadInstance.teamMaterials.red),
+        mixerCount: robotSquadInstance.mixers.length,
+        mixerTimes: robotSquadInstance.mixers.map((mixer) =>
+          Number(mixer.time.toFixed(3)),
+        ),
+      };
     },
     robotScreenPosition() {
       const projected = (focus?.anchor ?? cloud.center).clone().project(freeCamera);
