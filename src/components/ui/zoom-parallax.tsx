@@ -168,6 +168,7 @@ interface ParallaxLayerProps {
   slot: ZoomParallaxSlot;
   smooth: boolean;
   compact: boolean;
+  shouldLoad: boolean;
   spring: ZoomParallaxSpring;
   reducedMotion: boolean;
   layerClassName?: string;
@@ -184,6 +185,7 @@ function ParallaxLayer({
   slot,
   smooth,
   compact,
+  shouldLoad,
   spring,
   reducedMotion,
   layerClassName,
@@ -192,24 +194,19 @@ function ParallaxLayer({
 }: ParallaxLayerProps) {
   const item = resolveImage(image, index);
   const [loaded, setLoaded] = React.useState(false);
-  const desktopScale = useTransform(progress, [0, 1], [1, slot.scale]);
   const mobileTarget = slot.mobile?.scale ?? slot.scale;
-  const mobileScale = useTransform(progress, [0, 1], [1, mobileTarget]);
-  const smoothedDesktop = useSpring(desktopScale, spring);
-  const smoothedMobile = useSpring(mobileScale, spring);
+  const targetScale = compact ? mobileTarget : slot.scale;
+  const rawScale = useTransform(progress, [0, 1], [1, targetScale]);
+  const smoothedScale = useSpring(rawScale, spring);
   const scale = reducedMotion
     ? 1
-    : compact
-      ? smooth
-        ? smoothedMobile
-        : mobileScale
-      : smooth
-        ? smoothedDesktop
-        : desktopScale;
+    : smooth
+      ? smoothedScale
+      : rawScale;
 
   React.useEffect(() => {
     setLoaded(false);
-  }, [active, item.src]);
+  }, [item.src, shouldLoad]);
 
   const slotStyle: SlotVariables = {
     "--zoom-slot-x": slot.x,
@@ -255,7 +252,7 @@ function ParallaxLayer({
           loading={item.priority || index < 2 ? "eager" : "lazy"}
           onLoad={() => setLoaded(true)}
           sizes={item.sizes ?? "(max-width: 767px) 56vw, 35vw"}
-          src={active ? item.src : undefined}
+          src={shouldLoad ? item.src : undefined}
           style={{ objectPosition: item.objectPosition }}
         />
       </figure>
@@ -309,6 +306,9 @@ export const ZoomParallax = React.forwardRef<HTMLElement, ZoomParallaxProps>(
     const reducedMotion = useReducedMotion() ?? false;
     const compact = useMediaQuery("(max-width: 767px)");
     const [active, setActive] = React.useState(loadStrategy === "eager");
+    const initialRequestedMax = Math.min(images.length - 1, 2);
+    const [requestedMaxIndex, setRequestedMaxIndex] =
+      React.useState(initialRequestedMax);
     const { scrollYProgress } = useScroll({
       container: scrollContainer,
       target: rootRef,
@@ -354,6 +354,27 @@ export const ZoomParallax = React.forwardRef<HTMLElement, ZoomParallaxProps>(
       return () => window.removeEventListener(activationEvent, activate);
     }, [activationEvent, active]);
 
+    React.useEffect(() => {
+      if (loadStrategy === "eager") {
+        setRequestedMaxIndex(images.length - 1);
+        return;
+      }
+      if (!active) {
+        setRequestedMaxIndex(initialRequestedMax);
+        return;
+      }
+
+      const updateWindow = (value: number) => {
+        const cursor = Math.floor(value * Math.max(images.length - 1, 0));
+        setRequestedMaxIndex((current) =>
+          Math.min(images.length - 1, Math.max(current, cursor + 2)),
+        );
+      };
+
+      updateWindow(scrollYProgress.get());
+      return scrollYProgress.on("change", updateWindow);
+    }, [active, images.length, initialRequestedMax, loadStrategy, scrollYProgress]);
+
     if (!layout.length) return null;
 
     return (
@@ -389,6 +410,9 @@ export const ZoomParallax = React.forwardRef<HTMLElement, ZoomParallaxProps>(
               layerClassName={layerClassName}
               progress={scrollYProgress}
               reducedMotion={reducedMotion}
+              shouldLoad={
+                loadStrategy === "eager" || (active && index <= requestedMaxIndex)
+              }
               slot={resolveSlot(layout, index)}
               smooth={smooth}
               spring={{ ...DEFAULT_SPRING, ...spring }}

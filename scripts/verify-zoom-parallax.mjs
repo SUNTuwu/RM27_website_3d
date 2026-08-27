@@ -33,21 +33,32 @@ function check(condition, message) {
   }
 }
 
+function isExternalBilibiliMessage(message) {
+  return /bili-user-fingerprint|bilibili/i.test(message);
+}
+
 async function settle(page, duration = 850) {
   await page.waitForTimeout(duration);
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
 }
 
 async function activateGallery(page) {
-  await page.waitForSelector("[data-zoom-parallax]");
   // 起始界面会遮住档案: 等 demo 就绪后自动启航, 并等转场结束卸载
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
     timeout: 60_000,
   });
   await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
-  await page.waitForFunction(() => !document.querySelector("#intro-root"), null, {
-    timeout: 15_000,
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "explore", null, {
+    timeout: 30_000,
   });
+  await page.mouse.wheel(0, 600);
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "scrub", null, {
+    timeout: 60_000,
+  });
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.archiveIslandsReady === true, null, {
+    timeout: 30_000,
+  });
+  await page.waitForSelector("[data-zoom-parallax]");
   await page.evaluate(() => {
     document.documentElement.classList.remove("is-scroll-locked");
     document.documentElement.classList.add("is-document-mode");
@@ -56,9 +67,9 @@ async function activateGallery(page) {
   await page.waitForFunction(
     () =>
       document.querySelector("[data-zoom-parallax]")?.dataset.active === "true" &&
-      [...document.querySelectorAll("[data-zoom-image]")].every(
-        (image) => image.complete && image.naturalWidth > 0,
-      ),
+      [...document.querySelectorAll("[data-zoom-image]")]
+        .slice(0, 3)
+        .every((image) => image.complete && image.naturalWidth > 0),
     null,
     { timeout: 30_000 },
   );
@@ -104,9 +115,15 @@ async function verifyDesktop() {
   const pageErrors = [];
   const failedRequests = [];
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() === "error" && !isExternalBilibiliMessage(message.text())) {
+      consoleErrors.push(message.text());
+    }
   });
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("pageerror", (error) => {
+    if (!isExternalBilibiliMessage(error.message)) {
+      pageErrors.push(error.message);
+    }
+  });
   page.on("requestfailed", (request) => failedRequests.push(request.url()));
 
   await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
@@ -171,6 +188,14 @@ async function verifyDesktop() {
 
   await scrollTo(page, "#zoom-parallax-gallery", 1);
   await settle(page, 1_200);
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll("[data-zoom-image]")].every(
+        (image) => image.complete && image.naturalWidth > 0,
+      ),
+    null,
+    { timeout: 30_000 },
+  );
   const endState = await page.evaluate(() => {
     const stage = document.querySelector("[data-zoom-stage]").getBoundingClientRect();
     const primary = document.querySelector("[data-zoom-index='1'] [data-zoom-frame]").getBoundingClientRect();
