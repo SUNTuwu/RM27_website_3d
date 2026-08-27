@@ -141,6 +141,7 @@ export function ZoomParallaxSection() {
         id="zoom-parallax-gallery"
         images={ENTERPRIZE_IMAGES}
         layout={ENTERPRIZE_LAYOUT}
+        loadStrategy="eager"
         spring={{ stiffness: 84, damping: 23, mass: 0.46 }}
         stageClassName="bg-transparent"
         trackHeight="320svh"

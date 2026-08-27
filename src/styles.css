@@ -1457,7 +1457,15 @@ html.is-document-mode #scene-canvas {
   .scroll-cue { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
-  .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
+  .explore-panel {
+    top: 60%;
+    right: 28px;
+    width: min(320px, calc(100vw - 56px));
+  }
+
+  #app[data-state="scrub"] .hint-bar {
+    display: none;
+  }
 
   #app[data-state="focus"] .state-chip,
   #app[data-state="focus"] .timeline-hud {

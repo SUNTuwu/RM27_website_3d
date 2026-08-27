@@ -249,7 +249,7 @@ function ParallaxLayer({
           data-zoom-image=""
           decoding="async"
           fetchPriority={item.priority || index === 0 ? "high" : "auto"}
-          loading={item.priority || index < 2 ? "eager" : "lazy"}
+          loading={shouldLoad ? "eager" : "lazy"}
           onLoad={() => setLoaded(true)}
           sizes={item.sizes ?? "(max-width: 767px) 56vw, 35vw"}
           src={shouldLoad ? item.src : undefined}
