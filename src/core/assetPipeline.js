@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
+import { assetUrl } from "./assetUrl.js";
+
+export { assetUrl } from "./assetUrl.js";
+
 const ASSET_MANIFEST = Object.freeze({
   arena: "models/arena/arena_half_blue.gltf",
   timeline: "models/timeline_0/arena.gltf",
@@ -12,13 +16,6 @@ const ASSET_MANIFEST = Object.freeze({
 });
 
 export const PROJECT_ASSET_KEYS = Object.freeze(Object.keys(ASSET_MANIFEST));
-
-export function assetUrl(relativePath) {
-  const base = import.meta.env.BASE_URL.endsWith("/")
-    ? import.meta.env.BASE_URL
-    : `${import.meta.env.BASE_URL}/`;
-  return `${base}assets/${relativePath.replace(/^\/+/, "")}`;
-}
 
 function configureTexture(texture, maxAnisotropy) {
   if (!texture?.isTexture) {

@@ -161,6 +161,8 @@ async function auditSnapshot() {
       state: window.__ENTERPRIZE_DEMO__?.state ?? null,
       deferredAssetsReady:
         window.__ENTERPRIZE_DEMO__?.deferredAssetsReady ?? false,
+      renderLoopActive:
+        window.__ENTERPRIZE_DEMO__?.renderLoopActive ?? false,
       loadedAssetKeys: window.__ENTERPRIZE_DEMO__?.loadedAssetKeys ?? [],
       longTasks: [...window.__ENTERPRIZE_JANK_AUDIT__.longTasks],
       layoutShifts: [...window.__ENTERPRIZE_JANK_AUDIT__.layoutShifts],
@@ -190,13 +192,9 @@ async function sampleFrames(durationMs) {
 }
 
 await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
-await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
-  timeout: 120_000,
-});
-
-const readySnapshot = await auditSnapshot();
+await page.waitForSelector("#intro-root > *", { timeout: 10_000 });
 const typingProbe = await page.evaluate(
-  (duration) =>
+  (timeoutMs) =>
     new Promise((resolve) => {
       const root = document.querySelector("#intro-root");
       const changes = [];
@@ -211,27 +209,43 @@ const typingProbe = await page.evaluate(
       if (root) observer.observe(root, { childList: true, characterData: true, subtree: true });
       const frames = [];
       const startedAt = performance.now();
-      const tick = (now) => {
-        frames.push(now);
-        if (now - startedAt < duration) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-      setTimeout(() => {
+      let settled = false;
+      let timeoutId = 0;
+      const finish = (reason) => {
+        if (settled) return;
+        settled = true;
         observer.disconnect();
+        window.clearTimeout(timeoutId);
         resolve({
           startedAt,
           endedAt: performance.now(),
+          reason,
           changes,
           frames,
           finalText: root?.textContent ?? "",
         });
-      }, duration);
+      };
+      const tick = (now) => {
+        frames.push(now);
+        if (window.__ENTERPRIZE_BOOTSTRAP__?.typingDone) {
+          finish("typing-done");
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      timeoutId = window.setTimeout(() => finish("timeout"), timeoutMs);
     }),
-  4_800,
+  10_000,
 );
 const afterTypingSnapshot = await auditSnapshot();
+await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
+  timeout: 120_000,
+});
+const readySnapshot = await auditSnapshot();
 
-await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
+await page.waitForSelector("#intro-root button:not([disabled])", { timeout: 10_000 });
+await page.click("#intro-root button:not([disabled])");
 await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "explore", null, {
   timeout: 60_000,
 });
@@ -253,13 +267,22 @@ try {
 const scrubSnapshot = await auditSnapshot();
 
 const zoomBeforeActivation = await auditSnapshot();
-await page.evaluate(() => {
-  document.documentElement.classList.remove("is-scroll-locked");
-  document.documentElement.classList.add("is-document-mode");
-  document.querySelector("#unit-site")?.classList.add("is-archive-active");
-  document.querySelector("#app")?.setAttribute("data-state", "end");
-  window.dispatchEvent(new Event("enterprize:zoom-activate"));
-});
+if (!scrubReached) {
+  throw new Error("Cannot audit the photo wall without reaching the real SCRUB state");
+}
+for (let attempt = 0; attempt < 80; attempt += 1) {
+  const state = await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.state);
+  if (state === "end") break;
+  await page.mouse.wheel(0, 1_800);
+  await page.waitForTimeout(160);
+}
+await page.waitForFunction(
+  () =>
+    window.__ENTERPRIZE_DEMO__?.state === "end" &&
+    window.__ENTERPRIZE_DEMO__?.renderLoopActive === false,
+  null,
+  { timeout: 20_000 },
+);
 await page.waitForTimeout(5_000);
 const zoomAfterActivation = await auditSnapshot();
 
@@ -354,6 +377,7 @@ const report = {
   },
   typing: {
     textMutations: typingProbe.changes.length,
+    probeEndReason: typingProbe.reason,
     characterCadence: summarizeIntervals(typingChangeTimes),
     frameCadence: summarizeIntervals(typingProbe.frames),
     longTasksDuringProbe: afterTypingSnapshot.longTasks.filter(
@@ -377,6 +401,8 @@ const report = {
   zoomGallery: {
     resourcesBeforeActivation: zoomBeforeActivation.resources.filter((entry) => entry.name.includes("/assets/images/zoom/")).length,
     resourcesAfterActivation: zoomAfterActivation.resources.filter((entry) => entry.name.includes("/assets/images/zoom/")).length,
+    renderLoopActiveBefore: zoomBeforeActivation.renderLoopActive,
+    renderLoopActiveAfter: zoomAfterActivation.renderLoopActive,
     frameCadence: summarizeIntervals(zoomFrames.frames),
     longTasksDuringActivationAndScroll: zoomScrollSnapshot.longTasks.filter(
       (task) => task.startTime >= zoomBeforeActivation.at && task.startTime <= zoomScrollSnapshot.at,

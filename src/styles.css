@@ -57,7 +57,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Shared FOCUS-style control language: thin slanted frame + right hatch field. */
+/* Shared HUD control language: thin slanted frame + right hatch field. */
 .hud-slant-button,
 .hud-slant-panel {
   border: 1px solid var(--hud-control-line);
@@ -116,6 +116,13 @@ html.is-scroll-locked,
 html.is-scroll-locked body {
   height: 100%;
   overflow: hidden;
+}
+
+/* 文档区保留布局位置供交接计算，但在 3D 模式下完全停止绘制与命中。 */
+html:not(.is-document-mode) #zoom-parallax-root,
+html:not(.is-document-mode) #unit-site {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Keep document-mode scrolling, but remove the browser chrome at the right edge. */
@@ -1093,91 +1100,121 @@ body {
     infinite;
 }
 
-/* ---------- Focus panel (FOCUS 兵种信息: 左侧贴边全高渐变图 + 右侧深空机能风文字) ---------- */
-/* 进入 FOCUS 时左右两块分别从屏幕两侧滑入; 退出时立即收回 (delay 只在 focus 态挂载) */
+/* ---------- FOCUS: 3D 主体保持在中央，媒体与兵种信息从两侧进入 ---------- */
 
 .focus-panel {
   position: absolute;
   inset: 0;
+  z-index: 24;
   pointer-events: none;
   user-select: none;
 }
 
 .focus-panel__intro {
   position: absolute;
-  right: 64px;
+  right: 56px;
   top: 50%;
-  width: min(560px, 40vw);
+  width: min(520px, 38vw);
   text-align: right;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-50%) translateX(56px);
+  transform: translate3d(48px, -50%, 0);
   transition:
-    opacity 0.45s ease,
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.45s ease;
+    opacity 0.42s ease,
+    transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.42s ease;
 }
 
-/* 右上斜线底纹, 强化机能风层次 */
 .focus-panel__intro::before {
   content: "";
   position: absolute;
   z-index: -1;
-  top: -38px;
-  right: -16px;
-  width: 260px;
-  height: 64px;
+  top: -34px;
+  right: -12px;
+  width: 250px;
+  height: 62px;
   transform: skewX(-32deg);
   background: repeating-linear-gradient(
     135deg,
     rgba(127, 212, 255, 0.12) 0 2px,
     transparent 2px 12px
   );
-  pointer-events: none;
 }
 
 .focus-panel__media {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  inset: 0 auto 0 0;
   width: min(680px, 47vw);
   opacity: 0;
   visibility: hidden;
-  transform: translateX(-72px);
+  transform: translate3d(-64px, 0, 0);
   transition:
-    opacity 0.45s ease,
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.45s ease;
+    opacity 0.42s ease,
+    transform 0.58s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.42s ease;
 }
 
-/* 上下暗角, 压住图片保证 masthead 与底部控件可读 */
 .focus-panel__media::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(180deg, rgba(5, 7, 13, 0.78) 0%, rgba(5, 7, 13, 0) 26%),
-    linear-gradient(0deg, rgba(5, 7, 13, 0.92) 0%, rgba(5, 7, 13, 0) 36%);
-  /* 与图片同一水平渐隐, 否则暗角会在容器右边缘留下一条硬切竖线 */
-  -webkit-mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
-  mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
+    linear-gradient(180deg, rgba(5, 7, 13, 0.78), transparent 27%),
+    linear-gradient(0deg, rgba(5, 7, 13, 0.94), transparent 38%);
+  -webkit-mask-image: linear-gradient(90deg, #000 42%, transparent 80%);
+  mask-image: linear-gradient(90deg, #000 42%, transparent 80%);
+}
+
+.focus-panel__close {
+  position: absolute;
+  top: 86px;
+  right: 48px;
+  z-index: 4;
+  width: 44px;
+  height: 44px;
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transform: translate3d(12px, 0, 0);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+}
+
+.focus-panel__close svg,
+.focus-panel__arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__intro,
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__media,
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__close {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, -50%, 0);
+}
+
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__media,
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__close {
+  transform: translate3d(0, 0, 0);
 }
 
 #app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__intro {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-50%) translateX(0);
-  transition-delay: 0.5s, 0.5s, 0.5s;
+  transition-delay: 0.42s;
 }
 
 #app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__media {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(0);
-  transition-delay: 0.65s, 0.65s, 0.65s; /* 图片慢半拍, 跟随相机到位节奏 */
+  transition-delay: 0.56s;
+}
+
+#app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__close {
+  pointer-events: auto;
+  transition-delay: 0.42s;
 }
 
 .focus-panel__eyebrow {
@@ -1196,62 +1233,46 @@ body {
   width: 16px;
   height: 9px;
   transform: skewX(-32deg);
-  background: linear-gradient(135deg, var(--red) 0%, var(--blue) 100%);
-  box-shadow: 0 0 10px rgba(46, 155, 255, 0.45);
+  background: linear-gradient(135deg, var(--red), var(--blue));
 }
 
 .focus-panel__name {
+  display: flex;
+  justify-content: flex-end;
   margin-top: 14px;
   font-family: var(--font-en);
   font-weight: 400;
-  line-height: 1.05;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 18px;
+  line-height: 1;
 }
 
-/* 深空机能风兵种名: 无衬底发光大字, 左侧接斜线阵列 */
 .focus-panel__name-flag {
   display: inline-flex;
   align-items: baseline;
-  gap: 16px;
-  padding: 0;
+  gap: 14px;
   color: var(--ink);
-  text-shadow:
-    0 0 26px rgba(46, 155, 255, 0.42),
-    0 2px 14px rgba(5, 7, 13, 0.9);
+  text-shadow: 0 0 26px rgba(46, 155, 255, 0.38);
 }
 
 .focus-panel__name-main {
-  font-size: clamp(88px, 10vw, 152px);
+  font-size: 108px;
   letter-spacing: 0;
 }
 
 .focus-panel__name-index {
-  font-size: clamp(30px, 3.2vw, 48px);
+  font-size: 36px;
   color: var(--cyan);
   letter-spacing: 0;
 }
 
 .focus-panel__rule {
   display: block;
-  margin-top: 16px;
-  margin-left: auto;
+  margin: 16px 0 0 auto;
   width: 252px;
   height: 8px;
   transform: skewX(-32deg);
-  /* 平行四边形分隔条: 左侧斜线阵列, 右侧红蓝渐变实体 */
   background:
-    linear-gradient(90deg, var(--red) 0%, var(--blue) 100%) right 0 top 0 /
-      150px 100% no-repeat,
-    repeating-linear-gradient(
-        135deg,
-        rgba(127, 212, 255, 0.5) 0 2px,
-        transparent 2px 9px
-      )
-      left 0 top 0 / 88px 100% no-repeat;
-  box-shadow: 0 0 12px rgba(46, 155, 255, 0.35);
+    linear-gradient(90deg, var(--red), var(--blue)) right / 150px 100% no-repeat,
+    repeating-linear-gradient(135deg, rgba(127, 212, 255, 0.5) 0 2px, transparent 2px 9px) left / 88px 100% no-repeat;
 }
 
 .focus-panel__cn {
@@ -1259,7 +1280,6 @@ body {
   margin-top: 12px;
   font-size: 18px;
   color: var(--ink);
-  text-shadow: 0 1px 10px rgba(5, 7, 13, 0.9);
 }
 
 .focus-panel__desc {
@@ -1274,49 +1294,17 @@ body {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  /* 左侧贴屏幕边, 右侧渐隐到完全透明; 蒙版挂在 frame 上,
-     使 img 与 ::after 斜线切割带的右边缘统一渐隐 */
-  -webkit-mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
-  mask-image: linear-gradient(90deg, #000 42%, transparent 78%);
+  -webkit-mask-image: linear-gradient(90deg, #000 42%, transparent 80%);
+  mask-image: linear-gradient(90deg, #000 42%, transparent 80%);
 }
 
 .focus-panel__frame img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
   opacity: 1;
-  transition: opacity 0.35s ease;
-}
-
-/* 图片渐隐边界的竖向斜线切割带 */
-.focus-panel__frame::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 20%;
-  width: 96px;
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(127, 212, 255, 0.26) 0 2px,
-    transparent 2px 14px
-  );
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    transparent 0%,
-    #000 22%,
-    #000 78%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    180deg,
-    transparent 0%,
-    #000 22%,
-    #000 78%,
-    transparent 100%
-  );
-  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
 .focus-panel__frame img.is-loading {
@@ -1327,7 +1315,7 @@ body {
   position: absolute;
   z-index: 2;
   left: 44px;
-  bottom: 142px;
+  bottom: 132px;
   display: flex;
   align-items: stretch;
   gap: 10px;
@@ -1340,65 +1328,43 @@ body {
   pointer-events: auto;
 }
 
-.focus-panel__arrow svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.focus-panel__arrow:hover {
-  background: var(--cyan);
-  color: #060a12;
-  border-color: var(--cyan);
-  box-shadow: 0 0 16px rgba(127, 212, 255, 0.45);
-}
-
 .focus-panel__status {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 14px;
   min-width: 240px;
-  padding: 0 68px 0 24px;
+  padding: 0 64px 0 22px;
   white-space: nowrap;
 }
 
 .focus-panel__status em {
-  display: inline-block;
   font-style: normal;
   font-family: var(--font-en);
   font-size: 11px;
   color: var(--cyan);
-  letter-spacing: 0;
 }
 
 .focus-panel__status b {
-  display: inline-block;
-  font-family: var(--font-en);
-  font-weight: 400;
-  font-size: 14px;
-  color: var(--ink);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: var(--font-en);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink);
 }
 
 .focus-panel__slide-desc {
   position: absolute;
   z-index: 2;
   left: 46px;
-  bottom: 92px;
+  bottom: 82px;
   width: calc(100% - 92px);
   padding-left: 14px;
   border-left: 2px solid rgba(46, 155, 255, 0.55);
   font-size: 12px;
-  line-height: 1.8;
+  line-height: 1.7;
   color: var(--ink-dim);
-  min-height: 2.6em;
-  text-shadow: 0 1px 6px rgba(5, 7, 13, 0.85);
 }
 
 #app[data-state="scrub"] .hint-bar,
@@ -1489,9 +1455,150 @@ html.is-document-mode #scene-canvas {
   .coordinate-readout { display: none; }
   .key-hints { display: none; }
   .scroll-cue { display: none; }
-  .focus-panel { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
   .explore-panel { right: 28px; width: min(320px, calc(100vw - 56px)); }
+
+  #app[data-state="focus"] .state-chip,
+  #app[data-state="focus"] .timeline-hud {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .focus-panel__close {
+    top: calc(env(safe-area-inset-top) + 16px);
+    right: 14px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .focus-panel__intro {
+    top: calc(env(safe-area-inset-top) + 72px);
+    right: 16px;
+    left: 16px;
+    width: auto;
+    text-align: left;
+    transform: translate3d(0, -18px, 0);
+  }
+
+  #app[data-state="focus"]:not([data-focus-leaving="true"]) .focus-panel__intro {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .focus-panel__intro::before {
+    top: -18px;
+    right: auto;
+    left: -8px;
+    width: 150px;
+    height: 36px;
+  }
+
+  .focus-panel__eyebrow,
+  .focus-panel__name {
+    justify-content: flex-start;
+  }
+
+  .focus-panel__name {
+    margin-top: 8px;
+  }
+
+  .focus-panel__name-main {
+    font-size: 42px;
+  }
+
+  .focus-panel__name-index {
+    font-size: 20px;
+  }
+
+  .focus-panel__rule {
+    margin: 9px auto 0 0;
+    width: 152px;
+    height: 5px;
+    background: linear-gradient(90deg, var(--red), var(--blue));
+  }
+
+  .focus-panel__cn {
+    margin-top: 8px;
+    font-size: 14px;
+  }
+
+  .focus-panel__desc {
+    display: -webkit-box;
+    margin-top: 5px;
+    max-width: calc(100vw - 76px);
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .focus-panel__media {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: min(31svh, 250px);
+    transform: translate3d(0, 32px, 0);
+  }
+
+  .focus-panel__media::before {
+    background: linear-gradient(0deg, rgba(5, 7, 13, 0.97), rgba(5, 7, 13, 0.2) 68%, transparent);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .focus-panel__frame {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 34%, #000 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 34%, #000 100%);
+  }
+
+  .focus-panel__frame img {
+    object-position: center 38%;
+  }
+
+  .focus-panel__bar {
+    right: 14px;
+    left: 14px;
+    bottom: calc(env(safe-area-inset-bottom) + 54px);
+    gap: 8px;
+  }
+
+  .focus-panel__arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  .focus-panel__status {
+    flex: 1;
+    min-width: 0;
+    padding: 0 50px 0 14px;
+    gap: 8px;
+  }
+
+  .focus-panel__status b {
+    font-size: 11px;
+  }
+
+  .focus-panel__slide-desc {
+    right: 16px;
+    left: 16px;
+    bottom: calc(env(safe-area-inset-bottom) + 15px);
+    width: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+
+  #app[data-state="focus"] .hint-bar {
+    right: 14px;
+    bottom: calc(min(31svh, 250px) + 12px);
+    left: 14px;
+    width: calc(100vw - 28px);
+    max-width: none;
+    transform: none;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 10px;
+  }
 
 }

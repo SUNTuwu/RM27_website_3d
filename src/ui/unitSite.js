@@ -167,11 +167,38 @@ function setupVideoFacades(root) {
     return;
   }
 
-  const hydrate = (frame) => {
-    if (frame.src || !frame.dataset.src) {
+  let connectionHintsReady = false;
+  const ensureConnectionHints = () => {
+    if (connectionHintsReady) {
       return;
     }
-    frame.src = frame.dataset.src;
+    connectionHintsReady = true;
+    ["preconnect", "dns-prefetch"].forEach((rel) => {
+      const hint = document.createElement("link");
+      hint.rel = rel;
+      hint.href = "https://player.bilibili.com";
+      if (rel === "preconnect") {
+        hint.crossOrigin = "anonymous";
+      }
+      document.head.appendChild(hint);
+    });
+  };
+
+  const sourceFor = (frame) => {
+    const source = new URL(frame.dataset.src, window.location.href);
+    if (frame.hasAttribute("data-video-autoload")) {
+      source.searchParams.set("autoplay", "1");
+      source.searchParams.set("muted", "1");
+    }
+    return source.href;
+  };
+
+  const hydrate = (frame) => {
+    if (frame.hasAttribute("src") || !frame.dataset.src) {
+      return;
+    }
+    ensureConnectionHints();
+    frame.src = sourceFor(frame);
     frame.dataset.videoHydrated = "true";
     const facade = frame.parentElement?.querySelector("[data-video-facade]");
     if (facade) {
@@ -196,26 +223,64 @@ function setupVideoFacades(root) {
     target:
       frame.closest(".archive-media__player, .archive-media-row__visual") ??
       frame,
+    group: frame.closest("#archive-media") ?? frame,
   }));
   const canAutoHydrate = () =>
     document.documentElement.classList.contains("is-document-mode");
+  const hydrationQueue = [];
+  const queuedFrames = new Set();
+  let hydrationTimer = 0;
+  const runHydrationQueue = () => {
+    hydrationTimer = 0;
+    while (hydrationQueue.length) {
+      const frame = hydrationQueue.shift();
+      queuedFrames.delete(frame);
+      if (!frame.hasAttribute("src")) {
+        hydrate(frame);
+        break;
+      }
+    }
+    if (hydrationQueue.length) {
+      hydrationTimer = window.setTimeout(runHydrationQueue, 700);
+    }
+  };
+  const enqueue = (frame) => {
+    if (frame.hasAttribute("src") || queuedFrames.has(frame)) {
+      return;
+    }
+    ensureConnectionHints();
+    queuedFrames.add(frame);
+    hydrationQueue.push(frame);
+    if (!hydrationTimer) {
+      hydrationTimer = window.setTimeout(runHydrationQueue, 120);
+    }
+  };
   const checkAutoFrames = () => {
     if (!canAutoHydrate()) {
       return;
     }
     const viewportHeight = window.innerHeight;
-    autoTargets.forEach(({ frame, target }) => {
-      if (frame.src) {
+    const nearbyGroups = new Set();
+    autoTargets.forEach(({ target, group }) => {
+      const rect = target.getBoundingClientRect();
+      if (rect.top < viewportHeight * 1.7 && rect.bottom > -viewportHeight * 0.25) {
+        nearbyGroups.add(group);
+      }
+    });
+    autoTargets.forEach(({ frame, group }) => {
+      if (frame.hasAttribute("src")) {
         return;
       }
-      const rect = target.getBoundingClientRect();
-      if (rect.top < viewportHeight * 2.5 && rect.bottom > -viewportHeight) {
-        hydrate(frame);
+      if (nearbyGroups.has(group)) {
+        enqueue(frame);
       }
     });
   };
 
   onScrub(checkAutoFrames);
+  window.addEventListener("enterprize:zoom-activate", () => {
+    requestAnimationFrame(checkAutoFrames);
+  });
   if (!("IntersectionObserver" in window)) {
     return;
   }
@@ -229,12 +294,12 @@ function setupVideoFacades(root) {
         }
         const frame = targetToFrame.get(entry.target);
         if (frame) {
-          hydrate(frame);
+          enqueue(frame);
         }
         observer.unobserve(entry.target);
       });
     },
-    { rootMargin: "150% 0px 80% 0px", threshold: 0.01 },
+    { rootMargin: "80% 0px 35% 0px", threshold: 0.01 },
   );
 
   autoTargets.forEach(({ frame, target }) => {

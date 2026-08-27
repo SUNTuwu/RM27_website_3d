@@ -1,14 +1,11 @@
-import "./styles.css";
-import "./tailwind.css";
-
 import * as THREE from "three";
 
 import {
   auditProjectAssets,
-  assetUrl,
   configureLoadedScene,
   createProjectAssetLoader,
 } from "./core/assetPipeline.js";
+import { assetUrl } from "./core/assetUrl.js";
 import { createSymmetricArena } from "./arena/symmetricArena.js";
 import { createStage } from "./core/stage.js";
 import {
@@ -16,7 +13,10 @@ import {
   createPointCloud,
   createPointCloudFromData,
 } from "./pointcloud/pointCloud.js";
-import { loadPointCloudData } from "./pointcloud/pointCloudData.js";
+import {
+  fetchPointCloudBuffer,
+  parsePointCloudData,
+} from "./pointcloud/pointCloudData.js";
 import { createBackRing } from "./pointcloud/backRing.js";
 import { createTimelineController } from "./timeline/timelineController.js";
 import { createLookAroundController } from "./timeline/lookAroundController.js";
@@ -25,7 +25,6 @@ import { createRobotSquad } from "./robots/robotSquad.js";
 import { createHud } from "./ui/hud.js";
 import { createPulseGuide } from "./ui/pulseGuide.js";
 import { createUnitSite } from "./ui/unitSite.js";
-import { mountIntroScreen } from "./ui/introScreen";
 import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
@@ -43,14 +42,6 @@ function scheduleLowPriority(callback) {
   } else {
     window.setTimeout(callback, 0);
   }
-}
-
-function waitForNextPaint() {
-  return new Promise((resolve) => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(resolve);
-    });
-  });
 }
 
 const hud = createHud();
@@ -101,28 +92,32 @@ function lockPageScroll() {
   document.documentElement.classList.add("is-scroll-locked");
 }
 
-// 移动端同样运行完整 3D 流程: 竖向滑动手势映射为滚轮等效操作, 渲染端按触屏降 pixel ratio
-boot().catch((error) => {
-  console.error("[ENTERPRIZE] Boot failed", error);
-  hud.showError(error);
-  releasePageScroll();
-});
+let runtimePromise = null;
 
-async function boot() {
-  hud.setState("boot");
-  let launchIntroScene = () => {};
-  const intro = mountIntroScreen({
-    onLaunch: () => launchIntroScene(),
-    ready: false,
-  });
-  performance.mark?.("enterprize:intro-mounted");
-  const introControl = intro?.control ?? null;
-  if (intro) {
-    await waitForNextPaint();
-    performance.mark?.("enterprize:intro-paint-window");
+// 移动端同样运行完整 3D 流程: 竖向滑动手势映射为滚轮等效操作, 渲染端按触屏降 pixel ratio
+export function startArenaRuntime(options = {}) {
+  if (!runtimePromise) {
+    runtimePromise = boot(options).catch((error) => {
+      console.error("[ENTERPRIZE] Arena runtime failed", error);
+      hud.showError(error);
+      releasePageScroll();
+      throw error;
+    });
   }
+  return runtimePromise;
+}
+
+async function boot({
+  intro = null,
+  pointCloudUrl = assetUrl("pointcloud/arena_points.bin"),
+  pointCloudBufferPromise = null,
+  onSceneReady,
+} = {}) {
+  hud.setState("boot");
+  const introControl = intro?.control ?? null;
 
   const canvas = document.querySelector("#scene-canvas");
+  const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
   const unitSite = document.querySelector("#unit-site");
   const documentIntro = document.querySelector("#zoom-parallax-root") ?? unitSite;
   const stage = createStage(canvas, VISUAL_CONFIG);
@@ -139,11 +134,19 @@ async function boot() {
       console.error("[ENTERPRIZE] Deferred asset load failed", error);
     },
   });
-  const pointData = await loadPointCloudData(
-    assetUrl("pointcloud/arena_points.bin"),
-    { onProgress: (progress) => hud.setLoading(progress.ratio, progress.url) },
-  );
+  const pointBufferPromise =
+    pointCloudBufferPromise ??
+    fetchPointCloudBuffer(pointCloudUrl, {
+      onProgress: (progress) => hud.setLoading(progress.ratio, progress.url),
+    });
+  hud.setLoading(0, pointCloudUrl);
+  const pointBuffer = await pointBufferPromise;
+  hud.setLoading(1, pointCloudUrl);
+  performance.mark?.("enterprize:point-buffer-ready");
+  performance.mark?.("enterprize:p0-geometry-start");
+  const pointData = parsePointCloudData(pointBuffer, pointCloudUrl);
   const cloud = createPointCloudFromData(pointData, VISUAL_CONFIG.pointCloud);
+  performance.mark?.("enterprize:p0-geometry-created");
   const minX = cloud.bounds.min.x;
   const maxX = cloud.bounds.max.x;
 
@@ -202,80 +205,27 @@ async function boot() {
   let exploreSwitchRequest = 0;
   let scanRequested = false;
 
-  // ---------- FOCUS 右侧图片卡 (每个可聚焦机器人一组幻灯片, 首图用各兵种的 0.jpg) ----------
   const focusSlidesByKey = {
     hero: [
-      {
-        image: assetUrl("images/hero/arena-fleet.webp"),
-        title: "HERO / 英雄机器人",
-        desc: "英雄机器人列阵待命, 大弹丸吊射是远程火力核心。",
-      },
-      {
-        image: assetUrl("images/hero/英雄.webp"),
-        title: "HERO / 赛场机动",
-        desc: "英雄机器人在赛场上的机动与瞄准瞬间。",
-      },
-      {
-        image: assetUrl("images/hero/英雄1.webp"),
-        title: "HERO / 火力输出",
-        desc: "大口径弹丸远程打击, 改变战局的关键一击。",
-      },
+      { image: assetUrl("images/hero/arena-fleet.webp"), title: "HERO / 英雄机器人", desc: "大弹丸吊射与远程压制，是推进战线的核心火力。" },
+      { image: assetUrl("images/hero/英雄.webp"), title: "HERO / 赛场机动", desc: "在高速转场中寻找远程打击窗口。" },
+      { image: assetUrl("images/hero/英雄1.webp"), title: "HERO / 火力输出", desc: "改变战局的关键一击。" },
     ],
     engineer: [
-      {
-        image: assetUrl("images/engineer/0.webp"),
-        title: "ENGINEER / 工程机器人",
-        desc: "工程机器人负责取矿与救援, 是团队经济运转的保障。",
-      },
-      {
-        image: assetUrl("images/engineer/工程.webp"),
-        title: "ENGINEER / 机械臂作业",
-        desc: "多自由度机械臂完成矿石抓取与兑换。",
-      },
-      {
-        image: assetUrl("images/engineer/工程1.webp"),
-        title: "ENGINEER / 取矿实录",
-        desc: "工程机器人赛场取矿作业实录。",
-      },
-      {
-        image: assetUrl("images/engineer/工程2.webp"),
-        title: "ENGINEER / 兑换实录",
-        desc: "矿石兑换为团队带来持续经济收益。",
-      },
+      { image: assetUrl("images/engineer/0.webp"), title: "ENGINEER / 工程机器人", desc: "独特的月球车设计跨越复杂地形，把工程作业能力送达赛场各处。" },
+      { image: assetUrl("images/engineer/工程.webp"), title: "ENGINEER / 机械臂作业", desc: "多自由度机械臂完成取矿、兑换与救援。" },
+      { image: assetUrl("images/engineer/工程1.webp"), title: "ENGINEER / 地形跨越", desc: "像探索车驶过陌生月面，稳定穿越障碍。" },
+      { image: assetUrl("images/engineer/工程2.webp"), title: "ENGINEER / 资源调度", desc: "持续的资源供给支撑整支队伍。" },
     ],
     infantry: [
-      {
-        image: assetUrl("images/infantry/0.webp"),
-        title: "INFANTRY / 步兵机器人",
-        desc: "步兵机器人是正面交火的主力, 高射速小弹丸持续输出。",
-      },
-      {
-        image: assetUrl("images/infantry/步兵.webp"),
-        title: "INFANTRY / 正面交火",
-        desc: "步兵机器人在掩体间穿梭交火。",
-      },
-      {
-        image: assetUrl("images/infantry/步兵1.webp"),
-        title: "INFANTRY / 快速机动",
-        desc: "轻量化底盘带来的快速转场能力。",
-      },
-      {
-        image: assetUrl("images/infantry/步兵2.webp"),
-        title: "INFANTRY / 集火推进",
-        desc: "多机集火推进, 撕开对方防线。",
-      },
+      { image: assetUrl("images/infantry/0.webp"), title: "INFANTRY / 步兵机器人", desc: "串联腿带来高机动性与地形跨越能力。" },
+      { image: assetUrl("images/infantry/步兵.webp"), title: "INFANTRY / 正面交火", desc: "在掩体与障碍之间持续穿梭。" },
+      { image: assetUrl("images/infantry/步兵1.webp"), title: "INFANTRY / 快速机动", desc: "快速转场，像穿行于星辰之间。" },
+      { image: assetUrl("images/infantry/步兵2.webp"), title: "INFANTRY / 集火推进", desc: "与队友协同撕开对方防线。" },
     ],
     sentry: [
-      {
-        image: assetUrl("images/sentry/0.webp"),
-        title: "SENTRY / 哨兵机器人",
-        desc: "哨兵机器人全自动巡逻防守, 是基地前的最后防线。",
-      },
-      {
-        image: assetUrl("images/sentry/哨兵.webp"),
-        title: "SENTRY / 自动索敌",
-        desc: "哨兵机器人自动索敌与反击实录。",
-      },
+      { image: assetUrl("images/sentry/0.webp"), title: "SENTRY / 哨兵机器人", desc: "自主巡逻、索敌与防守，是阵地前的持续战力。" },
+      { image: assetUrl("images/sentry/哨兵.webp"), title: "SENTRY / 自动索敌", desc: "在无人值守状态下持续感知并响应战场。" },
     ],
   };
   let focusSlideIndex = 0;
@@ -291,9 +241,7 @@ async function boot() {
     const slides = activeFocusSlides();
     const normalized = ((index % slides.length) + slides.length) % slides.length;
     const cacheKey = `${activeFocusKey}:${normalized}`;
-    if (preloadedFocusSlides.has(cacheKey)) {
-      return;
-    }
+    if (preloadedFocusSlides.has(cacheKey)) return;
     preloadedFocusSlides.add(cacheKey);
     scheduleLowPriority(() => {
       const preload = new Image();
@@ -305,20 +253,15 @@ async function boot() {
 
   function switchFocusSlide(step) {
     const slides = activeFocusSlides();
-    const total = slides.length;
-    if (total === 0) {
-      return;
-    }
-    focusSlideIndex = ((focusSlideIndex + step) % total + total) % total;
+    if (!slides.length) return;
+    focusSlideIndex = ((focusSlideIndex + step) % slides.length + slides.length) % slides.length;
     focusMediaInitialized = true;
-    hud.setFocusMedia(focusSlideIndex, total, slides[focusSlideIndex]);
+    hud.setFocusMedia(focusSlideIndex, slides.length, slides[focusSlideIndex]);
     preloadFocusSlide(focusSlideIndex + 1);
   }
 
   function ensureFocusMedia() {
-    if (!focusMediaInitialized) {
-      switchFocusSlide(0);
-    }
+    if (!focusMediaInitialized) switchFocusSlide(0);
   }
 
   hud.setFocusSwitchHandler(switchFocusSlide);
@@ -560,7 +503,7 @@ async function boot() {
   // ---------- 氛围: 星空 ----------
   stage.scene.add(createStars());
 
-  // ---------- P1 资产: 首帧后后台准备 SCAN / SCRUB / FOCUS ----------
+  // ---------- P1 资产: 首帧后后台准备 SCAN / SCRUB ----------
   function prepareDeferredAssets() {
     if (deferredAssetsPromise) {
       return deferredAssetsPromise;
@@ -655,13 +598,11 @@ async function boot() {
         Math.max(SCAN_DURATION - 0.1, 0),
       );
 
-      // FOCUS 目标: 红蓝编队机器人全部可点击 (红侧光环用红色);
-      // guide = SCRUB 屏幕点击引导圈, 只给 蓝engineer/蓝infantry/红hero/红sentry
       const focusPanels = {
-        hero: { name: "HERO", index: "#01", cn: "英雄机器人", desc: "地面主力输出兵种, 发射 42mm 弹丸, 可对前哨站与基地造成高额伤害, 是推进战线的核心火力单位。" },
-        engineer: { name: "ENGINEER", index: "#02", cn: "工程机器人", desc: "资源调度与救援保障单位, 机械臂完成取矿兑换, 为团队提供持续经济来源。" },
-        infantry: { name: "INFANTRY", index: "#04", cn: "步兵机器人", desc: "正面交火主力兵种, 高射速 17mm 弹丸持续输出, 灵活穿梭于掩体之间。" },
-        sentry: { name: "SENTRY", index: "#07", cn: "哨兵机器人", desc: "全自动巡逻防守单位, 自动索敌反击, 是基地与前哨站前的最后防线。" },
+        hero: { name: "HERO", index: "#01", cn: "英雄机器人", desc: "地面主力输出兵种，以大弹丸远程压制打开推进空间。" },
+        engineer: { name: "ENGINEER", index: "#02", cn: "工程机器人", desc: "独特的月球车设计跨越复杂地形，以机械臂完成取矿、兑换与救援。" },
+        infantry: { name: "INFANTRY", index: "#04", cn: "步兵机器人", desc: "串联腿赋予高机动性与地形跨越能力，在障碍之间持续穿梭。" },
+        sentry: { name: "SENTRY", index: "#07", cn: "哨兵机器人", desc: "自主巡逻、索敌与防守，持续守住基地与前哨站。" },
       };
       const squad = robotSquadInstance;
       const squadTarget = (key, side) => ({
@@ -674,26 +615,36 @@ async function boot() {
         panel: focusPanels[key],
       });
       focusTargets = [
-        { ...squadTarget("hero", "blue") },
+        squadTarget("hero", "blue"),
         { ...squadTarget("engineer", "blue"), guide: "#2e9bff" },
         { ...squadTarget("infantry", "blue"), guide: "#2e9bff" },
-        { ...squadTarget("sentry", "blue") },
+        squadTarget("sentry", "blue"),
         { ...squadTarget("hero", "red"), guide: "#ff2d4d" },
-        { ...squadTarget("engineer", "red") },
-        { ...squadTarget("infantry", "red") },
+        squadTarget("engineer", "red"),
+        squadTarget("infantry", "red"),
         { ...squadTarget("sentry", "red"), guide: "#ff2d4d" },
       ];
+      const focusConfig = VISUAL_CONFIG.focus;
       focus = createFocusController({
         camera: freeCamera,
         targets: focusTargets,
         scene: stage.scene,
-        distanceRatio: VISUAL_CONFIG.focus.distanceRatio,
+        distanceRatio: isCoarsePointer
+          ? focusConfig.mobileDistanceRatio
+          : focusConfig.distanceRatio,
+        hitRadiusScale: isCoarsePointer
+          ? focusConfig.mobileHitRadiusScale
+          : focusConfig.hitRadiusScale,
+        hitHeightScale: isCoarsePointer
+          ? focusConfig.mobileHitHeightScale
+          : focusConfig.hitHeightScale,
       });
-      // 点击引导圈 (SCRUB 中跟随各自投影): 只有 guide 字段的目标才创建
       robotGuides = focusTargets.map((target) =>
         target.guide
           ? createPulseGuide({
-              size: clickGuideConfig.sizePx,
+              size: isCoarsePointer
+                ? Math.max(clickGuideConfig.sizePx, 52)
+                : clickGuideConfig.sizePx,
               rhythmSeconds: clickGuideConfig.rhythmSeconds,
               fadeSeconds: clickGuideConfig.fadeSeconds,
               color: target.guide,
@@ -711,6 +662,8 @@ async function boot() {
           setState("scrub");
           timeline.resumeFromCameraOverride();
           timelineHandoffThisFrame = true;
+          archiveAutoEntryArmed = false;
+          archiveAutoEntryRequiresInput = true;
         }
       });
 
@@ -800,7 +753,7 @@ async function boot() {
     thetaT: -0.85,
     phiT: initialOrbitPhi,
     drag(dx, dy) {
-      this.thetaT += dx * 0.0042; // 与 FOCUS 的 applyAxisAngle(up, -dx) 手感一致
+      this.thetaT += dx * 0.0042;
       this.phiT = THREE.MathUtils.clamp(this.phiT - dy * 0.0042, 0.55, 1.45);
     },
     update(delta) {
@@ -819,13 +772,18 @@ async function boot() {
   };
   orbit.update(0); // 初始取景
 
-  // ---------- SCRUB 环视子状态机 ----------
   const lookPivot = cloud.center.clone();
   lookPivot.y = 0;
+  const lookAroundConfig = {
+    ...VISUAL_CONFIG.timeline0.lookAround,
+    yawSpeed: isCoarsePointer
+      ? VISUAL_CONFIG.timeline0.lookAround.mobileYawSpeed
+      : VISUAL_CONFIG.timeline0.lookAround.yawSpeed,
+  };
   const lookAround = createLookAroundController({
     camera: freeCamera,
     pivot: lookPivot,
-    config: VISUAL_CONFIG.timeline0.lookAround,
+    config: lookAroundConfig,
   });
 
   // ---------- 全局状态机 ----------
@@ -899,7 +857,6 @@ async function boot() {
 
   function setState(next) {
     if (next !== state && (state === "scrub" || next === "scrub")) {
-      // 子状态结束时只交出相机控制权，不改写当前姿态。
       lookAround.reset();
     }
     const prev = state;
@@ -927,17 +884,20 @@ async function boot() {
   }
 
   let archiveEntryPending = false;
+  let archiveAutoEntryArmed = true;
+  let archiveAutoEntryRequiresInput = false;
   function enterUnitArchive() {
-    if (state === "end" || archiveEntryPending) {
+    if (state !== "scrub" || !lookAround.isIdle || archiveEntryPending) {
       return;
     }
+    archiveAutoEntryArmed = false;
     archiveEntryPending = true;
     timeline.setAutoDrive(false);
     const startArchive = () => {
       archiveEntryPending = false;
       setState("end");
-      window.dispatchEvent(new Event("enterprize:zoom-activate"));
       document.documentElement.classList.add("is-document-mode");
+      window.dispatchEvent(new Event("enterprize:zoom-activate"));
       releasePageScroll();
       updateDocumentParallax();
       revealUnitArchive();
@@ -979,16 +939,18 @@ async function boot() {
       return;
     }
     exploreReloading = true;
+    archiveAutoEntryArmed = true;
+    archiveAutoEntryRequiresInput = false;
     timeline.setAutoDrive(false);
+    lookAround.reset();
     robotGuides.forEach((guide) => guide?.hide());
     const reloadConfig = VISUAL_CONFIG.explore.reloadFromStart;
     stateFade.style.transitionDuration = `${reloadConfig.fadeOutSeconds}s`;
     stateFade.classList.add("is-visible");
     window.setTimeout(() => {
-      // 黑场中复位: 时间轴/环视/扫描裁剪回到起点, 实体重新隐藏, 点云回到聚拢前
+      // 黑场中复位: 时间轴与扫描裁剪回到起点, 实体重新隐藏, 点云回到聚拢前
       timeline.seekImmediate(0);
       hud.setTimeline(0);
-      lookAround.reset();
       scanRequested = false;
       scanPlane.constant = contentMinX - 1;
       cloud.setScanX(contentMinX - 1);
@@ -1113,7 +1075,6 @@ async function boot() {
       return;
     }
     scanRequested = false;
-    ensureFocusMedia();
     // Arena 蒙版切换已完成后才开始 SCAN 与相机变换。
     exploreModels.forEach((entry) => {
       if (entry.cloud) {
@@ -1214,50 +1175,49 @@ async function boot() {
   }
 
   function enterFocus(targetIndex = 0) {
-    if (state !== "scrub") {
-      return;
-    }
-    // 切到该机器人的面板信息与幻灯片组, 从第一张 (0.jpg) 开始
+    if (state !== "scrub" || !focus) return;
     const target = focusTargets[targetIndex];
-    if (target?.panel) {
-      hud.setFocusUnit(target.panel);
-    }
-    activeFocusKey = (target?.key ?? "hero").replace(
-      /-red$/,
-      "",
-    );
+    if (target?.panel) hud.setFocusUnit(target.panel);
+    activeFocusKey = (target?.key ?? "hero").replace(/-red$/, "");
     focusSlideIndex = 0;
     focusMediaInitialized = false;
     ensureFocusMedia();
     focusExitPhase = "idle";
     delete appElement.dataset.focusLeaving;
     setState("focus");
-    focus.enter(targetIndex, elapsedNow); // 从环视或 timeline 的当前画面姿态进入
+    focus.enter(targetIndex, elapsedNow);
   }
 
   const appElement = document.querySelector("#app");
-  let focusExitPhase = "idle"; // idle | exiting
+  let focusExitPhase = "idle";
 
   function exitFocus() {
-    if (state !== "focus" || focusExitPhase !== "idle") {
-      return;
-    }
-    // 同一帧锁定退出: UI 淡出与相机回飞并行, 锁持续到 focusController 完成退出。
+    interactionDebug.focusExitAttempts += 1;
+    if (state !== "focus" || focusExitPhase !== "idle" || !focus) return;
     focusExitPhase = "exiting";
     appElement.dataset.focusLeaving = "true";
-    const accepted = focus.exit(timeline.readCameraPose(), elapsedNow); // 回到冻结进度姿态
+    const accepted = focus.exit(timeline.readCameraPose(), elapsedNow);
     if (!accepted) {
       focusExitPhase = "idle";
       delete appElement.dataset.focusLeaving;
     }
   }
 
+  hud.setFocusExitHandler(exitFocus);
+
   // ---------- 输入 ----------
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
+  const focusHitProjected = new THREE.Vector3();
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const clickPoint = new THREE.Vector3();
   const pointer = { down: false, x: 0, y: 0, moved: 0, time: 0 };
+  const interactionDebug = {
+    lastTouchAxis: null,
+    lastTouchSwipeDelta: 0,
+    focusExitAttempts: 0,
+    lastClick: null,
+  };
 
   // EXPLORE 点击引导圈 (2D 通用组件): 无点击超时后出现, 指向点云中心屏幕投影
   const clickGuideConfig = VISUAL_CONFIG.explore.clickGuide;
@@ -1267,17 +1227,19 @@ async function boot() {
     fadeSeconds: clickGuideConfig.fadeSeconds,
   });
   const clickGuideProjected = new THREE.Vector3();
-  let exploreLastClickAt = 0;
-
-  // SCRUB (overview) 机器人点击引导圈: 每个 FOCUS 目标一个, 跟随各自原点投影
-  // (实例在 prepareDeferredAssets 创建 focus 后生成, 见 robotGuides)
   const robotGuideProjected = new THREE.Vector3();
+  let exploreLastClickAt = 0;
 
   function handleClick(event) {
     pointerNdc.set(
       (event.clientX / window.innerWidth) * 2 - 1,
       -(event.clientY / window.innerHeight) * 2 + 1,
     );
+    interactionDebug.lastClick = {
+      x: event.clientX,
+      y: event.clientY,
+      selectedIndex: null,
+    };
     if (state === "explore") {
       if (exploreTransitioning) {
         return; // 切换动画期间禁用涟漪点击
@@ -1301,30 +1263,74 @@ async function boot() {
         exploreLastClickAt = clockElapsed(); // 点击后重新计时并收起引导圈
         clickGuide.hide();
       }
-    } else if (state === "scrub") {
+    } else if (state === "scrub" && focus) {
       raycaster.setFromCamera(pointerNdc, freeCamera);
       const hits = raycaster.intersectObjects(focus.proxies, false);
-      if (hits.length > 0) {
-        enterFocus(hits[0].object.userData.focusTargetIndex ?? 0);
+      const hitIndices = [
+        ...new Set(
+          hits.map((hit) => hit.object.userData.focusTargetIndex ?? 0),
+        ),
+      ];
+      let targetIndex = null;
+      let nearestGuideIndex = null;
+      let nearestGuideDistance = Number.POSITIVE_INFINITY;
+      focus.anchors.forEach((anchor, index) => {
+        focusHitProjected.copy(anchor).project(freeCamera);
+        if (focusHitProjected.z < -1 || focusHitProjected.z > 1) return;
+        const dx =
+          (focusHitProjected.x - pointerNdc.x) * window.innerWidth * 0.5;
+        const dy =
+          (focusHitProjected.y - pointerNdc.y) * window.innerHeight * 0.5;
+        const screenDistance = dx * dx + dy * dy;
+        if (screenDistance < nearestGuideDistance) {
+          nearestGuideDistance = screenDistance;
+          nearestGuideIndex = index;
+        }
+      });
+      const guideHitRadius = isCoarsePointer ? 72 : 40;
+      if (nearestGuideDistance <= guideHitRadius * guideHitRadius) {
+        targetIndex = nearestGuideIndex;
+      } else if (hitIndices.length > 0) {
+        targetIndex = hitIndices[0];
+        let nearestScreenDistance = Number.POSITIVE_INFINITY;
+        hitIndices.forEach((index) => {
+          focusHitProjected.copy(focus.anchors[index]).project(freeCamera);
+          const dx =
+            (focusHitProjected.x - pointerNdc.x) * window.innerWidth * 0.5;
+          const dy =
+            (focusHitProjected.y - pointerNdc.y) * window.innerHeight * 0.5;
+          const screenDistance = dx * dx + dy * dy;
+          if (screenDistance < nearestScreenDistance) {
+            nearestScreenDistance = screenDistance;
+            targetIndex = index;
+          }
+        });
+      }
+      if (targetIndex !== null) {
+        interactionDebug.lastClick.selectedIndex = targetIndex;
+        interactionDebug.lastClick.selectedKey = focusTargets[targetIndex]?.key;
+        interactionDebug.lastClick.nearestGuideIndex = nearestGuideIndex;
+        interactionDebug.lastClick.nearestGuideDistance = Math.sqrt(
+          nearestGuideDistance,
+        );
+        interactionDebug.lastClick.hitIndices = hitIndices;
+        enterFocus(targetIndex);
       }
     }
   }
 
-  // ---------- 触屏手势: 竖向滑动映射为滚轮等效 ----------
-  // explore: 上滑发起 SCAN; scrub: 竖滑驱动 TIMELINE_0 (完成后上滑进入档案);
-  // focus: 上滑退出 FOCUS。水平滑动保持原有的环绕/环视拖拽。
+  // 触屏先锁定主轴：横向交给环视/FOCUS，纵向保留给时间轴和状态退出。
   const touchGesture = {
+    originState: null,
     axis: null,
     accumX: 0,
     accumY: 0,
     swipeAccum: 0,
-    dragTarget: null, // 轴向锁定为水平后才真正接管的控制器: "focus" | "scrub" | null
+    dragTarget: null,
   };
 
   function startTouchDrag() {
-    if (touchGesture.dragTarget) {
-      return;
-    }
+    if (touchGesture.dragTarget) return;
     if (state === "focus") {
       touchGesture.dragTarget = "focus";
       focus.startDrag();
@@ -1335,22 +1341,21 @@ async function boot() {
   }
 
   function endTouchDrag() {
-    if (touchGesture.dragTarget === "focus") {
-      focus.endDrag();
-    } else if (touchGesture.dragTarget === "scrub") {
-      lookAround.endDrag();
-    }
+    if (touchGesture.dragTarget === "focus") focus.endDrag();
+    if (touchGesture.dragTarget === "scrub") lookAround.endDrag();
     touchGesture.dragTarget = null;
   }
 
   function handleTouchSwipe(delta) {
-    if (state === "explore") {
+    interactionDebug.lastTouchSwipeDelta = delta;
+    const gestureState = touchGesture.originState ?? state;
+    if (gestureState === "explore") {
       touchGesture.swipeAccum = Math.max(0, touchGesture.swipeAccum + delta);
       if (touchGesture.swipeAccum > 56) {
         touchGesture.swipeAccum = Number.NEGATIVE_INFINITY; // 触发一次后本次手势内不再重复
         requestScan();
       }
-    } else if (state === "scrub") {
+    } else if (gestureState === "scrub" && state === "scrub") {
       if (
         delta < 0 &&
         lookAround.isIdle &&
@@ -1360,17 +1365,21 @@ async function boot() {
         restartExploreFromStart();
         return;
       }
-      if (delta > 0 && lookAround.isIdle && timeline.isComplete) {
-        enterUnitArchive();
-        return;
-      }
       if (lookAround.isIdle) {
+        if (delta > 0) {
+          archiveAutoEntryArmed = true;
+          archiveAutoEntryRequiresInput = false;
+        }
         timeline.addWheel(delta * 3.2);
       }
-    } else if (state === "focus") {
+    } else if (
+      gestureState === "focus" &&
+      state === "focus" &&
+      focusExitPhase === "idle"
+    ) {
       touchGesture.swipeAccum = Math.max(0, touchGesture.swipeAccum + delta);
-      if (touchGesture.swipeAccum > 72) {
-        touchGesture.swipeAccum = Number.NEGATIVE_INFINITY; // 同一触屏手势只触发一次退出
+      if (touchGesture.swipeAccum > 60) {
+        touchGesture.swipeAccum = Number.NEGATIVE_INFINITY;
         exitFocus();
       }
     }
@@ -1384,18 +1393,17 @@ async function boot() {
     pointer.time = performance.now();
     canvas.setPointerCapture(event.pointerId);
     if (event.pointerType === "touch") {
-      // 触屏手势: 先不定轴向, 累积位移超过阈值后锁定 (水平=环绕/环视, 竖直=滚轮等效)
+      // 触屏手势先不定轴向, 超过阈值后锁定 (EXPLORE 水平环绕, 竖直为滚轮等效)。
+      touchGesture.originState = state;
       touchGesture.axis = null;
       touchGesture.accumX = 0;
       touchGesture.accumY = 0;
       touchGesture.swipeAccum = 0;
       touchGesture.dragTarget = null;
-    } else {
-      if (state === "focus") {
-        focus.startDrag();
-      } else if (state === "scrub") {
-        lookAround.startDrag();
-      }
+    } else if (state === "focus") {
+      focus.startDrag();
+    } else if (state === "scrub") {
+      lookAround.startDrag();
     }
   });
 
@@ -1419,6 +1427,7 @@ async function boot() {
           Math.abs(touchGesture.accumY) > Math.abs(touchGesture.accumX) * 1.2
             ? "y"
             : "x";
+        interactionDebug.lastTouchAxis = touchGesture.axis;
       }
       if (touchGesture.axis === "y") {
         // 手指上滑 = 滚轮下滚 (delta 为正)
@@ -1426,7 +1435,6 @@ async function boot() {
         return;
       }
       if (touchGesture.axis === "x") {
-        // 水平轴向才接管环视/FOCUS 拖拽, 避免 startDrag 导致 isIdle=false 挡住竖滑驱动时间轴
         startTouchDrag();
       }
     }
@@ -1443,29 +1451,28 @@ async function boot() {
     pointer.down = false;
     if (event.pointerType === "touch") {
       endTouchDrag();
-    } else {
-      if (state === "focus") {
-        focus.endDrag();
-      } else if (state === "scrub") {
-        lookAround.endDrag();
-      }
-    }
-    const isClick =
-      pointer.moved < 6 && performance.now() - pointer.time < 500;
-    if (isClick) {
-      handleClick(event);
-    }
-  });
-
-  canvas.addEventListener("pointercancel", (event) => {
-    pointer.down = false;
-    if (event.pointerType === "touch") {
-      endTouchDrag();
     } else if (state === "focus") {
       focus.endDrag();
     } else if (state === "scrub") {
       lookAround.endDrag();
     }
+    const moveThreshold = event.pointerType === "touch" ? 18 : 6;
+    const timeThreshold = event.pointerType === "touch" ? 700 : 500;
+    const isClick =
+      pointer.moved < moveThreshold &&
+      performance.now() - pointer.time < timeThreshold;
+    if (isClick) {
+      handleClick({ clientX: pointer.x, clientY: pointer.y });
+    }
+    touchGesture.originState = null;
+  });
+
+  canvas.addEventListener("pointercancel", () => {
+    pointer.down = false;
+    touchGesture.originState = null;
+    endTouchDrag();
+    focus?.endDrag();
+    lookAround.endDrag();
   });
 
   window.addEventListener(
@@ -1491,15 +1498,15 @@ async function boot() {
           restartExploreFromStart();
           return;
         }
-        if (event.deltaY > 0 && timeline.isComplete) {
-          enterUnitArchive();
-          return;
-        }
         event.preventDefault();
+        if (event.deltaY > 0) {
+          archiveAutoEntryArmed = true;
+          archiveAutoEntryRequiresInput = false;
+        }
         timeline.addWheel(event.deltaY);
       } else if (state === "focus") {
         event.preventDefault();
-        exitFocus();
+        if (Math.abs(event.deltaY) > 4) exitFocus();
       } else if (state === "end") {
         if (documentRevealInProgress) {
           event.preventDefault();
@@ -1540,8 +1547,9 @@ async function boot() {
   });
   window.addEventListener("keydown", (event) => {
     if (state === "focus") {
-      // FOCUS 下左右方向键切换右侧图片
-      if (event.key === "ArrowLeft") {
+      if (event.key === "Escape") {
+        exitFocus();
+      } else if (event.key === "ArrowLeft") {
         switchFocusSlide(-1);
       } else if (event.key === "ArrowRight") {
         switchFocusSlide(1);
@@ -1589,7 +1597,6 @@ async function boot() {
       applyViewOffset(); // 每帧应用, 跟随窗口尺寸变化
     }
     focus?.update(delta, elapsed);
-
     // 点击引导圈: EXPLORE 闲置超时后跟随点云中心投影, 点击或离开状态即隐藏
     if (
       state === "explore" &&
@@ -1606,22 +1613,21 @@ async function boot() {
       clickGuide.hide();
     }
 
-    // 机器人点击引导圈: SCRUB 状态每帧跟随各机器人原点投影, 相机背后或出屏即隐藏
     if (state === "scrub" && focus) {
       focus.anchors.forEach((anchor, index) => {
         const guide = robotGuides[index];
-        if (!guide) {
-          return;
-        }
+        if (!guide) return;
         robotGuideProjected.copy(anchor).project(freeCamera);
         const guideX = ((robotGuideProjected.x + 1) / 2) * window.innerWidth;
         const guideY = ((1 - robotGuideProjected.y) / 2) * window.innerHeight;
+        const margin = isCoarsePointer ? 28 : 40;
         const guideOnScreen =
+          robotGuideProjected.z > -1 &&
           robotGuideProjected.z < 1 &&
-          guideX > 40 &&
-          guideX < window.innerWidth - 40 &&
-          guideY > 40 &&
-          guideY < window.innerHeight - 40;
+          guideX > margin &&
+          guideX < window.innerWidth - margin &&
+          guideY > margin &&
+          guideY < window.innerHeight - margin;
         if (guideOnScreen) {
           guide.setPosition(guideX, guideY);
           guide.show();
@@ -1630,11 +1636,7 @@ async function boot() {
         }
       });
     } else {
-      robotGuides.forEach((guide) => {
-        if (guide?.visible) {
-          guide.hide();
-        }
-      });
+      robotGuides.forEach((guide) => guide?.hide());
     }
 
     // 红蓝强调灯电平滑动: scan 时全开 (白色灯不参与)
@@ -1688,11 +1690,27 @@ async function boot() {
       } else {
         timeline.update(delta, !lookAround.isIdle);
         hud.setTimeline(timeline.progress);
-        const lookAroundResult = lookAround.update(delta, timeline.readCameraPose());
+        const lookAroundResult = lookAround.update(
+          delta,
+          timeline.readCameraPose(),
+        );
         if (lookAroundResult?.finishedThisFrame) {
           timeline.resumeFromCameraOverride();
           timelineHandoffThisFrame = true;
+          if (timeline.progress >= 0.995) {
+            archiveAutoEntryArmed = false;
+            archiveAutoEntryRequiresInput = true;
+          }
         }
+      }
+      if (timeline.progress < 0.995) {
+        if (!archiveAutoEntryRequiresInput) archiveAutoEntryArmed = true;
+      } else if (
+        archiveAutoEntryArmed &&
+        timeline.isComplete &&
+        lookAround.isIdle
+      ) {
+        enterUnitArchive();
       }
     }
 
@@ -1751,7 +1769,7 @@ async function boot() {
   };
 
   // 点云聚拢由起始界面的入场按钮触发；P0 预热完成后才解锁 CTA。
-  launchIntroScene = beginAssemble;
+  onSceneReady?.(beginAssemble);
   if (introControl) {
     introControl.ready = true;
     introControl.setReady?.(true);
@@ -1779,6 +1797,15 @@ async function boot() {
     get focusMode() {
       return focus?.mode ?? "idle";
     },
+    get focusExitPhase() {
+      return focusExitPhase;
+    },
+    get interactionDebug() {
+      return { ...interactionDebug };
+    },
+    get focusTargetKey() {
+      return focusTargets[focus?.activeIndex ?? -1]?.key ?? null;
+    },
     get lookAroundMode() {
       return lookAround.mode;
     },
@@ -1787,6 +1814,12 @@ async function boot() {
     },
     get lookAroundHoldRemaining() {
       return lookAround.holdRemaining;
+    },
+    get cameraPose() {
+      return {
+        position: freeCamera.position.toArray(),
+        quaternion: freeCamera.quaternion.toArray(),
+      };
     },
     get debugTweens() {
       return tweens.size;
@@ -1838,13 +1871,11 @@ async function boot() {
       return {
         x: ((projected.x + 1) / 2) * window.innerWidth,
         y: ((1 - projected.y) / 2) * window.innerHeight,
-        behind: projected.z > 1,
+        behind: projected.z < -1 || projected.z > 1,
       };
     },
     focusTargetScreenPositions() {
-      if (!focus) {
-        return [];
-      }
+      if (!focus) return [];
       return focus.anchors.map((anchor, index) => {
         const projected = anchor.clone().project(freeCamera);
         return {
@@ -1852,7 +1883,7 @@ async function boot() {
           key: focusTargets[index]?.key ?? null,
           x: ((projected.x + 1) / 2) * window.innerWidth,
           y: ((1 - projected.y) / 2) * window.innerHeight,
-          behind: projected.z > 1,
+          behind: projected.z < -1 || projected.z > 1,
         };
       });
     },

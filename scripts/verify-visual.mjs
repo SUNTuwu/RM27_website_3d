@@ -224,90 +224,124 @@ try {
   const progressRewound = await getProgress(page);
   failIf(progressRewound >= progressPeak, "wheel rewind pulls timeline backward");
 
-  // SCRUB -> FOCUS: 推进到机器人可见后点击
-  let robotPos = await page.evaluate(() => window.__ENTERPRIZE_DEMO__.robotScreenPosition());
-  for (let attempt = 0; attempt < 12 && (robotPos.behind || robotPos.x < edgeMargin || robotPos.x > viewW - edgeMargin || robotPos.y < edgeMargin || robotPos.y > viewH - edgeMargin); attempt++) {
-    await page.mouse.wheel(0, 900);
-    await page.waitForTimeout(900);
-    robotPos = await page.evaluate(() => window.__ENTERPRIZE_DEMO__.robotScreenPosition());
-  }
-  failIf(robotPos.behind, "robot anchor became visible in timeline camera");
-  await page.mouse.click(robotPos.x, robotPos.y);
-  await waitState(page, "focus", 20_000);
-  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.focusMode === "active", null, {
-    timeout: 30_000,
-  });
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(outputDirectory, "05-focus.png") });
-  const focusLayout = await page.evaluate(() => {
-    const rect = (selector) => {
-      const bounds = document.querySelector(selector).getBoundingClientRect();
-      return {
-        left: bounds.left,
-        right: bounds.right,
-        top: bounds.top,
-        bottom: bounds.bottom,
-      };
-    };
-    return {
-      mediaBar: rect(".focus-panel__bar"),
-      mediaDescription: rect(".focus-panel__slide-desc"),
-      hint: rect(".hint-bar"),
-      timeline: rect(".timeline-hud"),
-    };
-  });
-  failIf(
-    rectanglesOverlap(focusLayout.mediaBar, focusLayout.mediaDescription),
-    "FOCUS media switcher does not overlap its description",
-  );
-  failIf(
-    rectanglesOverlap(focusLayout.mediaDescription, focusLayout.hint),
-    "FOCUS media description does not overlap the shared hint bar",
-  );
-  failIf(
-    rectanglesOverlap(focusLayout.hint, focusLayout.timeline),
-    "FOCUS hint bar does not overlap the timeline panel",
-  );
-  failIf(false, "FOCUS state active around robot");
-
-  // FOCUS: 拖拽观察 + 滚轮退出
-  await page.mouse.move(robotPos.x, robotPos.y);
-  await page.mouse.down();
-  await page.mouse.move(robotPos.x + 220, robotPos.y - 60, { steps: 12 });
-  await page.mouse.up();
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(outputDirectory, "06-focus-drag.png") });
+  // SCRUB 横拖环视；松手停留后回到冻结的 timeline 相机。
   await page.mouse.move(viewW / 2, viewH / 2);
-  await page.mouse.wheel(0, 300);
-  await page.waitForFunction(
-    () => window.__ENTERPRIZE_DEMO__?.state === "scrub" && window.__ENTERPRIZE_DEMO__?.focusMode === "idle",
-    null,
-    { timeout: 30_000 },
+  await page.mouse.down();
+  await page.mouse.move(viewW / 2 + 220, viewH / 2 - 60, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const scrubInteraction = await page.evaluate(() => ({
+    state: window.__ENTERPRIZE_DEMO__?.state,
+    mode: window.__ENTERPRIZE_DEMO__?.lookAroundMode,
+  }));
+  failIf(
+    scrubInteraction.state !== "scrub" || scrubInteraction.mode === "idle",
+    "SCRUB drag enters the look-around camera mode",
   );
-  failIf(false, "wheel exits FOCUS back to SCRUB seamlessly");
+  await page.screenshot({ path: path.join(outputDirectory, "05-lookaround.png") });
+  await page.waitForFunction(
+    () => window.__ENTERPRIZE_DEMO__?.lookAroundMode === "idle",
+    null,
+    { timeout: 8_000 },
+  );
 
-  // SCRUB 满进度 (无 END 锁定) + 滚轮回拨
-  for (let attempt = 0; attempt < 60 && (await getProgress(page)) < 0.98; attempt++) {
-    await page.mouse.wheel(0, 2400);
+  let focusTarget = null;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    focusTarget = await page.evaluate(() =>
+      window.__ENTERPRIZE_DEMO__
+        .focusTargetScreenPositions()
+        .filter(
+          (target) =>
+            !target.behind &&
+            target.x > 60 &&
+            target.x < innerWidth - 60 &&
+            target.y > 80 &&
+            target.y < innerHeight - 80,
+        )
+        .sort(
+          (a, b) =>
+            Math.hypot(a.x - innerWidth / 2, a.y - innerHeight / 2) -
+            Math.hypot(b.x - innerWidth / 2, b.y - innerHeight / 2),
+        )[0] ?? null,
+    );
+    if (focusTarget) break;
+    await page.mouse.wheel(0, 720);
     await page.waitForTimeout(400);
   }
-  const fullProgress = await getProgress(page);
-  failIf(fullProgress < 0.98, "timeline reaches full progress");
-  failIf((await getState(page)) !== "scrub", "state stays SCRUB at 100% (no END lock)");
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(outputDirectory, "07-full-progress.png") });
+  failIf(!focusTarget, "a visible robot is available for desktop FOCUS");
+  if (focusTarget) {
+    await page.mouse.click(focusTarget.x, focusTarget.y);
+    await waitState(page, "focus", 8_000);
+    await page.waitForFunction(
+      () => window.__ENTERPRIZE_DEMO__?.focusMode === "active",
+      null,
+      { timeout: 8_000 },
+    );
+    await page.screenshot({ path: path.join(outputDirectory, "06-focus.png") });
+    const focusLayout = await page.evaluate(() => {
+      const rect = (selector) => {
+        const bounds = document.querySelector(selector).getBoundingClientRect();
+        return {
+          left: bounds.left,
+          right: bounds.right,
+          top: bounds.top,
+          bottom: bounds.bottom,
+        };
+      };
+      const key = window.__ENTERPRIZE_DEMO__.focusTargetKey;
+      return {
+        key,
+        selectedKey: window.__ENTERPRIZE_DEMO__.interactionDebug.lastClick.selectedKey,
+        title: document.querySelector(".focus-panel__name-main").textContent,
+        mediaBar: rect(".focus-panel__bar"),
+        mediaDescription: rect(".focus-panel__slide-desc"),
+        hint: rect(".hint-bar"),
+        timeline: rect(".timeline-hud"),
+        close: rect(".focus-panel__close"),
+      };
+    });
+    failIf(
+      focusLayout.key !== focusLayout.selectedKey ||
+        focusLayout.title !== focusLayout.key.replace(/-red$/, "").toUpperCase(),
+      "FOCUS target and panel copy stay mapped to the same unit",
+    );
+    failIf(
+      rectanglesOverlap(focusLayout.mediaBar, focusLayout.mediaDescription) ||
+        rectanglesOverlap(focusLayout.mediaDescription, focusLayout.hint) ||
+        rectanglesOverlap(focusLayout.hint, focusLayout.timeline) ||
+        focusLayout.close.right > viewW ||
+        focusLayout.close.top < 0,
+      "FOCUS controls and copy stay inside the desktop viewport without overlap",
+    );
 
-  // SCRUB -> END: the Zoom Parallax document intro rises over a sticky 3D stage.
-  // 先挂轮询再触发滚轮: 档案内容变重后 SwiftShader 首轮光栅化较慢,
-  // 后置挂载会错过 560ms 的上升窗口。
+    await page.mouse.move(viewW / 2, viewH / 2);
+    await page.mouse.down();
+    await page.mouse.move(viewW / 2 + 220, viewH / 2 - 50, { steps: 12 });
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: path.join(outputDirectory, "07-focus-drag.png") });
+    await page.mouse.wheel(0, 180);
+    await waitState(page, "scrub", 4_000);
+    failIf(false, "FOCUS drag and single wheel exit return to SCRUB");
+  }
+
+  // timeline_0 到达终点后无需额外滚轮，自动平滑进入 BEYOND THE ARENA。
   const revealWindow = page.waitForFunction(() => {
     const documentIntro = document.querySelector("#zoom-parallax-root");
     const top = documentIntro.getBoundingClientRect().top;
     return top > window.innerHeight * 0.08 && top < window.innerHeight * 0.92;
   });
-  await page.mouse.wheel(0, 600);
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    if ((await getState(page)) === "end") {
+      break;
+    }
+    await page.mouse.wheel(0, 2400);
+    await page.waitForTimeout(400);
+  }
   await waitState(page, "end", 10_000);
   await revealWindow;
+  const fullProgress = await getProgress(page);
+  failIf(fullProgress < 0.999, "timeline reaches full progress before automatic handoff");
   const revealLayout = await page.evaluate(() => ({
     appTop: document.querySelector("#app").getBoundingClientRect().top,
     canvasTop: document.querySelector("#scene-canvas").getBoundingClientRect().top,
@@ -319,7 +353,9 @@ try {
     zoomActive:
       document.querySelector("[data-zoom-parallax]")?.dataset.active === "true",
   }));
-  await page.screenshot({ path: path.join(outputDirectory, "08-document-reveal.png") });
+  await page.screenshot({
+    path: path.join(outputDirectory, "08-document-reveal.png"),
+  });
   failIf(
     Math.abs(revealLayout.appTop) > 1 ||
       revealLayout.canvasTop >= -1 ||
@@ -327,13 +363,15 @@ try {
         (revealLayout.viewportHeight - revealLayout.documentTop) * 0.4 ||
       revealLayout.documentTop <= 0 ||
       revealLayout.documentTop >= revealLayout.viewportHeight,
-    "END reveal moves the 3D canvas upward more slowly than the 2D layer",
+    "automatic END reveal moves the 3D canvas upward more slowly than the 2D layer",
   );
   failIf(
     !revealLayout.zoomActive ||
       revealLayout.introBackground !== "rgba(0, 0, 0, 0)",
-    "END reveal activates the Zoom Parallax intro over a transparent backdrop",
+    "automatic END reveal activates BEYOND THE ARENA over a transparent backdrop",
   );
+
+
   await page.waitForFunction(() => {
     const root = document.documentElement;
     const documentTop = document
@@ -431,7 +469,8 @@ try {
   for (const name of [
     "01-explore.png",
     "04-scrub-start.png",
-    "05-focus.png",
+    "05-lookaround.png",
+    "06-focus.png",
   ]) {
     const details = await stat(path.join(outputDirectory, name));
     failIf(details.size < 40_000, `${name} looks non-blank (${details.size} bytes)`);

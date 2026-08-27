@@ -6,11 +6,6 @@ function easeInOutCubic(x) {
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
 
-/**
- * SCRUB 环视子状态机:
- * idle -> entering -> active -> holding -> exiting -> idle
- * 所有过渡都从 freeCamera 的当前姿态开始，便于被 FOCUS 等状态无缝接管。
- */
 export function createLookAroundController({ camera, pivot, config }) {
   const orbitPivot = pivot.clone();
   const orbitPosition = new THREE.Vector3();
@@ -47,20 +42,14 @@ export function createLookAroundController({ camera, pivot, config }) {
     }
     transitionBlend +=
       (1 - transitionBlend) * (1 - Math.exp(-delta * speed));
-    if (1 - transitionBlend < TRANSITION_EPSILON) {
-      transitionBlend = 1;
-    }
+    if (1 - transitionBlend < TRANSITION_EPSILON) transitionBlend = 1;
     return transitionBlend;
   }
 
   function prepareReturnTransition(timelinePose) {
-    if (transitionDuration > 0) {
-      return;
-    }
-
+    if (transitionDuration > 0) return;
     transitionTargetPosition.copy(timelinePose.position);
     transitionTargetQuaternion.copy(timelinePose.quaternion);
-
     const worldSpeed = Math.max(config.returnWorldSpeed ?? 42, 1);
     const angleSeconds = config.returnAngleSeconds ?? 0.8;
     const minDuration = config.returnDurationMin ?? 0.55;
@@ -70,7 +59,6 @@ export function createLookAroundController({ camera, pivot, config }) {
     const rotationSeconds =
       (transitionStartQuaternion.angleTo(transitionTargetQuaternion) / Math.PI) *
       angleSeconds;
-
     transitionDuration = THREE.MathUtils.clamp(
       Math.max(distanceSeconds, rotationSeconds, minDuration),
       minDuration,
@@ -89,13 +77,11 @@ export function createLookAroundController({ camera, pivot, config }) {
     const orbitYaw = Math.atan2(offsetZ, offsetX) + yaw;
     const height =
       radius * Math.tan(THREE.MathUtils.degToRad(config.elevationDeg));
-
     orbitPosition.set(
       orbitPivot.x + radius * Math.cos(orbitYaw),
       orbitPivot.y + height,
       orbitPivot.z + radius * Math.sin(orbitYaw),
     );
-    // 独立保存环视距离，避免每帧被 timeline 相机姿态覆盖，滚轮才能稳定缩放。
     const baseDistance = orbitPosition.distanceTo(orbitPivot);
     const distanceMin = Number.isFinite(config.distanceMin)
       ? config.distanceMin
@@ -104,11 +90,7 @@ export function createLookAroundController({ camera, pivot, config }) {
       ? config.distanceMax
       : baseDistance;
     if (!Number.isFinite(orbitDistance)) {
-      orbitDistance = THREE.MathUtils.clamp(
-        baseDistance,
-        distanceMin,
-        distanceMax,
-      );
+      orbitDistance = THREE.MathUtils.clamp(baseDistance, distanceMin, distanceMax);
     }
     orbitPosition
       .sub(orbitPivot)
@@ -129,11 +111,8 @@ export function createLookAroundController({ camera, pivot, config }) {
 
   function beginHoldOrExit() {
     armHold();
-    if (holdRemaining > 0) {
-      mode = "holding";
-    } else {
-      captureTransition("exiting");
-    }
+    if (holdRemaining > 0) mode = "holding";
+    else captureTransition("exiting");
   }
 
   return {
@@ -161,25 +140,17 @@ export function createLookAroundController({ camera, pivot, config }) {
       }
     },
     drag(deltaX) {
-      if (!dragging) {
-        return;
-      }
-      // 水平无限制环绕, 方向与 FOCUS 拖拽一致
-      yaw += deltaX * config.yawSpeed;
+      if (dragging) yaw += deltaX * config.yawSpeed;
     },
     endDrag() {
       dragging = false;
-      if (mode === "active") {
-        beginHoldOrExit();
-      } else if (mode === "entering") {
-        armHold();
-      }
+      if (mode === "active") beginHoldOrExit();
+      else if (mode === "entering") armHold();
     },
     zoom(deltaY) {
       if (mode === "idle" || !Number.isFinite(deltaY) || deltaY === 0) {
         return false;
       }
-
       const distanceMin = Number.isFinite(config.distanceMin)
         ? config.distanceMin
         : 1;
@@ -204,15 +175,10 @@ export function createLookAroundController({ camera, pivot, config }) {
         distanceMin,
         distanceMax,
       );
-
-      // 回轨已经开始时，滚轮会重新接管环视；其余模式则刷新停留计时。
-      if (mode === "exiting") {
-        captureTransition("entering");
-      }
+      if (mode === "exiting") captureTransition("entering");
       armHold();
       return true;
     },
-    /** 清理环视状态但保留相机当前姿态，供下一个全局状态接管。 */
     reset() {
       mode = "idle";
       dragging = false;
@@ -229,7 +195,6 @@ export function createLookAroundController({ camera, pivot, config }) {
         camera.quaternion.copy(timelinePose.quaternion);
         return { owner: "timeline" };
       }
-
       if (mode === "entering") {
         computeOrbitPose(timelinePose);
         const blend = advanceTransition(delta, config.blendInSpeed);
@@ -244,28 +209,21 @@ export function createLookAroundController({ camera, pivot, config }) {
           blend,
         );
         if (blend === 1) {
-          if (dragging) {
-            mode = "active";
-          } else {
-            beginHoldOrExit();
-          }
+          if (dragging) mode = "active";
+          else beginHoldOrExit();
         }
         return { owner: "lookAround" };
       }
-
       if (mode === "active") {
         computeOrbitPose(timelinePose);
         applyOrbitPose();
         return { owner: "lookAround" };
       }
-
       if (mode === "holding") {
         computeOrbitPose(timelinePose);
         applyOrbitPose();
         holdRemaining = Math.max(holdRemaining - delta, 0);
-        if (holdRemaining === 0) {
-          captureTransition("exiting");
-        }
+        if (holdRemaining === 0) captureTransition("exiting");
         return { owner: "lookAround" };
       }
 

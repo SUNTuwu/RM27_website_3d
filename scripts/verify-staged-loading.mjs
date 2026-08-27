@@ -63,7 +63,7 @@ try {
   );
   check(
     !requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),
-    "focus overlay images are not requested during BOOT or ASSEMBLE",
+    "FOCUS media is not requested during BOOT or ASSEMBLE",
   );
 
   await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
@@ -100,8 +100,8 @@ try {
     "P1 prepares arena, timeline, and the robot squad before SCAN",
   );
   check(
-    requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),
-    "the first focus image starts loading only when SCAN begins",
+    !requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),
+    "FOCUS media remains deferred until a robot is selected",
   );
   const arenaSymmetry = await page.evaluate(
     () => window.__ENTERPRIZE_DEMO__.arenaSymmetry,

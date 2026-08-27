@@ -49,7 +49,7 @@ export function createStage(
   // X 轴扫描转场依赖局部裁剪平面
   renderer.localClippingEnabled = true;
 
-  // 自由相机：EXPLORE / SCAN / FOCUS 阶段使用；SCRUB 阶段渲染 timeline 相机
+  // 自由相机：承接 EXPLORE / SCAN，并在 SCRUB 中同步 timeline 相机姿态。
   const freeCamera = new THREE.PerspectiveCamera(53.7, 1, 0.08, 420);
   freeCamera.name = "free_camera";
   freeCamera.position.set(-22, 9, 18);

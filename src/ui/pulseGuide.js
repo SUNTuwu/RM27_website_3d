@@ -2,7 +2,7 @@
  * 2D 点击引导圈 (通用组件):
  * 动态韵律收缩的圆圈, 用于引导用户点击屏幕上的目标位置。
  * 纯 DOM/CSS 实现, 与 3D 场景解耦; 通过 setPosition 跟随屏幕坐标,
- * 后续其它状态 (如 FOCUS 引导点击机器人) 可直接复用。
+ * 保持为通用的屏幕空间点击引导组件。
  */
 export function createPulseGuide({
   mount = document.querySelector("#app"),

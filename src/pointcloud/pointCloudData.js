@@ -1,7 +1,7 @@
 const HEADER_BYTES = 32;
 const MAGIC = [0x45, 0x50, 0x43, 0x31]; // EPC1
 
-function parsePointCloudData(buffer, url) {
+export function parsePointCloudData(buffer, url) {
   if (buffer.byteLength < HEADER_BYTES) {
     throw new Error(`Point-cloud data is truncated: ${url}`);
   }
@@ -78,7 +78,7 @@ async function readResponse(response, onProgress) {
   return bytes.buffer;
 }
 
-export async function loadPointCloudData(url, { onProgress } = {}) {
+export async function fetchPointCloudBuffer(url, { onProgress } = {}) {
   onProgress?.({ ratio: 0, loaded: 0, total: 0, url });
   let response;
   try {
@@ -92,5 +92,12 @@ export async function loadPointCloudData(url, { onProgress } = {}) {
     );
   }
 
-  return parsePointCloudData(await readResponse(response, onProgress), url);
+  return readResponse(response, onProgress);
+}
+
+export async function loadPointCloudData(url, { onProgress } = {}) {
+  return parsePointCloudData(
+    await fetchPointCloudBuffer(url, { onProgress }),
+    url,
+  );
 }

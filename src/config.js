@@ -103,8 +103,8 @@ export const VISUAL_CONFIG = {
     models: {
       arena: { fitScale: 1, rippleBoost: 1 },
       dart: { fitScale: 0.7, rippleBoost: 2 },
-      infantry: { fitScale: 0.5, rippleBoost: 2 },
-      engineer: { fitScale: 0.5, rippleBoost: 2 },
+      infantry: { fitScale: 0.8, rippleBoost: 1 },
+      engineer: { fitScale: 0.8, rippleBoost: 1 },
     },
     // 切换动效: 双模型同步快速自转, 使用自下而上的屏幕空间蒙版交接
     switchTransition: {
@@ -123,9 +123,14 @@ export const VISUAL_CONFIG = {
     },
   },
 
-  // FOCUS 兵种聚焦视角
+  // FOCUS 兵种聚焦视角。触屏端拉远一些并扩大命中代理，给底部媒体带留出构图空间。
   focus: {
-    distanceRatio: 1.2, // 相机水平距离 = 机器人最大水平边 * 该比例 (保底 0.6 米)
+    distanceRatio: 1.2,
+    mobileDistanceRatio: 1.55,
+    hitRadiusScale: 1.25,
+    mobileHitRadiusScale: 1.7,
+    hitHeightScale: 2,
+    mobileHitHeightScale: 2.4,
   },
 
   // 红蓝编队机器人 (hero/engineer/infantry/sentry, robots/robotSquad.js)
@@ -238,22 +243,23 @@ export const VISUAL_CONFIG = {
       velocityDecay: 3, // 速度回稳衰减常数 (越大回稳越快)
       autoHoldSeconds: 1.5, // 滚动后自动播放基线的暂停时长 (回退不被自动播放吞掉)
     },
-    // SCRUB 拖拽环视: 松手后短暂停留以便点击机器人，超时再回 timeline；滚轮缩放环视距离
+    // SCRUB 横向拖拽进入环视；松手停留后返回冻结的时间轴相机。
     lookAround: {
-      elevationDeg: 45, // 环绕时斜向下俯角
-      yawSpeed: 0.0032, // 水平拖动 -> 环绕角速度 (弧度/像素)
-      radiusMin: 12, // 环绕半径下限
-      radiusMax: 40, // 环绕半径上限 (半径取 timeline 相机到场地中心的水平距离, 钳制在此区间)
-      distanceMin: 8, // 滚轮最近可缩到的直线距离 (米)
-      distanceMax: 36, // 滚轮最远可拉到的直线距离 (米)
-      zoomSpeed: 0.0014, // 滚轮缩放灵敏度: 上滚拉近、下滚拉远
-      maxWheelDelta: 180, // 限制单次触控板/滚轮尖峰，避免缩放突跳
-      blendInSpeed: 4, // 拖入环视的过渡速度
-      holdSeconds: 2.5, // 松手后保留环视的点击窗口；滚轮操作会重新计时
-      returnDurationMin: 0.55, // 停留结束后回 timeline 的最短时长
-      returnDurationMax: 1.25, // 松手回 timeline 的最长时长, 避免远距离长尾
-      returnWorldSpeed: 42, // 按世界距离估算回正时间 (米/秒)
-      returnAngleSeconds: 0.8, // 180° 角度差对应的回正时间
+      elevationDeg: 45,
+      yawSpeed: 0.0032,
+      mobileYawSpeed: 0.004,
+      radiusMin: 12,
+      radiusMax: 40,
+      distanceMin: 8,
+      distanceMax: 36,
+      zoomSpeed: 0.0014,
+      maxWheelDelta: 180,
+      blendInSpeed: 4,
+      holdSeconds: 2.5,
+      returnDurationMin: 0.55,
+      returnDurationMax: 1.25,
+      returnWorldSpeed: 42,
+      returnAngleSeconds: 0.8,
     },
   },
 };

@@ -6,8 +6,6 @@
     <meta name="description" content="ENTERPRIZE RoboMaster 招新 3D 交互演示" />
     <meta name="theme-color" content="#05070d" />
     <link rel="icon" href="data:," />
-    <link rel="preconnect" href="https://player.bilibili.com" />
-    <link rel="dns-prefetch" href="https://player.bilibili.com" />
     <link rel="stylesheet" href="/src/archive.css" />
     <title>ENTERPRIZE / ROBOMASTER</title>
   </head>
@@ -89,10 +87,11 @@
       </div>
 
       <section class="focus-panel" id="focus-panel" aria-label="兵种聚焦信息">
+        <button class="focus-panel__close hud-slant-button" id="focus-close" type="button" aria-label="退出兵种聚焦">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
         <div class="focus-panel__intro">
-          <span class="focus-panel__eyebrow">
-            <i aria-hidden="true"></i>ROBOMASTER / UNIT ARCHIVE
-          </span>
+          <span class="focus-panel__eyebrow"><i aria-hidden="true"></i>ROBOMASTER / UNIT ARCHIVE</span>
           <h2 class="focus-panel__name">
             <span class="focus-panel__name-flag">
               <span class="focus-panel__name-main">HERO</span>
@@ -101,25 +100,19 @@
           </h2>
           <span class="focus-panel__rule" aria-hidden="true"></span>
           <span class="focus-panel__cn">英雄机器人</span>
-          <p class="focus-panel__desc">
-            地面主力输出兵种， 发射 42mm 弹丸, 可对前哨站与基地造成高额伤害,
-            是推进战线的核心火力单位。
-          </p>
+          <p class="focus-panel__desc">地面主力输出兵种，发射 42mm 弹丸，是推进战线的核心火力单位。</p>
         </div>
         <div class="focus-panel__media">
-          <figure class="focus-panel__frame">
-            <img id="focus-image" src="" alt="" />
-          </figure>
+          <figure class="focus-panel__frame"><img id="focus-image" src="" alt="" /></figure>
           <div class="focus-panel__bar">
-            <button class="focus-panel__arrow hud-slant-button" id="focus-prev" aria-label="上一张图片">
-              <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+            <button class="focus-panel__arrow hud-slant-button" id="focus-prev" type="button" aria-label="上一张图片">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
             </button>
             <span class="focus-panel__status hud-slant-panel">
-              <em id="focus-index">01 / 03</em>
-              <b id="focus-title">--</b>
+              <em id="focus-index">01 / 03</em><b id="focus-title">--</b>
             </span>
-            <button class="focus-panel__arrow hud-slant-button" id="focus-next" aria-label="下一张图片">
-              <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
+            <button class="focus-panel__arrow hud-slant-button" id="focus-next" type="button" aria-label="下一张图片">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
           <p class="focus-panel__slide-desc" id="focus-slide-desc"></p>
@@ -261,6 +254,7 @@
               <iframe
                 data-src="https://player.bilibili.com/player.html?isOutside=true&aid=117127650547916&bvid=BV1yU8c6WErJ&cid=41099529159&p=1"
                 data-video-autoload
+                allow="autoplay; fullscreen; picture-in-picture"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -289,6 +283,8 @@
             <div class="archive-media__player reveal">
               <iframe
                 data-src="https://player.bilibili.com/player.html?isOutside=true&aid=116702650109820&bvid=BV19j7D6LEsU&cid=38907086848&p=1"
+                data-video-autoload
+                allow="autoplay; fullscreen; picture-in-picture"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -307,6 +303,8 @@
             <div class="archive-media__player reveal" style="--rd: 90ms">
               <iframe
                 data-src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1"
+                data-video-autoload
+                allow="autoplay; fullscreen; picture-in-picture"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -325,6 +323,8 @@
             <div class="archive-media__player reveal" style="--rd: 180ms">
               <iframe
                 data-src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1"
+                data-video-autoload
+                allow="autoplay; fullscreen; picture-in-picture"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -370,7 +370,7 @@
               <span class="archive-head__tag">// TEAM</span>
             </div>
             <h2 class="archive-head__title">WHERE DO WE COME FROM</h2>
-            <p class="archive-head__cn">队伍信息 — 电路末端，连接的是人</p>
+            <p class="archive-head__cn">队伍信息 — 十年磨一剑，一舰越重洋</p>
           </header>
 
           <div class="archive-circuit">
@@ -475,6 +475,8 @@
             <div class="archive-media-row__visual archive-media-row__visual--video">
               <iframe
                 data-src="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1"
+                data-video-autoload
+                allow="autoplay; fullscreen; picture-in-picture"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -1052,7 +1054,7 @@
       </section>
     </main>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/introEntry.js"></script>
   </body>
 </html>
 

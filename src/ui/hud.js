@@ -25,14 +25,14 @@ const STATE_META = {
   scrub: {
     index: "03",
     label: "TIMELINE_0",
-    hint: "<b>SCROLL</b> DRIVE TIMELINE &nbsp;·&nbsp; <b>CLICK ROBOT</b> FOCUS UNIT",
-    touchHint: "<b>SWIPE</b> DRIVE TIMELINE &nbsp;·&nbsp; <b>TAP ROBOT</b> FOCUS UNIT",
+    hint: "<b>SCROLL</b> DRIVE TIMELINE &nbsp;·&nbsp; <b>DRAG</b> LOOK AROUND &nbsp;·&nbsp; <b>CLICK ROBOT</b> FOCUS",
+    touchHint: "<b>SWIPE VERTICAL</b> TIMELINE &nbsp;·&nbsp; <b>DRAG HORIZONTAL</b> LOOK AROUND &nbsp;·&nbsp; <b>TAP ROBOT</b> FOCUS",
   },
   focus: {
     index: "04",
     label: "UNIT FOCUS",
-    hint: "<b>DRAG</b> ORBIT UNIT &nbsp;·&nbsp; <b>RELEASE</b> RECENTER &nbsp;·&nbsp; <b>SCROLL</b> EXIT FOCUS",
-    touchHint: "<b>DRAG</b> ORBIT UNIT &nbsp;·&nbsp; <b>RELEASE</b> RECENTER &nbsp;·&nbsp; <b>SWIPE UP</b> EXIT FOCUS",
+    hint: "<b>DRAG</b> ORBIT UNIT &nbsp;·&nbsp; <b>SCROLL</b> EXIT FOCUS",
+    touchHint: "<b>DRAG</b> ORBIT &nbsp;·&nbsp; <b>SWIPE UP</b> EXIT",
   },
   end: {
     index: "05",
@@ -249,6 +249,7 @@ export function createHud() {
   const focusDesc = document.querySelector(".focus-panel__desc");
   const focusPrev = document.querySelector("#focus-prev");
   const focusNext = document.querySelector("#focus-next");
+  const focusClose = document.querySelector("#focus-close");
   const keyPrev = document.querySelector("#key-prev");
   const keySpace = document.querySelector("#key-space");
   const keyNext = document.querySelector("#key-next");
@@ -329,8 +330,8 @@ export function createHud() {
         event.currentTarget.blur();
       });
     },
-    /** FOCUS 右侧图片卡: 更新图片 / 序号 / 标题 / 简介, 图片切换时淡出淡入 */
     setFocusMedia(index, total, slide) {
+      if (!focusImage) return;
       focusIndex.textContent = `${String(index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
       focusTitle.textContent = slide.title ?? "";
       focusSlideDesc.textContent = slide.desc ?? "";
@@ -341,7 +342,6 @@ export function createHud() {
       }
       focusImage.alt = slide.title ?? "";
     },
-    /** FOCUS 面板头部: 按当前聚焦机器人更新兵种名/编号/中文名/简介 */
     setFocusUnit({ name, index, cn, desc }) {
       if (focusNameMain) focusNameMain.textContent = name;
       if (focusNameIndex) focusNameIndex.textContent = index;
@@ -349,12 +349,18 @@ export function createHud() {
       if (focusDesc) focusDesc.textContent = desc;
     },
     setFocusSwitchHandler(handler) {
-      focusPrev.addEventListener("click", (event) => {
+      focusPrev?.addEventListener("click", (event) => {
         handler(-1);
         event.currentTarget.blur();
       });
-      focusNext.addEventListener("click", (event) => {
+      focusNext?.addEventListener("click", (event) => {
         handler(1);
+        event.currentTarget.blur();
+      });
+    },
+    setFocusExitHandler(handler) {
+      focusClose?.addEventListener("click", (event) => {
+        handler();
         event.currentTarget.blur();
       });
     },

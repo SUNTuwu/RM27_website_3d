@@ -18,6 +18,7 @@
     "generate:pointcloud": "node scripts/generate-pointcloud.mjs",
     "validate:assets": "node scripts/validate-assets.mjs",
     "verify:staged": "node scripts/verify-staged-loading.mjs",
+    "verify:entry-split": "node scripts/verify-entry-split.mjs",
     "verify:visual": "node scripts/verify-visual.mjs",
     "verify:zoom": "node scripts/verify-zoom-parallax.mjs",
     "typecheck": "tsc --noEmit",

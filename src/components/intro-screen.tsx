@@ -190,16 +190,20 @@ export type IntroControl = {
   requested?: boolean;
   ready?: boolean;
   setReady?: (ready: boolean) => void;
+  typingDone?: boolean;
+  waitForTypingDone?: () => Promise<void>;
 };
 
 export function IntroScreen({
   onLaunch,
   onDone,
+  onTypingDone,
   control,
   ready = true,
 }: {
   onLaunch: () => void;
   onDone: () => void;
+  onTypingDone?: () => void;
   control?: IntroControl;
   ready?: boolean;
 }) {
@@ -212,6 +216,12 @@ export function IntroScreen({
   useEffect(() => {
     setCanLaunch(ready);
   }, [ready]);
+
+  useEffect(() => {
+    if (done) {
+      onTypingDone?.();
+    }
+  }, [done, onTypingDone]);
 
   const updateReady = useCallback(
     (nextReady: boolean) => {

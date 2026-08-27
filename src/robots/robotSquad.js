@@ -40,7 +40,7 @@ export function createRobotSquad(
   const teamMaterials = { blue: [], red: [] };
   const blueRobots = {};
   const redRobots = {};
-  // 带动画机器人的根节点 (FOCUS 光环/命中代理需要每帧跟随其世界位置)
+  // 带动画机器人的根节点，供编队动画按兵种更新。
   const trackNodes = { blue: {}, red: {} };
 
   for (const [key, gltf] of Object.entries(robots)) {

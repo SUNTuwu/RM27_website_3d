@@ -4,7 +4,6 @@ import * as THREE from "three";
  * 主时间轴控制器: 滚轮擦洗 timeline_0。
  * 滚轮控制的是进度速度而不是进度数值: 一次滚动给速度一个脉冲,
  * 松手后速度指数衰减回自动播放基线 (autoDrive 开启时) 或 0。
- * FOCUS 期间不调用 update, 时间轴冻结在当前进度 ("timeline_0 动画不变")。
  */
 export function createTimelineController({
   root,
@@ -75,13 +74,12 @@ export function createTimelineController({
         velocity = autoRate;
       }
     },
-    /** 子相机控制器交还控制权后, 保留 progress, 丢弃旧滚轮速度/hold, 从正常自动播放速度恢复。 */
+    /** 子相机交还控制权后清理旧速度，避免 FOCUS/环视返回时出现第二次顿挫。 */
     resumeFromCameraOverride() {
       autoHold = 0;
       velocity = autoDrive ? autoRate : 0;
       applyTime();
     },
-    /** paused = 环视中: 速度与进度都冻结, 回中后从冻结处继续 */
     update(delta, paused = false) {
       if (paused) {
         return;
@@ -97,7 +95,7 @@ export function createTimelineController({
         applyTime();
       }
     },
-    /** 读取主相机在当前进度的世界姿态 (SCAN 对接目标 / FOCUS 退出回飞终点) */
+    /** 读取主相机在当前进度的世界姿态 (SCAN 对接目标 / SCRUB 渲染相机) */
     readCameraPose() {
       camera.updateWorldMatrix(true, false);
       camera.matrixWorld.decompose(posePosition, poseQuaternion, scratchScale);
