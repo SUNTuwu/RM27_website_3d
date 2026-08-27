@@ -25,6 +25,10 @@ const forbiddenTopLevelPaths = [
   "src",
 ];
 
+const forbiddenRepositoryPaths = [
+  "functions/_middleware.js",
+];
+
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
@@ -46,6 +50,15 @@ for (const path of forbiddenTopLevelPaths) {
   try {
     await access(resolve(site, path));
     throw new Error(`Deployment output unexpectedly contains ${path}.`);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+for (const path of forbiddenRepositoryPaths) {
+  try {
+    await access(resolve(root, path));
+    throw new Error(`Repository unexpectedly contains ${path}; preview deployments must remain public.`);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -74,11 +87,6 @@ for (const path of files) {
 const verificationToken = (await readFile(resolve(site, requiredPaths[2]), "utf8")).trim();
 if (!/^[a-f0-9]{40}$/.test(verificationToken)) {
   throw new Error("Public verification file does not contain the expected token format.");
-}
-
-const middleware = await readFile(resolve(root, "functions/_middleware.js"), "utf8");
-if (!middleware.includes(`/${requiredPaths[2]}`)) {
-  throw new Error("Password middleware does not exempt the public verification path.");
 }
 
 const toMiB = (bytes) => (bytes / 1024 / 1024).toFixed(2);

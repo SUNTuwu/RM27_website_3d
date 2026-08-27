@@ -19,22 +19,13 @@ Cloudflare Pages 项目应连接 `hkustenterprize/RM2027-webpage`，并使用以
 
 每次推送或合并到 `main` 都应触发生产部署；其他 Git 分支产生预览部署。若推送后没有构建记录，请在 **Settings -> Builds & deployments** 中确认 Git 集成和 production deployments 均已启用。
 
-## Password protection
+## Public access
 
-`functions/_middleware.js` 为所有页面提供共享密码门禁。验证文件 `/252478fc73dc3522687c788d2f12f490.txt` 是唯一匿名放行路径。
-
-在 **Settings -> Variables and Secrets** 中配置加密 Secret：
-
-- Production：`SITE_PASSWORD`
-- Preview：`SITE_PASSWORD`
-
-缺少 Secret 时中间件会返回 `401`，不会绕过门禁。密码不得写入 Git、URL、前端代码或构建日志。修改 Secret 并重新部署可以使所有现有会话失效。
-
-长期对外使用前，应考虑用 Cloudflare Access 替代共享密码，从而获得独立成员身份和访问撤销能力。
+预览和生产部署均直接公开访问，不加载 `functions/_middleware.js`，也不使用 `SITE_PASSWORD`。Dashboard 中若仍保留旧的 `SITE_PASSWORD` Secret，可以删除；该变量不会再被站点读取。
 
 ## Public verification file
 
-`public/252478fc73dc3522687c788d2f12f490.txt` 会由 Vite 复制到部署产物根目录。不要重命名、删除或改变文件内容；中间件也必须继续放行相同路径。
+`public/252478fc73dc3522687c788d2f12f490.txt` 会由 Vite 复制到部署产物根目录。不要重命名、删除或改变文件内容。
 
 ## Metric refresh
 
@@ -57,22 +48,21 @@ npm run check
 也可以分开执行：
 
 ```powershell
-npm run test:middleware
 npm run build:site
 npm run verify:deployment
 ```
 
-产物审计会检查关键页面、开源档案数据、公开验证文件、密码门禁放行路径、文件数量、单文件 25 MiB 限制，以及不应进入 `site/` 的源码和本地目录。
+产物审计会检查关键页面、开源档案数据、公开验证文件、文件数量、单文件 25 MiB 限制、不应进入 `site/` 的源码和本地目录，以及仓库中不存在密码中间件。
 
 ## Deployment verification
 
 PR 分支推送后：
 
 1. 在 GitHub PR Checks 中确认 `Validate site` 成功，并在 Cloudflare Dashboard 中确认预览构建成功。
-2. 用预览环境的密码登录，检查 `/` 与 `/open-source.html`。
-3. 在未登录窗口访问 `/252478fc73dc3522687c788d2f12f490.txt`，确认返回验证 token。
+2. 在私密窗口直接检查 `/` 与 `/open-source.html`，确认不再出现登录页或 `401`。
+3. 访问 `/252478fc73dc3522687c788d2f12f490.txt`，确认返回验证 token。
 4. 合并到 `main` 后检查生产部署对应的 commit SHA。
-5. 在私密窗口访问 `https://test.hkustenterprize.win`，确认密码门禁和主要页面正常。
+5. 在私密窗口访问 `https://test.hkustenterprize.win`，确认主要页面可以直接打开。
 
 ## Rollback
 
