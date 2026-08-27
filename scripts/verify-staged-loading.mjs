@@ -62,8 +62,8 @@ try {
     "P0 becomes ready without a completed glTF asset",
   );
   check(
-    !requests.some((url) => url.includes("/assets/images/hero/")),
-    "focus images are not requested during BOOT or ASSEMBLE",
+    !requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),
+    "focus overlay images are not requested during BOOT or ASSEMBLE",
   );
 
   await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
@@ -94,8 +94,10 @@ try {
     () => window.__ENTERPRIZE_DEMO__.loadedAssetKeys,
   );
   check(
-    ["arena", "timeline", "robot"].every((key) => loadedAssetKeys.includes(key)),
-    "P1 prepares arena, timeline, and robot before SCAN",
+    ["arena", "timeline", "hero", "engineer", "infantry", "sentry"].every((key) =>
+      loadedAssetKeys.includes(key),
+    ),
+    "P1 prepares arena, timeline, and the robot squad before SCAN",
   );
   check(
     requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),

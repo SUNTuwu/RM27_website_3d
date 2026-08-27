@@ -121,11 +121,27 @@ export function createProjectAssetLoader({ onProgress, onError } = {}) {
     return promise;
   }
 
-  async function loadMany(keys) {
+  async function loadMany(keys, { concurrency = Number.POSITIVE_INFINITY } = {}) {
     const uniqueKeys = [...new Set(keys)];
-    const entries = await Promise.all(
-      uniqueKeys.map(async (key) => [key, await load(key)]),
-    );
+    if (!Number.isFinite(concurrency) || concurrency >= uniqueKeys.length) {
+      const entries = await Promise.all(
+        uniqueKeys.map(async (key) => [key, await load(key)]),
+      );
+      return Object.fromEntries(entries);
+    }
+
+    const entries = [];
+    const workerCount = Math.max(1, Math.min(Math.floor(concurrency), uniqueKeys.length));
+    let nextIndex = 0;
+    async function worker() {
+      while (nextIndex < uniqueKeys.length) {
+        const key = uniqueKeys[nextIndex];
+        nextIndex += 1;
+        entries.push([key, await load(key)]);
+      }
+    }
+
+    await Promise.all(Array.from({ length: workerCount }, worker));
     return Object.fromEntries(entries);
   }
 

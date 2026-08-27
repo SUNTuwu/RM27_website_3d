@@ -56,11 +56,15 @@ const browser = await chromium.launch({ executablePath, headless: true });
 const viewport = { width: 1366, height: 768 };
 const page = await browser.newPage({ viewport });
 const bilibiliPlayerRequests = [];
+const modelRequests = [];
 
 page.on("request", (request) => {
   const url = request.url();
   if (url.startsWith("https://player.bilibili.com/player.html")) {
     bilibiliPlayerRequests.push(url);
+  }
+  if (url.includes("/assets/models/")) {
+    modelRequests.push(url);
   }
 });
 
@@ -85,6 +89,20 @@ try {
       initialVideoState.facade !== 5,
     "Bilibili iframes start as five deferred facades",
     initialVideoState,
+  );
+  const bootRuntimeState = await page.evaluate(() => ({
+    state: window.__ENTERPRIZE_DEMO__?.state,
+    loadedAssetKeys: window.__ENTERPRIZE_DEMO__?.loadedAssetKeys,
+    deferredAssetsReady: window.__ENTERPRIZE_DEMO__?.deferredAssetsReady,
+    archiveIslandsReady: window.__ENTERPRIZE_DEMO__?.archiveIslandsReady,
+  }));
+  failIf(
+    modelRequests.length !== 0 ||
+      bootRuntimeState.loadedAssetKeys.length !== 0 ||
+      bootRuntimeState.deferredAssetsReady ||
+      bootRuntimeState.archiveIslandsReady,
+    "BOOT leaves P1 glTF and 2D React islands deferred",
+    { modelRequests, bootRuntimeState },
   );
 
   await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());

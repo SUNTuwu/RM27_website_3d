@@ -187,7 +187,36 @@ function setupVideoFacades(root) {
   const autoFrames = frames.filter((frame) =>
     frame.hasAttribute("data-video-autoload"),
   );
-  if (!autoFrames.length || !("IntersectionObserver" in window)) {
+  if (!autoFrames.length) {
+    return;
+  }
+
+  const autoTargets = autoFrames.map((frame) => ({
+    frame,
+    target:
+      frame.closest(".archive-media__player, .archive-media-row__visual") ??
+      frame,
+  }));
+  const canAutoHydrate = () =>
+    document.documentElement.classList.contains("is-document-mode");
+  const checkAutoFrames = () => {
+    if (!canAutoHydrate()) {
+      return;
+    }
+    const viewportHeight = window.innerHeight;
+    autoTargets.forEach(({ frame, target }) => {
+      if (frame.src) {
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      if (rect.top < viewportHeight * 2.5 && rect.bottom > -viewportHeight) {
+        hydrate(frame);
+      }
+    });
+  };
+
+  onScrub(checkAutoFrames);
+  if (!("IntersectionObserver" in window)) {
     return;
   }
 
@@ -195,7 +224,7 @@ function setupVideoFacades(root) {
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
-        if (!entry.isIntersecting) {
+        if (!entry.isIntersecting || !canAutoHydrate()) {
           return;
         }
         const frame = targetToFrame.get(entry.target);
@@ -208,10 +237,7 @@ function setupVideoFacades(root) {
     { rootMargin: "150% 0px 80% 0px", threshold: 0.01 },
   );
 
-  autoFrames.forEach((frame) => {
-    const target =
-      frame.closest(".archive-media__player, .archive-media-row__visual") ??
-      frame;
+  autoTargets.forEach(({ frame, target }) => {
     targetToFrame.set(target, frame);
     observer.observe(target);
   });

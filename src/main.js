@@ -25,9 +25,6 @@ import { createRobotSquad } from "./robots/robotSquad.js";
 import { createHud } from "./ui/hud.js";
 import { createPulseGuide } from "./ui/pulseGuide.js";
 import { createUnitSite } from "./ui/unitSite.js";
-import { mountZoomParallax } from "./ui/zoomParallax";
-import { mountStaggerTestimonials } from "./ui/staggerTestimonials";
-import { mountGlowingChannels } from "./ui/glowingChannels";
 import { mountIntroScreen } from "./ui/introScreen";
 import { VISUAL_CONFIG } from "./config.js";
 
@@ -50,9 +47,35 @@ function scheduleLowPriority(callback) {
 
 const hud = createHud();
 
-mountZoomParallax();
-mountStaggerTestimonials();
-mountGlowingChannels();
+let archiveIslandsPromise = null;
+let archiveIslandsMounted = false;
+
+function ensureArchiveIslands() {
+  if (!archiveIslandsPromise) {
+    archiveIslandsPromise = Promise.all([
+      import("./ui/zoomParallax"),
+      import("./ui/staggerTestimonials"),
+      import("./ui/glowingChannels"),
+    ])
+      .then(([zoomParallax, staggerTestimonials, glowingChannels]) => {
+        zoomParallax.mountZoomParallax();
+        staggerTestimonials.mountStaggerTestimonials();
+        glowingChannels.mountGlowingChannels();
+        archiveIslandsMounted = true;
+      })
+      .catch((error) => {
+        archiveIslandsPromise = null;
+        throw error;
+      });
+  }
+  return archiveIslandsPromise;
+}
+
+function requestArchiveIslands() {
+  void ensureArchiveIslands().catch((error) => {
+    console.error("[ENTERPRIZE] Archive islands preparation failed", error);
+  });
+}
 
 // 2D 战队档案 (unit-site) 与 3D 状态机解耦: 移动端不 boot 时也可用。
 // 桌面端 boot 完成后会把返回按钮接到 returnToTimeline 上。
@@ -524,14 +547,14 @@ async function boot() {
     }
 
     deferredAssetsPromise = (async () => {
-      const loaded = await assetLoader.loadMany([
-        "arena",
-        "timeline",
-        "hero",
-        "engineer",
-        "infantry",
-        "sentry",
-      ]);
+      const scanCore = await assetLoader.loadMany(["arena", "timeline"], {
+        concurrency: 2,
+      });
+      const squadAssets = await assetLoader.loadMany(
+        ["hero", "engineer", "infantry", "sentry"],
+        { concurrency: 2 },
+      );
+      const loaded = { ...scanCore, ...squadAssets };
       arenaInstance = createSymmetricArena(
         loaded.arena,
         VISUAL_CONFIG.arena.symmetry,
@@ -880,21 +903,38 @@ async function boot() {
     }
     if (next === "scrub") {
       timeline?.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
+      scheduleLowPriority(requestArchiveIslands);
     }
   }
 
+  let archiveEntryPending = false;
   function enterUnitArchive() {
-    if (state === "end") {
+    if (state === "end" || archiveEntryPending) {
       return;
     }
+    archiveEntryPending = true;
     timeline.setAutoDrive(false);
-    setState("end");
-    window.dispatchEvent(new Event("enterprize:zoom-activate"));
-    document.documentElement.classList.add("is-document-mode");
-    releasePageScroll();
-    updateDocumentParallax();
-    revealUnitArchive();
-    stage.pause();
+    const startArchive = () => {
+      archiveEntryPending = false;
+      setState("end");
+      window.dispatchEvent(new Event("enterprize:zoom-activate"));
+      document.documentElement.classList.add("is-document-mode");
+      releasePageScroll();
+      updateDocumentParallax();
+      revealUnitArchive();
+      stage.pause();
+    };
+    if (archiveIslandsMounted) {
+      startArchive();
+      return;
+    }
+    void ensureArchiveIslands()
+      .then(startArchive)
+      .catch((error) => {
+        archiveEntryPending = false;
+        hud.showError(error);
+        releasePageScroll();
+      });
   }
 
   function returnToTimeline() {
@@ -1696,11 +1736,6 @@ async function boot() {
     beginAssemble(); // 兜底: 容器缺失时直接进入聚拢
   }
 
-  // 手动首帧已经提交后再启动 P1，避免 glTF 与贴图竞争首屏关键请求。
-  void prepareDeferredAssets().catch((error) => {
-    console.error("[ENTERPRIZE] Deferred runtime preparation failed", error);
-  });
-
   // ---------- E2E / 调试钩子 ----------
   window.__ENTERPRIZE_DEMO__ = {
     ready: true,
@@ -1734,6 +1769,9 @@ async function boot() {
     },
     get renderLoopActive() {
       return stage.running;
+    },
+    get archiveIslandsReady() {
+      return archiveIslandsMounted;
     },
     get deferredAssetsReady() {
       return deferredAssetsReady;
