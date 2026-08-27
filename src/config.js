@@ -14,7 +14,7 @@ export const VISUAL_CONFIG = {
       ".archive-chapter",
       ".archive-media",
       ".archive-banner",
-      "#unit-reveal", // 「你的选择是什么? / CHOOSE YOUR HERO」
+      "#unit-reveal", // 「你的选择是什么？ / CHOOSE YOUR HERO」
     ],
     // ---- 惯性 ----
     impulseGain: 5.2, // 滚轮 deltaY -> 速度增益 (越大滚得越猛)
@@ -73,7 +73,7 @@ export const VISUAL_CONFIG = {
       staggerSeconds: 0.5, // 相邻白线流星开始下落的间隔 (秒), 营造依次下落的韵律
       meteorDurationSeconds: 2.5, // 单条流星从线顶落到线尾的时长 (秒), 加速下落
       meteorLengthPx: 200, // 流星拖尾长度 (px)
-      text: "SCROLL TO EXPLORE MORE", // 竖排引导文字
+      text: "SCROLL TO INITIATE SCAN", // 竖排引导文字
       textFontSizePx: 18, // 引导文字字号 (px)
       textTopOffsetPx: 60, // 文字静止位置相对容器顶部的下移距离 (px)
       textDelaySeconds: 1.5, // 文字相对周期起点的延迟 (秒), 比流星慢一拍

@@ -132,6 +132,11 @@ html.is-document-mode body::-webkit-scrollbar {
   height: 0;
 }
 
+html.is-document-mode .explore-brand-mark,
+html.is-document-mode .pulse-guide {
+  display: none;
+}
+
 html.is-document-transitioning {
   overscroll-behavior-y: none;
 }
@@ -227,21 +232,7 @@ body {
 }
 
 .explore-brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: -55%;
-  background: linear-gradient(
-    var(--explore-brand-gradient-angle, 135deg),
-    transparent 42%,
-    rgba(255, 255, 255, 0.9) 49%,
-    transparent 56%
-  );
-  transform: translate3d(45%, 45%, 0);
-  animation: brand-mark-rhythm
-    var(--explore-brand-rhythm-duration, 3.2s)
-    cubic-bezier(0.45, 0, 0.2, 1)
-    infinite;
-  will-change: transform;
+  content: none;
 }
 
 #app[data-state="assemble"] .explore-brand-mark,
@@ -288,35 +279,85 @@ body {
   position: absolute;
   top: 38px;
   left: 44px;
+  max-width: min(560px, calc(100vw - 420px));
   pointer-events: none;
   user-select: none;
+  opacity: 0;
+  transform: translate3d(0, -8px, 0);
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+}
+
+#app[data-state="assemble"] .masthead,
+#app[data-state="explore"] .masthead {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .masthead__eyebrow {
   display: block;
   font-size: 12px;
   color: var(--ink-dim);
-  margin-bottom: 6px;
+  margin-bottom: 12px;
+  letter-spacing: 0.16em;
 }
 
 .masthead__title {
   font-family: var(--font-en);
   font-weight: 400;
-  font-size: clamp(52px, 7.2vw, 104px);
-  line-height: 1.05;
+  font-size: clamp(34px, 4.2vw, 64px);
+  line-height: 0.96;
   color: var(--ink);
   text-shadow:
     0 0 18px rgba(46, 155, 255, 0.35),
     0 0 42px rgba(46, 155, 255, 0.12);
-  transition: font-size 0.9s ease;
+  transition: font-size 0.9s ease, opacity 0.35s ease;
+}
+
+.masthead__line {
+  display: block;
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+}
+
+#app[data-state="assemble"] .masthead__line,
+#app[data-state="explore"] .masthead__line {
+  animation: masthead-line-reveal 0.72s steps(16, end) forwards;
+}
+
+#app[data-state="assemble"] .masthead__line:nth-child(2),
+#app[data-state="explore"] .masthead__line:nth-child(2) {
+  animation-delay: 0.42s;
+}
+
+#app[data-state="assemble"] .masthead__line:nth-child(3),
+#app[data-state="explore"] .masthead__line:nth-child(3) {
+  animation-delay: 0.84s;
+}
+
+.masthead__lead {
+  margin-top: 16px;
+  max-width: 30em;
+  font-size: 14px;
+  line-height: 1.8;
+  color: rgba(233, 241, 255, 0.68);
+  opacity: 0;
+}
+
+#app[data-state="assemble"] .masthead__lead,
+#app[data-state="explore"] .masthead__lead {
+  animation: masthead-lead-in 0.55s ease forwards;
+  animation-delay: 1.32s;
 }
 
 /* SCAN 起标题收缩回常规 HUD 尺寸 */
-#app[data-state="scan"] .masthead__title,
-#app[data-state="scrub"] .masthead__title,
-#app[data-state="focus"] .masthead__title,
-#app[data-state="end"] .masthead__title {
-  font-size: clamp(30px, 4.2vw, 54px);
+#app[data-state="scan"] .masthead,
+#app[data-state="scrub"] .masthead,
+#app[data-state="focus"] .masthead,
+#app[data-state="end"] .masthead {
+  opacity: 0;
+  transform: translate3d(0, -8px, 0);
 }
 
 .masthead__rule {
@@ -326,6 +367,40 @@ body {
   height: 2px;
   background: linear-gradient(90deg, var(--red) 0%, var(--blue) 100%);
   box-shadow: 0 0 12px rgba(46, 155, 255, 0.45);
+}
+
+@keyframes masthead-line-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@keyframes masthead-lead-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app[data-state="assemble"] .masthead__line,
+  #app[data-state="explore"] .masthead__line,
+  #app[data-state="assemble"] .masthead__lead,
+  #app[data-state="explore"] .masthead__lead {
+    animation: none;
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ---------- State chip ---------- */
@@ -1364,7 +1439,21 @@ html.is-document-mode #scene-canvas {
 }
 
 @media (max-width: 900px) {
-  .masthead { top: 26px; left: 28px; }
+  .masthead {
+    top: 86px;
+    left: 28px;
+    max-width: calc(100vw - 56px);
+  }
+
+  .masthead__title {
+    font-size: clamp(28px, 10vw, 46px);
+  }
+
+  .masthead__lead {
+    max-width: 24em;
+    font-size: 13px;
+  }
+
   .state-chip { top: 26px; right: 28px; }
   .coordinate-readout { display: none; }
   .key-hints { display: none; }

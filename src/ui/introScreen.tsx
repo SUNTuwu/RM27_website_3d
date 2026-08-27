@@ -16,7 +16,11 @@ export function mountIntroScreen({
   const container = document.querySelector<HTMLElement>("#intro-root");
   if (!container || reactRoot) return null;
 
-  const control: IntroControl = { launch: () => {} };
+  const control: IntroControl = {
+    launch: () => {
+      control.requested = true;
+    },
+  };
   reactRoot = createRoot(container);
   reactRoot.render(
     <IntroScreen

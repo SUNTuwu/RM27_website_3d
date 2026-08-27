@@ -371,7 +371,7 @@ export const ZoomParallax = React.forwardRef<HTMLElement, ZoomParallaxProps>(
       >
         <div
           className={cn(
-            "sticky top-0 isolate overflow-hidden bg-background",
+            "sticky top-0 isolate w-full max-w-[100vw] overflow-hidden bg-background",
             stageClassName,
           )}
           data-zoom-stage=""

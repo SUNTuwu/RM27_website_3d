@@ -11,26 +11,20 @@ import {
 
 const ENTERPRIZE_IMAGES: readonly ZoomParallaxImage[] = [
   {
-    src: "/assets/images/zoom/1.jpg",
+    src: "/assets/images/zoom/1.webp",
     alt: "RoboMaster 赛场红蓝双方机器人在准备区集结",
     priority: true,
     objectPosition: "center",
   },
   {
-    src: "/assets/images/zoom/2.jpg",
+    src: "/assets/images/zoom/2.webp",
     alt: "ENTERPRIZE 战队标识与 RoboMaster 赛场主视觉",
     priority: true,
   },
-  { src: "/assets/images/zoom/3.jpg", alt: "队员出征前共同举起车票" },
-  { src: "/assets/images/zoom/4.jpg", alt: "RoboMaster 赛事场馆与对抗场地" },
-  { src: "/assets/images/zoom/5.jpg", alt: "队员围绕一号机器人进行赛场检修" },
-  { src: "/assets/images/zoom/6.jpg", alt: "RoboMaster 赛事签名留言墙" },
-  { src: "/assets/images/zoom/7.jpg", alt: "ENTERPRIZE 全体队员与机器人合影" },
-  { src: "/assets/images/zoom/8.jpg", alt: "ENTERPRIZE 工程机器人与取物机构" },
-  { src: "/assets/images/zoom/9.jpg", alt: "队员携带设备在机场集合出发" },
-  { src: "/assets/images/zoom/10.jpg", alt: "赛场工具箱中的无人机零件与记录设备" },
-  { src: "/assets/images/zoom/11.jpg", alt: "队员在赛场边为比赛结果欢呼" },
-  { src: "/assets/images/zoom/12.jpg", alt: "比赛结束后相拥落泪的队员" },
+  { src: "/assets/images/zoom/3.webp", alt: "队员出征前共同举起车票" },
+  { src: "/assets/images/zoom/4.webp", alt: "RoboMaster 赛事场馆与对抗场地" },
+  { src: "/assets/images/zoom/5.webp", alt: "队员围绕一号机器人进行赛场检修" },
+  { src: "/assets/images/zoom/6.webp", alt: "RoboMaster 赛事签名留言墙" },
 ] as const;
 
 const ENTERPRIZE_LAYOUT: readonly ZoomParallaxSlot[] = [
@@ -82,54 +76,6 @@ const ENTERPRIZE_LAYOUT: readonly ZoomParallaxSlot[] = [
     scale: 8,
     mobile: { x: "-28vw", y: "29svh", width: "40vw", height: "20svh", scale: 7 },
   },
-  {
-    x: "25vw",
-    y: "22.5vh",
-    width: "15vw",
-    height: "15vh",
-    scale: 9,
-    mobile: { x: "31vw", y: "25svh", width: "28vw", height: "15svh", scale: 8 },
-  },
-  {
-    x: "-38vw",
-    y: "-32vh",
-    width: "15vw",
-    height: "17vh",
-    scale: 10,
-    mobile: { x: "-32vw", y: "-33svh", width: "25vw", height: "16svh", scale: 9 },
-  },
-  {
-    x: "37vw",
-    y: "-29vh",
-    width: "18vw",
-    height: "17vh",
-    scale: 10,
-    mobile: { x: "31vw", y: "-32svh", width: "27vw", height: "18svh", scale: 10 },
-  },
-  {
-    x: "-39vw",
-    y: "20vh",
-    width: "16vw",
-    height: "15vh",
-    scale: 11,
-    mobile: { x: "-34vw", y: "14svh", width: "22vw", height: "14svh", scale: 11 },
-  },
-  {
-    x: "39vw",
-    y: "19vh",
-    width: "15vw",
-    height: "17vh",
-    scale: 12,
-    mobile: { x: "35vw", y: "12svh", width: "20vw", height: "14svh", scale: 12 },
-  },
-  {
-    x: "0vw",
-    y: "-41vh",
-    width: "18vw",
-    height: "14vh",
-    scale: 13,
-    mobile: { x: "0vw", y: "-42svh", width: "28vw", height: "12svh", scale: 13 },
-  },
 ] as const;
 
 export function ZoomParallaxSection() {
@@ -142,49 +88,6 @@ export function ZoomParallaxSection() {
     });
   }, []);
 
-  // 档案 (unit-site) 上滑进入视口时，按比例虚化图集舞台，滚动回去时恢复
-  React.useEffect(() => {
-    const stage = document.querySelector<HTMLElement>(
-      "#zoom-parallax-gallery [data-zoom-stage]",
-    );
-    const archive = document.querySelector<HTMLElement>("#unit-site");
-    if (!stage || !archive) return;
-
-    stage.style.willChange = "filter, transform";
-
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const viewport = window.innerHeight || 1;
-      const archiveTop = archive.getBoundingClientRect().top;
-      const progress = Math.min(
-        Math.max((viewport - archiveTop) / viewport, 0),
-        1,
-      );
-      if (progress <= 0.001) {
-        stage.style.removeProperty("filter");
-        stage.style.removeProperty("transform");
-        return;
-      }
-      const blur = (progress * 14).toFixed(2);
-      const scale = (1 + progress * 0.05).toFixed(4);
-      stage.style.filter = `blur(${blur}px)`;
-      stage.style.transform = `scale(${scale})`;
-    };
-    const requestUpdate = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-
-    window.addEventListener("scroll", requestUpdate, { passive: true });
-    window.addEventListener("resize", requestUpdate);
-    update();
-    return () => {
-      window.removeEventListener("scroll", requestUpdate);
-      window.removeEventListener("resize", requestUpdate);
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, []);
-
   return (
     <section
       aria-label="ENTERPRIZE 赛事影像回顾"
@@ -195,7 +98,7 @@ export function ZoomParallaxSection() {
         <div className="mx-auto grid w-full max-w-[1500px] items-end gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="max-w-5xl">
             <p className="mb-5 font-mono text-xs font-semibold uppercase text-muted-foreground md:text-sm">
-              FIELD LOG // 12 FRAMES
+              FIELD LOG // 06 FRAMES
             </p>
             <h2 className="font-[Audiowide] text-5xl leading-[0.98] text-foreground md:text-7xl xl:text-8xl">
               BEYOND THE ARENA
@@ -247,7 +150,7 @@ export function ZoomParallaxSection() {
           ENTERPRIZE / MATCH LOG
         </div>
         <p className="absolute bottom-5 right-5 border-r-2 border-secondary bg-background/80 px-3 py-2 text-right font-mono text-[11px] font-semibold text-muted-foreground backdrop-blur-sm sm:bottom-8 sm:right-8 md:right-12">
-          12 FRAMES / ONE TEAM
+          06 FRAMES / ONE TEAM
         </p>
       </ZoomParallax>
     </section>

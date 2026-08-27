@@ -447,7 +447,7 @@ try {
 
   await context.close();
 
-  // ---------------- 移动端: 降级 ----------------
+  // ---------------- 移动端: 完整 3D 基础链路 ----------------
   const mobileContext = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
@@ -455,22 +455,30 @@ try {
     hasTouch: true,
   });
   const mobilePage = await mobileContext.newPage();
-  const mobileModelRequests = [];
-  mobilePage.on("response", (response) => {
-    if (response.url().includes("/assets/models/")) {
-      mobileModelRequests.push(response.url());
-    }
-  });
   await mobilePage.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  await mobilePage.waitForTimeout(2_500);
-  const mobileVisible = await mobilePage.evaluate(() => {
-    const screen = document.querySelector("#mobile-screen");
-    return screen && !screen.hidden;
+  await mobilePage.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
+    timeout: 60_000,
   });
-  failIf(!mobileVisible, "mobile fallback screen is shown");
-  failIf(mobileModelRequests.length > 0, "mobile fallback downloads no glTF assets");
-  const demoHandle = await mobilePage.evaluate(() => window.__ENTERPRIZE_DEMO__);
-  failIf(demoHandle !== undefined, "mobile fallback does not boot the 3D demo");
+  const mobileSnapshot = await mobilePage.evaluate(() => {
+    const screen = document.querySelector("#mobile-screen");
+    const canvas = document.querySelector("#scene-canvas");
+    return {
+      fallbackVisible: Boolean(screen && !screen.hidden),
+      state: window.__ENTERPRIZE_DEMO__?.state,
+      pointCount: window.__ENTERPRIZE_DEMO__?.pointCount,
+      pixelRatio: canvas ? canvas.width / canvas.clientWidth : 0,
+    };
+  });
+  failIf(mobileSnapshot.fallbackVisible, "mobile fallback screen is not shown");
+  failIf(mobileSnapshot.state !== "boot", "mobile boots the 3D demo");
+  failIf(
+    mobileSnapshot.pointCount !== VISUAL_CONFIG.pointCloud.count,
+    `mobile point cloud count ${mobileSnapshot.pointCount} matches config ${VISUAL_CONFIG.pointCloud.count}`,
+  );
+  failIf(
+    mobileSnapshot.pixelRatio > 1.5,
+    `mobile renderer DPR is capped at 1.5 (${mobileSnapshot.pixelRatio})`,
+  );
   await mobilePage.screenshot({ path: path.join(outputDirectory, "08-mobile.png") });
   await mobileContext.close();
 } finally {

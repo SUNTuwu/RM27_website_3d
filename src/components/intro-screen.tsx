@@ -2,11 +2,9 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Rocket } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
-// 起始界面: 打字机对话 -> 启航按钮 -> 跃迁转场 -> 点云 EXPLORE
-// 跃迁时序: 星线后掠加速 -> 眩光自屏幕中心扩散 -> 白闪遮满时回调 onLaunch,
-// 随后整体渐隐, 露出正在聚拢的点云。
+// 起始界面: 打字机对话 -> 入场按钮 -> 星线跃迁 -> 点云 EXPLORE
 // 装饰语言对齐 open-source 页: 红蓝细线/折线 + 斜切平行四边形 + 135deg 斜线纹理。
 
 const REDUCED = () =>
@@ -17,15 +15,11 @@ type Segment = { text: string; emphasis?: boolean };
 
 const LINES: Segment[][] = [
   [
-    { text: "We're " },
+    { text: "We are " },
     { text: "ENTERPRIZE", emphasis: true },
-    { text: " Team." },
+    { text: "." },
   ],
-  [
-    {
-      text: "We sail our own warship, boldly where no one has gone before.",
-    },
-  ],
+  [{ text: "We build the machines that carry us beyond the known." }],
 ];
 
 const CHAR_MS = 34;
@@ -50,12 +44,25 @@ function WarpCanvas() {
     const cy = canvas.height / 2;
     const maxR = Math.hypot(cx, cy);
 
-    const COLORS = ["255,255,255", "127,212,255", "46,155,255", "255,45,77"];
+    const COLORS = [
+      { c: "207,228,255", w: 0.7 },
+      { c: "255,45,77", w: 0.12 },
+      { c: "46,155,255", w: 0.18 },
+    ];
+    const pickColor = () => {
+      const roll = Math.random();
+      let acc = 0;
+      for (const color of COLORS) {
+        acc += color.w;
+        if (roll <= acc) return color.c;
+      }
+      return COLORS[0].c;
+    };
     const stars = Array.from({ length: 420 }, () => ({
       a: Math.random() * Math.PI * 2,
       r: 24 + Math.random() * maxR * 0.55,
       s: 0.5 + Math.random(),
-      c: COLORS[Math.floor(Math.random() * COLORS.length)],
+      c: pickColor(),
     }));
 
     const duration = REDUCED() ? 450 : WARP_MS;
@@ -178,7 +185,7 @@ function TypedLines({ progress }: { progress: number }) {
   );
 }
 
-export type IntroControl = { launch: () => void };
+export type IntroControl = { launch: () => void; requested?: boolean };
 
 export function IntroScreen({
   onLaunch,
@@ -192,6 +199,7 @@ export function IntroScreen({
   const [phase, setPhase] = useState<"typing" | "warp" | "fade">("typing");
   const { progress, done, finish } = useTypewriter(phase === "typing");
   const launchedRef = useRef(false);
+  const reducedMotion = REDUCED();
 
   const handleLaunch = useCallback(() => {
     if (launchedRef.current) return;
@@ -206,6 +214,10 @@ export function IntroScreen({
   useEffect(() => {
     if (control) {
       control.launch = handleLaunch;
+      if (control.requested) {
+        control.requested = false;
+        handleLaunch();
+      }
     }
   }, [control, handleLaunch]);
 
@@ -214,7 +226,7 @@ export function IntroScreen({
       className="fixed inset-0 z-[1000] select-none overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 90% 70% at 50% 42%, #0b1224 0%, #05070d 68%)",
+          "radial-gradient(ellipse 90% 70% at 50% 42%, rgba(46,155,255,0.06) 0%, rgba(46,155,255,0) 68%), #05070d",
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: phase === "fade" ? 0 : 1 }}
@@ -353,22 +365,22 @@ export function IntroScreen({
           <>
             {/* 队名由来中文段落 */}
             <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.7, ease: "easeOut" }}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
+              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: reducedMotion ? 0.25 : 0.7, ease: "easeOut" }}
               className="mt-9 max-w-[44em] text-[clamp(13px,1.3vw,17px)] leading-[1.9] text-white/70 [font-family:var(--archive-font-cn)]"
             >
-              队名来自《星际迷航》的星舰 Enterprise。我们要做的，是驾驶自己的战舰，勇闯前人未至之境。在这里，你将亲手设计、制造并驾驶真正的机器人，站上全国最大的大学生机器人赛场。
+              队名取自《星际迷航》的星舰 Enterprise。我们不只眺望远方，而是亲手造出抵达那里的机器。在这里，你会和队友一起设计、制造、调试真正的机器人，把图纸上的方案送上赛场。
             </motion.p>
 
-            {/* 启航: 红色斜切平行四边形大按钮 (open-source HUD 语言) */}
+            {/* 入场 CTA: 单一动作, 避免中文口号和按钮命令互相抢占。 */}
             <motion.div
-              initial={{ opacity: 0, y: 26, scale: 0.7 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.45 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.96 }}
-              className="relative mt-12"
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 18 }}
+              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              transition={{ duration: reducedMotion ? 0.25 : 0.55, ease: "easeOut", delay: 0.45 }}
+              whileHover={reducedMotion ? undefined : { y: -2 }}
+              whileTap={reducedMotion ? undefined : { y: 1 }}
+              className="relative mt-16 md:mt-20"
             >
               {/* 蓝色错位衬底平行四边形 */}
               <div
@@ -384,24 +396,24 @@ export function IntroScreen({
                   e.stopPropagation();
                   handleLaunch();
                 }}
-                className="group relative cursor-pointer px-10 py-5 md:px-24 md:py-7"
+                className="group relative cursor-pointer px-8 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[#cfe4ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070d] md:px-12 md:py-5"
                 style={{
                   background: "linear-gradient(120deg, #ff2d4d, #d81f3e)",
                   transform: "skewX(-16deg)",
-                  boxShadow: "0 12px 44px rgba(255,45,77,0.42)",
+                  boxShadow: "0 10px 24px rgba(255,45,77,0.24)",
                 }}
               >
                 <span
                   className="flex items-center gap-3 whitespace-nowrap md:gap-5"
                   style={{ transform: "skewX(16deg)" }}
                 >
-                  <Rocket className="h-6 w-6 text-white transition-transform duration-300 group-hover:-translate-y-1 md:h-7 md:w-7" />
-                  <span className="text-3xl font-bold tracking-[0.3em] text-white [font-family:var(--archive-font-cn)] md:text-5xl md:tracking-[0.35em]">
-                    启航
+                  <span className="text-xl font-bold tracking-[0.16em] text-white [font-family:var(--archive-font-en)] md:text-2xl md:tracking-[0.2em]">
+                    ENTER THE ARENA
                   </span>
-                  <span className="hidden text-xs tracking-[0.4em] text-white/75 [font-family:var(--archive-font-en)] md:inline">
-                    SET SAIL · EXPLORE
+                  <span className="hidden text-[10px] tracking-[0.28em] text-white/70 [font-family:var(--archive-font-en)] md:inline">
+                    BEGIN EXPLORE SEQUENCE
                   </span>
+                  <ArrowRight className="h-5 w-5 text-white transition-transform duration-300 group-hover:translate-x-1 md:h-6 md:w-6" />
                 </span>
               </button>
             </motion.div>
@@ -413,40 +425,6 @@ export function IntroScreen({
       </motion.div>
 
       {phase !== "typing" && <WarpCanvas />}
-
-      {phase !== "typing" && (
-        <motion.div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(circle at center, rgba(255,255,255,0.9) 0%, rgba(127,212,255,0.45) 14%, rgba(46,155,255,0.12) 32%, transparent 55%)",
-            mixBlendMode: "screen",
-          }}
-          initial={{ opacity: 0, scale: 0.1 }}
-          animate={{ opacity: 0.95, scale: 2.2 }}
-          transition={{
-            duration: (REDUCED() ? 450 : WARP_MS) / 1000,
-            ease: [0.7, 0, 0.9, 0.35],
-          }}
-        />
-      )}
-
-      {phase !== "typing" && (
-        <motion.div
-          className="pointer-events-none absolute inset-0 bg-white"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: phase === "fade" ? 0 : 1 }}
-          transition={
-            phase === "fade"
-              ? { duration: FADE_MS / 1000, ease: "easeOut" }
-              : {
-                  delay: ((REDUCED() ? 450 : WARP_MS) * 0.74) / 1000,
-                  duration: ((REDUCED() ? 450 : WARP_MS) * 0.26) / 1000,
-                  ease: "easeIn",
-                }
-          }
-        />
-      )}
     </motion.div>
   );
 }

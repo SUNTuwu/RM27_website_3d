@@ -508,7 +508,7 @@
 .archive-media {
   position: relative;
   padding: 0 0 16vh;
-  background: #0a0e16;
+  background: var(--archive-bg);
   color: #eef3fb;
 }
 
@@ -517,7 +517,7 @@
   content: "";
   display: block;
   height: clamp(90px, 14vh, 170px);
-  background: linear-gradient(180deg, #f7f9fb 0%, rgba(244, 247, 251, 0.7) 28%, #0a0e16 100%);
+  background: linear-gradient(180deg, #f7f9fb 0%, rgba(244, 247, 251, 0.7) 28%, var(--archive-bg) 100%);
 }
 
 .archive-media__content {
@@ -614,21 +614,24 @@
 
 .archive-banner {
   position: relative;
+  box-sizing: border-box;
   width: 100vw;
   margin-left: calc(50% - 50vw);
-  min-height: 72vh;
-  margin-top: 8vh;
-  margin-bottom: 8vh;
+  min-height: 88vh;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 8vh 0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background: var(--archive-bg);
 }
 
 .archive-banner::before {
   content: "";
   position: absolute;
-  top: 0;
+  top: 8vh;
   left: 0;
   width: 100%;
   height: 90px;
@@ -641,7 +644,7 @@
 .archive-banner::after {
   content: "";
   position: absolute;
-  bottom: 0;
+  bottom: 8vh;
   left: 0;
   width: 100%;
   height: 90px;
@@ -653,16 +656,16 @@
 
 .archive-banner__bg {
   position: absolute;
-  inset: -6%;
+  inset: 8vh -6%;
   width: 112%;
-  height: 112%;
+  height: calc(100% - 16vh);
   object-fit: cover;
   z-index: 0;
 }
 
 .archive-banner__overlay {
   position: absolute;
-  inset: 0;
+  inset: 8vh 0;
   background: linear-gradient(
     90deg,
     rgba(5, 7, 13, 0.88) 0%,
@@ -1957,7 +1960,7 @@
     calc(100% - var(--cut)) 100%,
     2px 100%
   );
-  background: #0a0e16;
+  background: var(--archive-bg);
 }
 
 .unit-slot:first-child .unit-slot__media {
@@ -2093,7 +2096,7 @@
       rgba(255, 45, 77, 0.07) 0 1px,
       transparent 1px 12px
     ),
-    #0a0e16;
+    var(--archive-bg);
 }
 
 /* 原图是黑墨 + 透明底, 反相成白墨 */

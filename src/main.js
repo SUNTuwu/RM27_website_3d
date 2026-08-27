@@ -127,27 +127,27 @@ async function boot() {
     {
       key: "arena",
       name: "RMUC ARENA",
-      desc: "RMUC 标准赛场点云重建, 完整保留功能分区、增益点与掩体布局。",
+      desc: "这里不是背景，而是所有战术发生的坐标。功能区、增益点与掩体，让每一次移动都成为决策。",
       cloud,
     },
     {
       key: "dart",
-      name: "DART",
-      desc: "飞镖弹体表面采样点云, 保留 glTF 导出的姿态与外形细节。",
+      name: "DART SYSTEM",
+      desc: "制导飞镖如航天器修正航迹，以高速机动逼近目标，在唯一的窗口里一击定局。",
       cloud: null,
       loadPromise: null,
     },
     {
       key: "infantry",
       name: "INFANTRY",
-      desc: "步兵机器人整机表面采样点云, 源自带机构动画的高精度 glTF 模型。",
+      desc: "串联腿赋予步兵高机动性与地形跨越能力；它在障碍之间连续奔行，如同穿梭于星辰。",
       cloud: null,
       loadPromise: null,
     },
     {
       key: "engineer",
       name: "ENGINEER",
-      desc: "工程机器人整机表面采样点云, 源自高精度 glTF 模型。",
+      desc: "独特的月球车设计为复杂地形而生；像探索车驶过陌生月面，它把工程作业能力送达赛场的每个角落。",
       cloud: null,
       loadPromise: null,
     },
@@ -163,24 +163,24 @@ async function boot() {
   const focusSlidesByKey = {
     hero: [
       {
-        image: assetUrl("images/hero/arena-fleet.jpg"),
+        image: assetUrl("images/hero/arena-fleet.webp"),
         title: "HERO / 英雄机器人",
         desc: "英雄机器人列阵待命, 大弹丸吊射是远程火力核心。",
       },
       {
-        image: assetUrl("images/hero/英雄.gif"),
+        image: assetUrl("images/hero/英雄.webp"),
         title: "HERO / 赛场机动",
         desc: "英雄机器人在赛场上的机动与瞄准瞬间。",
       },
       {
-        image: assetUrl("images/hero/英雄1.gif"),
+        image: assetUrl("images/hero/英雄1.webp"),
         title: "HERO / 火力输出",
         desc: "大口径弹丸远程打击, 改变战局的关键一击。",
       },
     ],
     engineer: [
       {
-        image: assetUrl("images/engineer/0.jpg"),
+        image: assetUrl("images/engineer/0.webp"),
         title: "ENGINEER / 工程机器人",
         desc: "工程机器人负责取矿与救援, 是团队经济运转的保障。",
       },
@@ -190,46 +190,46 @@ async function boot() {
         desc: "多自由度机械臂完成矿石抓取与兑换。",
       },
       {
-        image: assetUrl("images/engineer/工程1.gif"),
+        image: assetUrl("images/engineer/工程1.webp"),
         title: "ENGINEER / 取矿实录",
         desc: "工程机器人赛场取矿作业实录。",
       },
       {
-        image: assetUrl("images/engineer/工程2.gif"),
+        image: assetUrl("images/engineer/工程2.webp"),
         title: "ENGINEER / 兑换实录",
         desc: "矿石兑换为团队带来持续经济收益。",
       },
     ],
     infantry: [
       {
-        image: assetUrl("images/infantry/0.jpg"),
+        image: assetUrl("images/infantry/0.webp"),
         title: "INFANTRY / 步兵机器人",
         desc: "步兵机器人是正面交火的主力, 高射速小弹丸持续输出。",
       },
       {
-        image: assetUrl("images/infantry/步兵.gif"),
+        image: assetUrl("images/infantry/步兵.webp"),
         title: "INFANTRY / 正面交火",
         desc: "步兵机器人在掩体间穿梭交火。",
       },
       {
-        image: assetUrl("images/infantry/步兵1.gif"),
+        image: assetUrl("images/infantry/步兵1.webp"),
         title: "INFANTRY / 快速机动",
         desc: "轻量化底盘带来的快速转场能力。",
       },
       {
-        image: assetUrl("images/infantry/步兵2.gif"),
+        image: assetUrl("images/infantry/步兵2.webp"),
         title: "INFANTRY / 集火推进",
         desc: "多机集火推进, 撕开对方防线。",
       },
     ],
     sentry: [
       {
-        image: assetUrl("images/sentry/0.jpg"),
+        image: assetUrl("images/sentry/0.webp"),
         title: "SENTRY / 哨兵机器人",
         desc: "哨兵机器人全自动巡逻防守, 是基地前的最后防线。",
       },
       {
-        image: assetUrl("images/sentry/哨兵.gif"),
+        image: assetUrl("images/sentry/哨兵.webp"),
         title: "SENTRY / 自动索敌",
         desc: "哨兵机器人自动索敌与反击实录。",
       },
@@ -942,7 +942,7 @@ async function boot() {
         arenaEntry.name,
         arenaEntry.desc,
       );
-      // 与启航一致的左偏构图 + 背景环渐显
+      // 与入场转场一致的左偏构图 + 背景环渐显
       viewOffsetX = window.innerWidth * VISUAL_CONFIG.explore.sideOffset;
       viewOffsetY = -window.innerHeight * VISUAL_CONFIG.explore.verticalOffset;
       backRing.group.visible = true;
@@ -1629,7 +1629,7 @@ async function boot() {
     }
   });
 
-  // ---------- 入场: 起始界面 -> 启航 -> ASSEMBLE ----------
+  // ---------- 入场: 起始界面 -> 星线跃迁 -> ASSEMBLE ----------
   // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
@@ -1664,7 +1664,7 @@ async function boot() {
     });
   };
 
-  // 点云聚拢由起始界面的「启航」按钮触发 (跃迁转场结束后渐隐)
+  // 点云聚拢由起始界面的入场按钮触发 (跃迁转场结束后渐隐)
   const intro = mountIntroScreen({ onLaunch: beginAssemble });
   introControl = intro?.control ?? null;
   if (!intro) {
@@ -1763,6 +1763,21 @@ async function boot() {
 
 function createStars(count = 1500) {
   const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const palette = [
+    { color: new THREE.Color(0xcfe4ff), weight: 0.7 },
+    { color: new THREE.Color(0xff2d4d), weight: 0.12 },
+    { color: new THREE.Color(0x2e9bff), weight: 0.18 },
+  ];
+  const pickColor = () => {
+    const roll = Math.random();
+    let acc = 0;
+    for (const entry of palette) {
+      acc += entry.weight;
+      if (roll <= acc) return entry.color;
+    }
+    return palette[0].color;
+  };
   for (let i = 0; i < count; i++) {
     const u = Math.random() * 2 - 1;
     const phi = Math.random() * Math.PI * 2;
@@ -1771,13 +1786,18 @@ function createStars(count = 1500) {
     positions[i * 3] = s * Math.cos(phi) * r;
     positions[i * 3 + 1] = Math.abs(u) * r * 0.6 - 10; // 偏上半球
     positions[i * 3 + 2] = s * Math.sin(phi) * r;
+    const color = pickColor();
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   const material = new THREE.PointsMaterial({
-    color: 0x8fb0dd,
     size: 1.5,
     sizeAttenuation: false,
+    vertexColors: true,
     transparent: true,
     opacity: 0.55,
     depthWrite: false,

@@ -14,8 +14,8 @@ const STATE_META = {
   explore: {
     index: "01",
     label: "POINT CLOUD",
-    hint: "<b>CLICK</b> PULSE WAVE &nbsp;·&nbsp; <b>DRAG</b> ORBIT VIEW &nbsp;·&nbsp; <b>SCROLL</b> INITIATE SCAN",
-    touchHint: "<b>TAP</b> PULSE WAVE &nbsp;·&nbsp; <b>DRAG</b> ORBIT VIEW &nbsp;·&nbsp; <b>SWIPE UP</b> INITIATE SCAN",
+    hint: "<b>CLICK</b> 点按波纹 &nbsp;·&nbsp; <b>DRAG</b> 环绕观察 &nbsp;·&nbsp; <b>SCROLL</b> 开始扫描",
+    touchHint: "<b>TAP</b> 点按波纹 &nbsp;·&nbsp; <b>DRAG</b> 环绕观察 &nbsp;·&nbsp; <b>SWIPE UP</b> 开始扫描",
   },
   scan: {
     index: "02",
