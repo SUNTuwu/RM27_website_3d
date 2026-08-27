@@ -23,6 +23,11 @@
 
 :root {
   --bg: #05070d;
+  --space-backdrop:
+    radial-gradient(1100px 700px at 82% -10%, rgba(46, 155, 255, 0.13), transparent 60%),
+    radial-gradient(900px 600px at 5% 110%, rgba(255, 45, 77, 0.09), transparent 62%),
+    radial-gradient(700px 500px at 52% 46%, rgba(127, 156, 245, 0.05), transparent 70%),
+    var(--bg);
   --bg-panel: rgba(8, 13, 22, 0.62);
   --ink: #e9f1ff;
   --ink-dim: rgba(158, 182, 216, 0.72);
@@ -145,9 +150,7 @@ html.is-document-mode .pulse-guide {
 }
 
 html.is-document-mode:not(.is-document-transitioning) {
-  --snap-safe-top: clamp(48px, 8svh, 88px);
-  --snap-safe-bottom: clamp(28px, 5svh, 56px);
-  scroll-padding-block: var(--snap-safe-top) var(--snap-safe-bottom);
+  scroll-padding-block: 0;
   scroll-snap-type: y proximity;
 }
 
@@ -187,7 +190,7 @@ body {
   height: 100svh;
   overflow: hidden;
   isolation: isolate;
-  background: var(--bg);
+  background: var(--space-backdrop);
 }
 
 #scene-canvas {
@@ -210,8 +213,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(2, 4, 9, 0.6) 100%),
-    linear-gradient(180deg, rgba(2, 4, 9, 0.35) 0%, transparent 18%, transparent 82%, rgba(2, 4, 9, 0.45) 100%);
+    radial-gradient(ellipse at 50% 42%, transparent 62%, rgba(2, 4, 9, 0.22) 100%),
+    linear-gradient(180deg, rgba(2, 4, 9, 0.12) 0%, transparent 20%, transparent 82%, rgba(2, 4, 9, 0.18) 100%);
 }
 
 /* SCRUB 回滚到起点 -> 渐隐黑场重载 EXPLORE (时长由 JS 按 config 写入) */
@@ -220,7 +223,7 @@ body {
   inset: 0;
   z-index: 90;
   pointer-events: none;
-  background: var(--bg);
+  background: var(--space-backdrop);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -269,6 +272,7 @@ body {
   );
   -webkit-mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
   mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  transform: translate3d(0, -10px, 0);
   will-change: transform;
 }
 
@@ -513,15 +517,49 @@ body {
   user-select: none;
 }
 
-.hint-bar b {
+.hud-bilingual {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hud-bilingual__en {
   font-family: var(--font-en);
   font-weight: 400;
-  font-size: 11px;
   color: var(--ink-faint);
-  border: 0;
-  padding: 0;
-  margin-right: 2px;
-  background: none;
+  text-transform: uppercase;
+}
+
+.hud-bilingual__cn {
+  font-family: var(--font-cn);
+  color: var(--ink);
+}
+
+.hint-bar__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hint-bar__item {
+  flex: none;
+  white-space: nowrap;
+}
+
+.hint-bar__item .hud-bilingual__en {
+  font-size: 11px;
+}
+
+.hint-bar__item .hud-bilingual__cn {
+  font-size: 13px;
+}
+
+.hint-bar__separator {
+  margin-right: 4px;
+  color: var(--ink-faint);
 }
 
 .hint-bar__pulse {
@@ -648,11 +686,7 @@ body {
 }
 
 .key-hints__lead {
-  display: flex;
-  gap: 0.35em;
   margin-bottom: 2px;
-  color: var(--ink);
-  font-family: var(--font-cn);
   font-size: 13px;
   line-height: 1.45;
   text-shadow: 0 0 14px rgba(127, 212, 255, 0.28);
@@ -662,7 +696,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: var(--bg);
+  background: var(--space-backdrop);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -731,7 +765,6 @@ body {
 
 .key-hint__action {
   font-size: 12px;
-  color: var(--ink-dim);
   white-space: nowrap;
 }
 
@@ -1440,31 +1473,6 @@ html.is-document-mode #scene-canvas {
   will-change: transform;
 }
 
-.unit-site::before,
-.unit-site::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 100%;
-  z-index: 3;
-  pointer-events: none;
-  clip-path: polygon(0 100%, 0 55%, 6% 55%, 8% 0, 26% 0, 29% 55%, 100% 55%, 100% 100%);
-}
-
-/* 档案上沿文件夹折线: 与章节间折线同款红蓝描边, 填充跟随 HERO 浅色主视觉 */
-.unit-site::before {
-  top: -92px;
-  height: 92px;
-  background: linear-gradient(90deg, var(--archive-red), var(--archive-blue));
-}
-
-.unit-site::after {
-  top: -90px;
-  height: 90px;
-  background: var(--archive-card);
-  box-shadow: 0 -25px 50px rgba(0, 0, 0, 0.35);
-}
-
 @media (max-width: 900px) {
   .masthead {
     top: 86px;
@@ -1485,21 +1493,23 @@ html.is-document-mode #scene-canvas {
   .coordinate-readout { display: none; }
   .key-hints {
     left: 28px;
-    bottom: 28px;
+    bottom: calc(env(safe-area-inset-bottom) + 134px);
     display: flex;
     gap: 0;
   }
   .key-hints__lead {
-    display: block;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
     margin: 0;
     font-size: 12px;
     line-height: 1.4;
   }
-  .key-hints__lead span { display: block; }
   .key-hint { display: none; }
   .scroll-cue { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
+  .hint-bar__content { flex-wrap: wrap; gap: 5px 9px; }
   .explore-panel {
     top: 60%;
     right: 28px;
@@ -1655,7 +1665,7 @@ html.is-document-mode #scene-canvas {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #app[data-state="explore"] .explore-brand-mark::before {
+  .explore-brand-mark::before {
     animation: none;
     transform: none;
   }

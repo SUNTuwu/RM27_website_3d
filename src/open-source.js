@@ -1,112 +1,17 @@
-/* 开源档案页: 星空 + 跃迁 (Canvas 2D, 复用参考页行为) + 项目档案渲染 */
+import { createSpaceStarfield } from "./space-starfield";
+
+/* 开源档案页: 共享恒速星场 + 跃迁 + 项目档案渲染 */
 (function () {
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var warpBoost = 0;
-  var targetBoost = 0;
   var navigating = false;
 
   /* ---------- 星空: 缓慢漂星 + 跃迁拉线, 少量红蓝星点 ---------- */
   var canvas = document.getElementById("warp");
+  var starfield = null;
   if (!reduced && canvas) {
-    var ctx = canvas.getContext("2d");
-    if (!ctx) {
+    starfield = createSpaceStarfield(canvas);
+    if (!starfield) {
       canvas.remove();
-    } else {
-      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      var width = 0;
-      var height = 0;
-      var stars = [];
-      var STAR_COLORS = [
-        { c: "207,228,255", w: 0.7 }, // 主色: 冷白蓝
-        { c: "255,45,77", w: 0.12 }, // 红
-        { c: "46,155,255", w: 0.18 }, // 蓝
-      ];
-
-      function pickColor() {
-        var roll = Math.random();
-        var acc = 0;
-        for (var i = 0; i < STAR_COLORS.length; i++) {
-          acc += STAR_COLORS[i].w;
-          if (roll <= acc) return STAR_COLORS[i].c;
-        }
-        return STAR_COLORS[0].c;
-      }
-
-      function spawn(deep) {
-        var angle = Math.random() * Math.PI * 2;
-        var radius = 24 + Math.random() * 350;
-        return {
-          x: Math.cos(angle) * radius,
-          y: Math.sin(angle) * radius,
-          z: deep ? 1200 : Math.random() * 1200 + 1,
-          color: pickColor(),
-          twinkle: Math.random() * Math.PI * 2,
-        };
-      }
-
-      function resize() {
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvas.width = Math.floor(width * dpr);
-        canvas.height = Math.floor(height * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        var target = width < 720 ? 240 : 620;
-        while (stars.length < target) stars.push(spawn(false));
-        stars.length = target;
-      }
-
-      resize();
-      window.addEventListener("resize", resize, { passive: true });
-
-      var running = true;
-      document.addEventListener("visibilitychange", function () {
-        running = !document.hidden;
-        if (running) requestAnimationFrame(frame);
-      });
-
-      var time = 0;
-      function frame() {
-        if (!running) return;
-        time += 1 / 60;
-        warpBoost += (targetBoost - warpBoost) * 0.07;
-        var velocity = 0.55 + warpBoost * 17;
-        var stretch = 4 + warpBoost * 130;
-        var fov = 340 / (1 + warpBoost * 0.55);
-        var cx = width / 2;
-        var cy = height / 2;
-
-        ctx.clearRect(0, 0, width, height);
-        ctx.lineCap = "round";
-
-        for (var i = 0; i < stars.length; i++) {
-          var star = stars[i];
-          star.z -= velocity;
-          if (star.z < 4) {
-            stars[i] = spawn(true);
-            star = stars[i];
-          }
-          var depth = Math.max(star.z, 4);
-          var sx = cx + (star.x / depth) * fov;
-          var sy = cy + (star.y / depth) * fov;
-          var tailDepth = Math.min(depth + stretch, 1300);
-          var tx = cx + (star.x / tailDepth) * fov;
-          var ty = cy + (star.y / tailDepth) * fov;
-          if (sx < -40 || sx > width + 40 || sy < -40 || sy > height + 40) {
-            continue;
-          }
-          var alpha =
-            (0.28 + 0.5 * (1 - depth / 1300)) *
-            (0.72 + 0.28 * Math.sin(time * 2.1 + star.twinkle));
-          ctx.strokeStyle = "rgba(" + star.color + "," + alpha.toFixed(3) + ")";
-          ctx.lineWidth = depth < 260 ? 1.6 : 1;
-          ctx.beginPath();
-          ctx.moveTo(tx, ty);
-          ctx.lineTo(sx, sy);
-          ctx.stroke();
-        }
-        requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
     }
   } else if (canvas && reduced) {
     canvas.remove();
@@ -314,7 +219,7 @@
         return;
       }
       navigating = true;
-      targetBoost = 1;
+      starfield?.setBoost(1);
       document.body.classList.add("is-warping");
       setTimeout(function () {
         window.location.assign(destination);

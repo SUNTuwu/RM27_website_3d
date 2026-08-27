@@ -31,21 +31,21 @@ export function createStage(
   } = {},
 ) {
   const { glow, lighting } = arena;
+  const backdropColor = 0x05070d;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x05070d);
-  scene.fog = new THREE.FogExp2(0x05070d, 0.0075);
+  scene.fog = new THREE.FogExp2(backdropColor, 0.0075);
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: false,
-    alpha: false,
+    alpha: true,
     powerPreference: "high-performance",
     stencil: false,
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.85;
-  renderer.setClearColor(scene.background, 1);
+  renderer.setClearColor(backdropColor, 0);
   // X 轴扫描转场依赖局部裁剪平面
   renderer.localClippingEnabled = true;
 

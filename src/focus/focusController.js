@@ -204,6 +204,11 @@ export function createFocusController({
       });
 
       const active = targetStates[activeIndex];
+      if (mode === "entering") {
+        endPos.copy(active.anchor).add(restOffset);
+        lookMatrix.lookAt(endPos, active.anchor, up);
+        endQuat.setFromRotationMatrix(lookMatrix);
+      }
       if (mode === "entering" || mode === "exiting") {
         modeTime += delta;
         if (Number.isFinite(elapsed) && modeStartedAt === null) {

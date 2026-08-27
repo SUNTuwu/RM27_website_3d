@@ -12,6 +12,8 @@ const defaults = {
   output: "assets/pointcloud/arena_points.bin",
   count: 50_000,
   rotationAxis: "y",
+  symmetry: true,
+  recenter: false,
 };
 const componentReaders = {
   5120: { bytes: 1, read: (view, offset) => view.getInt8(offset) },
@@ -40,6 +42,10 @@ function parseArguments(argv) {
       const key = name === "--rotation-axis" ? "rotationAxis" : name.slice(2);
       options[key] = name === "--count" ? Number(value) : value;
       index += 1;
+    } else if (name === "--no-symmetry") {
+      options.symmetry = false;
+    } else if (name === "--recenter") {
+      options.recenter = true;
     } else {
       throw new Error(`Unknown argument: ${name}`);
     }
@@ -302,6 +308,17 @@ function samplePoints(distribution, count) {
   return points;
 }
 
+function recenterPointCloud(points, boundsMin, boundsMax) {
+  const center = boundsMin.clone().add(boundsMax).multiplyScalar(0.5);
+  for (let index = 0; index < points.length; index += 3) {
+    points[index] -= center.x;
+    points[index + 1] -= center.y;
+    points[index + 2] -= center.z;
+  }
+  boundsMin.sub(center);
+  boundsMax.sub(center);
+}
+
 function encodePointCloud(points, boundsMin, boundsMax) {
   const headerBytes = 32;
   const output = Buffer.allocUnsafe(headerBytes + points.byteLength);
@@ -325,12 +342,15 @@ async function run() {
   const outputPath = path.resolve(repositoryRoot, options.output);
   const gltf = JSON.parse(await readFile(sourcePath, "utf8"));
   const buffers = await loadBuffers(gltf, path.dirname(sourcePath));
-  const instances = createSymmetricInstances(
-    collectPrimitiveInstances(gltf),
-    options.rotationAxis,
-  );
+  const sourceInstances = collectPrimitiveInstances(gltf);
+  const instances = options.symmetry
+    ? createSymmetricInstances(sourceInstances, options.rotationAxis)
+    : sourceInstances;
   const distribution = buildTriangleDistribution(gltf, buffers, instances);
   const points = samplePoints(distribution, options.count);
+  if (options.recenter) {
+    recenterPointCloud(points, distribution.boundsMin, distribution.boundsMax);
+  }
   const encoded = encodePointCloud(
     points,
     distribution.boundsMin,
@@ -342,7 +362,8 @@ async function run() {
     `Generated ${path.relative(repositoryRoot, outputPath)}: ` +
       `${options.count.toLocaleString("en-US")} points, ` +
       `${(encoded.byteLength / 1024).toFixed(1)} KiB, ` +
-      `180deg ${options.rotationAxis.toUpperCase()} symmetry`,
+      `${options.symmetry ? `180deg ${options.rotationAxis.toUpperCase()} symmetry` : "source geometry"}` +
+      `${options.recenter ? ", recentered" : ""}`,
   );
 }
 

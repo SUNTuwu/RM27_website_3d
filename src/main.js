@@ -32,6 +32,8 @@ const SCAN_DURATION = 3.2;
 const DOCUMENT_REVEAL_DURATION_MS = 560;
 const DOCUMENT_CANVAS_PARALLAX_RATIO = 0.14;
 const EXPLORE_P1_DELAY_MS = 550;
+const EXPLORE_CLOUD_BOOT_BUDGET_MS = 1_200;
+const DEFERRED_SCENE_LAYER = 1;
 
 function easeInOutCubic(x) {
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
@@ -56,6 +58,36 @@ function yieldToMainThread() {
     }
     window.requestAnimationFrame(() => window.setTimeout(resolve, 0));
   });
+}
+
+function waitForDelay(delayMs) {
+  return new Promise((resolve) => window.setTimeout(resolve, delayMs));
+}
+
+function trackPromiseState(promise) {
+  if (!promise) return null;
+  const state = {
+    status: "pending",
+    error: null,
+    promise: null,
+  };
+  state.promise = Promise.resolve(promise).then(
+    (value) => {
+      state.status = "fulfilled";
+      return value;
+    },
+    (error) => {
+      state.status = "rejected";
+      state.error = error;
+      throw error;
+    },
+  );
+  void state.promise.catch(() => {});
+  return state;
+}
+
+function setObjectLayer(root, layer) {
+  root.traverse((object) => object.layers.set(layer));
 }
 
 const hud = createHud();
@@ -126,6 +158,12 @@ async function boot({
   intro = null,
   pointCloudUrl = assetUrl("pointcloud/arena_points.bin"),
   pointCloudBufferPromise = null,
+  explorePointCloudUrls = {
+    dart: assetUrl("pointcloud/dart_points.bin"),
+    infantry: assetUrl("pointcloud/infantry_points.bin"),
+    engineer: assetUrl("pointcloud/engineer_points.bin"),
+  },
+  explorePointCloudBufferPromises = {},
   onSceneReady,
 } = {}) {
   hud.setState("boot");
@@ -200,6 +238,11 @@ async function boot({
       desc: "制导飞镖如航天器修正航迹，以高速机动逼近目标，在唯一的窗口里一击定局。",
       cloud: null,
       loadPromise: null,
+      pointCloudUrl: explorePointCloudUrls.dart,
+      pointCloudBufferPromise: explorePointCloudBufferPromises.dart,
+      pointCloudBufferState: trackPromiseState(
+        explorePointCloudBufferPromises.dart,
+      ),
     },
     {
       key: "infantry",
@@ -207,6 +250,11 @@ async function boot({
       desc: "串联腿赋予步兵高机动性与地形跨越能力；它在障碍之间连续奔行，如同穿梭于星辰。",
       cloud: null,
       loadPromise: null,
+      pointCloudUrl: explorePointCloudUrls.infantry,
+      pointCloudBufferPromise: explorePointCloudBufferPromises.infantry,
+      pointCloudBufferState: trackPromiseState(
+        explorePointCloudBufferPromises.infantry,
+      ),
     },
     {
       key: "engineer",
@@ -214,6 +262,11 @@ async function boot({
       desc: "独特的月球车设计为复杂地形而生；像探索车驶过陌生月面，它把工程作业能力送达赛场的每个角落。",
       cloud: null,
       loadPromise: null,
+      pointCloudUrl: explorePointCloudUrls.engineer,
+      pointCloudBufferPromise: explorePointCloudBufferPromises.engineer,
+      pointCloudBufferState: trackPromiseState(
+        explorePointCloudBufferPromises.engineer,
+      ),
     },
   ];
   const ARENA_MODEL_INDEX = 0;
@@ -222,6 +275,13 @@ async function boot({
   let switchTween = null;
   let exploreSwitchRequest = 0;
   let scanRequested = false;
+  let remainingExploreCloudsPromise = null;
+  let exploreCloudBootState = {
+    budgetMs: EXPLORE_CLOUD_BOOT_BUDGET_MS,
+    elapsedMs: 0,
+    budgetExhausted: false,
+    deferredKeys: [],
+  };
 
   const focusSlidesByKey = {
     hero: [
@@ -304,6 +364,7 @@ async function boot({
   let deferredAssetsReady = false;
   let deferredAssetsError = null;
   let deferredAssetsPromise = null;
+  let deferredWarmReport = [];
 
   function configureProjectAsset(key, gltf) {
     if (configuredAssetKeys.has(key)) {
@@ -317,6 +378,36 @@ async function boot({
         : undefined,
     );
     configuredAssetKeys.add(key);
+  }
+
+  function simplifyTimelineHitMaterial(gltf) {
+    const replacements = new Map();
+    gltf.scene.traverse((object) => {
+      if (!object.isMesh) return;
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+      const nextMaterials = materials.map((material) => {
+        if (material?.name?.toLowerCase() !== "hit") return material;
+        if (!replacements.has(material)) {
+          const replacement = new THREE.MeshBasicMaterial();
+          replacement.copy(material);
+          replacement.name = material.name;
+          replacement.color.set(0xffffff);
+          replacement.map = material.emissiveMap ?? material.map;
+          replacement.alphaMap = material.alphaMap;
+          replacement.depthWrite = false;
+          replacement.toneMapped = false;
+          replacement.needsUpdate = true;
+          replacements.set(material, replacement);
+        }
+        return replacements.get(material);
+      });
+      object.material = Array.isArray(object.material)
+        ? nextMaterials
+        : nextMaterials[0];
+    });
+    replacements.forEach((_replacement, source) => source.dispose());
   }
 
   function normalizeExploreCloud(modelCloud, key) {
@@ -342,7 +433,7 @@ async function boot({
     stage.scene.add(modelCloud.points);
   }
 
-  function ensureExploreCloud(entry) {
+  function ensureExploreCloud(entry, { allowModelFallback = true } = {}) {
     if (entry.cloud) {
       return Promise.resolve(entry.cloud);
     }
@@ -350,33 +441,169 @@ async function boot({
       return entry.loadPromise;
     }
 
-    entry.loadPromise = assetLoader
-      .load(entry.key)
-      .then((gltf) => {
-        stagedAssets[entry.key] = gltf;
-        const assetReport = auditProjectAssets(
-          { [entry.key]: gltf },
-          { required: [entry.key] },
-        );
-        if (assetReport.issues.length) {
-          throw new Error(
-            `${entry.key} asset audit failed: ${assetReport.issues.join("; ")}`,
+    entry.loadPromise = (async () => {
+      if (entry.pointCloudUrl) {
+        try {
+          const bufferPromise =
+            entry.pointCloudBufferState?.promise ??
+            entry.pointCloudBufferPromise;
+          const buffer = bufferPromise
+            ? await bufferPromise
+            : await fetchPointCloudBuffer(entry.pointCloudUrl);
+          const pointData = parsePointCloudData(buffer, entry.pointCloudUrl);
+          const modelCloud = createPointCloudFromData(
+            pointData,
+            VISUAL_CONFIG.pointCloud,
+          );
+          normalizeExploreCloud(modelCloud, entry.key);
+          entry.cloud = modelCloud;
+          return modelCloud;
+        } catch (error) {
+          if (!allowModelFallback) {
+            throw error;
+          }
+          console.warn(
+            `[ENTERPRIZE] ${entry.key} point artifact unavailable; sampling glTF fallback`,
+            error,
           );
         }
-        configureProjectAsset(entry.key, gltf);
-        const modelCloud = createPointCloud(gltf.scene, {
-          ...VISUAL_CONFIG.pointCloud,
-          recenter: true,
-        });
-        normalizeExploreCloud(modelCloud, entry.key);
-        entry.cloud = modelCloud;
-        return modelCloud;
-      })
+      }
+
+      const gltf = await assetLoader.load(entry.key);
+      stagedAssets[entry.key] = gltf;
+      const assetReport = auditProjectAssets(
+        { [entry.key]: gltf },
+        { required: [entry.key] },
+      );
+      if (assetReport.issues.length) {
+        throw new Error(
+          `${entry.key} asset audit failed: ${assetReport.issues.join("; ")}`,
+        );
+      }
+      configureProjectAsset(entry.key, gltf);
+      const modelCloud = createPointCloud(gltf.scene, {
+        ...VISUAL_CONFIG.pointCloud,
+        recenter: true,
+      });
+      normalizeExploreCloud(modelCloud, entry.key);
+      entry.cloud = modelCloud;
+      return modelCloud;
+    })()
       .catch((error) => {
         entry.loadPromise = null;
         throw error;
       });
     return entry.loadPromise;
+  }
+
+  async function prepareExploreCloudsForLaunch() {
+    const startedAt = performance.now();
+    const deadline = startedAt + EXPLORE_CLOUD_BOOT_BUDGET_MS;
+    const pending = new Set(exploreModels.slice(1));
+
+    while (pending.size > 0 && performance.now() < deadline) {
+      let settledEntryHandled = false;
+      for (const entry of [...pending]) {
+        const bufferState = entry.pointCloudBufferState;
+        if (bufferState?.status === "rejected") {
+          pending.delete(entry);
+          settledEntryHandled = true;
+          console.warn(
+            `[ENTERPRIZE] ${entry.key} EXPLORE point prefetch failed`,
+            bufferState.error,
+          );
+          continue;
+        }
+        if (!bufferState || bufferState.status !== "fulfilled") continue;
+        if (performance.now() >= deadline) break;
+
+        pending.delete(entry);
+        settledEntryHandled = true;
+        await yieldToMainThread();
+        try {
+          await ensureExploreCloud(entry, { allowModelFallback: false });
+          performance.mark?.(`enterprize:explore-cloud-${entry.key}-ready`);
+        } catch (error) {
+          // Keep the arena usable if a generated artifact is invalid. Selecting
+          // that model later retries through the existing glTF sampling path.
+          console.warn(
+            `[ENTERPRIZE] Unable to prebuild ${entry.key} EXPLORE cloud`,
+            error,
+          );
+        }
+      }
+
+      if (pending.size === 0 || performance.now() >= deadline) break;
+      if (!settledEntryHandled) {
+        const pendingSettlements = [...pending]
+          .map((entry) => entry.pointCloudBufferState?.promise)
+          .filter(Boolean)
+          .map((promise) => promise.then(
+            () => undefined,
+            () => undefined,
+          ));
+        if (pendingSettlements.length === 0) break;
+        await Promise.race([
+          ...pendingSettlements,
+          waitForDelay(Math.max(deadline - performance.now(), 0)),
+        ]);
+      }
+    }
+
+    const deferredKeys = exploreModels
+      .slice(1)
+      .filter((entry) => !entry.cloud)
+      .map((entry) => entry.key);
+    exploreCloudBootState = {
+      budgetMs: EXPLORE_CLOUD_BOOT_BUDGET_MS,
+      elapsedMs: performance.now() - startedAt,
+      budgetExhausted:
+        deferredKeys.length > 0 && performance.now() >= deadline,
+      deferredKeys,
+    };
+  }
+
+  function prepareRemainingExploreClouds() {
+    if (remainingExploreCloudsPromise) return remainingExploreCloudsPromise;
+
+    remainingExploreCloudsPromise = (async () => {
+      const pending = new Set(
+        exploreModels.slice(1).filter((entry) => !entry.cloud),
+      );
+      while (pending.size > 0 && state === "explore") {
+        const settlement = await Promise.race(
+          [...pending].map(async (entry) => {
+            try {
+              if (entry.pointCloudBufferState?.promise) {
+                await entry.pointCloudBufferState.promise;
+              }
+              return { entry, error: null };
+            } catch (error) {
+              return { entry, error };
+            }
+          }),
+        );
+        pending.delete(settlement.entry);
+        if (settlement.error || state !== "explore") continue;
+
+        await yieldToMainThread();
+        if (state !== "explore") break;
+        try {
+          await ensureExploreCloud(settlement.entry, {
+            allowModelFallback: false,
+          });
+          performance.mark?.(
+            `enterprize:explore-cloud-${settlement.entry.key}-background-ready`,
+          );
+        } catch (error) {
+          console.warn(
+            `[ENTERPRIZE] Background EXPLORE cloud preparation failed for ${settlement.entry.key}`,
+            error,
+          );
+        }
+      }
+    })();
+    return remainingExploreCloudsPromise;
   }
 
   function startExploreTransition(outgoing, incoming, requestId) {
@@ -521,7 +748,199 @@ async function boot({
   // ---------- 氛围: 星空 ----------
   stage.scene.add(createStars());
 
-  // ---------- P1 资产: 首帧后后台准备 SCAN / SCRUB ----------
+  // ---------- P1 资产: EXPLORE 首帧稳定后分批准备 SCAN / SCRUB ----------
+  async function runDeferredPhase(name, operation) {
+    await yieldToMainThread();
+    const startMark = `enterprize:p1-${name}-start`;
+    const endMark = `enterprize:p1-${name}-end`;
+    performance.mark?.(startMark);
+    const result = await operation();
+    performance.mark?.(endMark);
+    performance.measure?.(`enterprize:p1-${name}`, startMark, endMark);
+    return result;
+  }
+
+  function collectDeferredWarmEntries(groups) {
+    return groups.flatMap(({ name: group, root }) => {
+      const entries = [];
+      root.traverse((object) => {
+        if (
+          !object.isMesh &&
+          !object.isPoints &&
+          !object.isLine &&
+          !object.isSprite
+        ) {
+          return;
+        }
+        const materials = Array.isArray(object.material)
+          ? [...new Set(object.material.filter(Boolean))]
+          : [object.material].filter(Boolean);
+        materials.forEach((material) => {
+          entries.push({
+            group,
+            name: `${group}-${String(entries.length + 1).padStart(2, "0")}`,
+            root: object,
+            material,
+          });
+        });
+      });
+      return entries;
+    });
+  }
+
+  async function warmDeferredRoots(entries) {
+    const renderer = stage.renderer;
+    const warmCamera = freeCamera.clone();
+    warmCamera.layers.set(DEFERRED_SCENE_LAYER);
+    deferredWarmReport = [];
+    const initializedTextures = new Set();
+    const warmTarget = new THREE.WebGLRenderTarget(1, 1, {
+      depthBuffer: true,
+      stencilBuffer: false,
+    });
+    const previousVisibility = new Map(
+      entries.map(({ root }) => [root, root.visible]),
+    );
+
+    const collectTextures = (root) => {
+      const textures = [];
+      const appendTexture = (value) => {
+        if (value?.isTexture && !initializedTextures.has(value)) {
+          initializedTextures.add(value);
+          textures.push(value);
+        }
+      };
+      root.traverse((object) => {
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+        materials.forEach((material) => {
+          if (!material) return;
+          Object.values(material).forEach(appendTexture);
+          Object.values(material.uniforms ?? {}).forEach((uniform) => {
+            const value = uniform?.value;
+            if (Array.isArray(value)) value.forEach(appendTexture);
+            else appendTexture(value);
+          });
+        });
+      });
+      return textures;
+    };
+
+    try {
+      renderer.initRenderTarget(warmTarget);
+      for (const { group, name, root, material } of entries) {
+        await yieldToMainThread();
+        entries.forEach(({ root: candidate }) => {
+          candidate.visible = candidate === root;
+        });
+        const objectStates = [];
+        const previousMaterial = root.material;
+        root.material = material;
+        let renderableCount = 0;
+        root.traverse((object) => {
+          objectStates.push({
+            object,
+            visible: object.visible,
+            frustumCulled: object.frustumCulled,
+          });
+          object.visible = true;
+          object.frustumCulled = false;
+          if (
+            object.isMesh ||
+            object.isPoints ||
+            object.isLine ||
+            object.isSprite
+          ) {
+            renderableCount += 1;
+          }
+        });
+
+        try {
+          const startMark = `enterprize:p1-warm-${name}-start`;
+          const endMark = `enterprize:p1-warm-${name}-end`;
+          performance.mark?.(startMark);
+          const textures = collectTextures(root);
+          for (const [textureIndex, texture] of textures.entries()) {
+            await yieldToMainThread();
+            const textureMark = `enterprize:p1-texture-${name}-${textureIndex + 1}`;
+            performance.mark?.(`${textureMark}-start`);
+            renderer.initTexture(texture);
+            performance.mark?.(`${textureMark}-end`);
+            performance.measure?.(
+              textureMark,
+              `${textureMark}-start`,
+              `${textureMark}-end`,
+            );
+          }
+          await yieldToMainThread();
+          const compileMark = `enterprize:p1-object-compile-${name}`;
+          performance.mark?.(`${compileMark}-start`);
+          await renderer.compileAsync(root, warmCamera, stage.scene);
+          performance.mark?.(`${compileMark}-end`);
+          performance.measure?.(
+            compileMark,
+            `${compileMark}-start`,
+            `${compileMark}-end`,
+          );
+          await yieldToMainThread();
+
+          const uploadMark = `enterprize:p1-object-upload-${name}`;
+          performance.mark?.(`${uploadMark}-start`);
+          const previousTarget = renderer.getRenderTarget();
+          const previousViewport = renderer.getViewport(new THREE.Vector4());
+          const previousScissor = renderer.getScissor(new THREE.Vector4());
+          const previousScissorTest = renderer.getScissorTest();
+          try {
+            renderer.setRenderTarget(warmTarget);
+            renderer.setViewport(0, 0, 1, 1);
+            renderer.setScissorTest(false);
+            renderer.clear();
+            renderer.render(stage.scene, warmCamera);
+          } finally {
+            renderer.setRenderTarget(previousTarget);
+            renderer.setViewport(previousViewport);
+            renderer.setScissor(previousScissor);
+            renderer.setScissorTest(previousScissorTest);
+          }
+          performance.mark?.(`${uploadMark}-end`);
+          performance.measure?.(
+            uploadMark,
+            `${uploadMark}-start`,
+            `${uploadMark}-end`,
+          );
+          performance.mark?.(endMark);
+          performance.measure?.(
+            `enterprize:p1-warm-${name}`,
+            startMark,
+            endMark,
+          );
+          deferredWarmReport.push({
+            group,
+            name,
+            material: material.name ?? material.type,
+            cameraMask: warmCamera.layers.mask,
+            renderableCount,
+            textureCount: textures.length,
+            frustumCullingDisabled: true,
+          });
+        } finally {
+          root.material = previousMaterial;
+          objectStates.forEach(({ object, visible, frustumCulled }) => {
+            object.visible = visible;
+            object.frustumCulled = frustumCulled;
+          });
+          root.visible = previousVisibility.get(root);
+        }
+      }
+    } finally {
+      entries.forEach(({ root }) => {
+        root.visible = previousVisibility.get(root);
+      });
+      warmTarget.dispose();
+    }
+  }
+
   function prepareDeferredAssets() {
     if (deferredAssetsPromise) {
       return deferredAssetsPromise;
@@ -540,45 +959,58 @@ async function boot({
         { concurrency: assetLoadConcurrency },
       );
       performance.mark?.("enterprize:p1-squad-loaded");
-      await yieldToMainThread();
       const loaded = { ...scanCore, ...squadAssets };
-      arenaInstance = createSymmetricArena(
-        loaded.arena,
-        VISUAL_CONFIG.arena.symmetry,
+      arenaInstance = await runDeferredPhase(
+        "arena-symmetry",
+        () => createSymmetricArena(
+          loaded.arena,
+          VISUAL_CONFIG.arena.symmetry,
+        ),
       );
       loaded.arena = arenaInstance.asset;
+      simplifyTimelineHitMaterial(loaded.timeline);
       Object.assign(stagedAssets, loaded);
-      report = auditProjectAssets(stagedAssets, {
-        required: [
-          "arena",
-          "timeline",
-          "hero",
-          "engineer",
-          "infantry",
-          "sentry",
-        ],
-      });
+      report = await runDeferredPhase("asset-audit", () =>
+        auditProjectAssets(stagedAssets, {
+          required: [
+            "arena",
+            "timeline",
+            "hero",
+            "engineer",
+            "infantry",
+            "sentry",
+          ],
+        }),
+      );
       if (report.issues.length) {
         throw new Error(`Asset audit failed: ${report.issues.join("; ")}`);
       }
 
-      configureProjectAsset("arena", loaded.arena);
-      configureProjectAsset("timeline", loaded.timeline);
-      configureProjectAsset("hero", loaded.hero);
-      configureProjectAsset("engineer", loaded.engineer);
-      configureProjectAsset("infantry", loaded.infantry);
-      configureProjectAsset("sentry", loaded.sentry);
+      for (const key of [
+        "arena",
+        "timeline",
+        "hero",
+        "engineer",
+        "infantry",
+        "sentry",
+      ]) {
+        await runDeferredPhase(`configure-${key}`, () => {
+          configureProjectAsset(key, loaded[key]);
+        });
+      }
       // 红蓝两侧编队: 蓝侧为导出原始位姿, 红侧绕 Y 轴旋转 π 镜像
-      robotSquadInstance = createRobotSquad({
-        hero: loaded.hero,
-        engineer: loaded.engineer,
-        infantry: loaded.infantry,
-        sentry: loaded.sentry,
-      }, { ...VISUAL_CONFIG.arena.symmetry, ...VISUAL_CONFIG.robots });
+      robotSquadInstance = await runDeferredPhase("squad-create", () =>
+        createRobotSquad(
+          {
+            hero: loaded.hero,
+            engineer: loaded.engineer,
+            infantry: loaded.infantry,
+            sentry: loaded.sentry,
+          },
+          { ...VISUAL_CONFIG.arena.symmetry, ...VISUAL_CONFIG.robots },
+        ),
+      );
       performance.mark?.("enterprize:p1-squad-created");
-      await yieldToMainThread();
-      await ensureExploreCloud(exploreModels[1]);
-      performance.mark?.("enterprize:p1-dart-cloud-ready");
       await yieldToMainThread();
 
       [
@@ -589,11 +1021,24 @@ async function boot({
         material.clippingPlanes = [scanPlane];
         material.clipShadows = false;
       });
-      stage.scene.add(
+      const deferredSceneRoots = [
         loaded.arena.scene,
         loaded.timeline.scene,
         robotSquadInstance.root,
+      ];
+      deferredSceneRoots.forEach((root) => {
+        setObjectLayer(root, DEFERRED_SCENE_LAYER);
+      });
+      // The warm camera only sees the deferred layer. Keep lights on layer 0
+      // for the live scene, while also exposing them to layer 1 so PBR shader
+      // variants compile with the same light rig used by the SCAN camera.
+      stage.scene.traverse((object) => {
+        if (object.isLight) object.layers.enable(DEFERRED_SCENE_LAYER);
+      });
+      stage.scene.add(
+        ...deferredSceneRoots,
       );
+      await yieldToMainThread();
 
       const timelineCamera = report.timeline.camera;
       stage.registerCamera(timelineCamera);
@@ -653,6 +1098,7 @@ async function boot({
         { ...squadTarget("sentry", "red"), guide: "#ff2d4d" },
       ];
       const focusConfig = VISUAL_CONFIG.focus;
+      await yieldToMainThread();
       focus = createFocusController({
         camera: freeCamera,
         targets: focusTargets,
@@ -708,6 +1154,7 @@ async function boot({
         squadBounds.max.x,
       );
       scanPlane.constant = contentMinX - 1;
+      await yieldToMainThread();
 
       const glowGroups = [
         VISUAL_CONFIG.arena.glow.red,
@@ -724,8 +1171,14 @@ async function boot({
         return { material, base };
       });
 
+      const deferredWarmEntries = collectDeferredWarmEntries([
+        { name: "arena", root: loaded.arena.scene },
+        { name: "timeline", root: loaded.timeline.scene },
+        { name: "squad-blue", root: robotSquadInstance.teamRoots.blue },
+        { name: "squad-red", root: robotSquadInstance.teamRoots.red },
+      ]);
       performance.mark?.("enterprize:p1-compile-start");
-      await stage.renderer.compileAsync(stage.scene, freeCamera);
+      await warmDeferredRoots(deferredWarmEntries);
       performance.mark?.("enterprize:p1-compile-end");
       deferredAssetsReady = true;
       performance.mark?.("enterprize:p1-ready");
@@ -886,41 +1339,44 @@ async function boot({
     documentRevealFrame = requestAnimationFrame(step);
   }
 
-  let exploreP1ScheduleToken = 0;
+  let exploreCloudScheduleToken = 0;
   let exploreP1Timer = 0;
 
-  function cancelExploreP1Schedule() {
-    exploreP1ScheduleToken += 1;
+  function cancelExploreCloudSchedule() {
+    exploreCloudScheduleToken += 1;
     if (exploreP1Timer) {
       window.clearTimeout(exploreP1Timer);
       exploreP1Timer = 0;
     }
   }
 
-  function scheduleExploreP1() {
-    cancelExploreP1Schedule();
-    const token = exploreP1ScheduleToken;
+  function scheduleExploreCloudCompletion() {
+    cancelExploreCloudSchedule();
+    const token = exploreCloudScheduleToken;
     performance.mark?.("enterprize:explore-enter");
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        if (token !== exploreP1ScheduleToken || state !== "explore") return;
+        if (token !== exploreCloudScheduleToken || state !== "explore") return;
         performance.mark?.("enterprize:explore-first-paint");
+        scheduleLowPriority(() => {
+          if (token !== exploreCloudScheduleToken || state !== "explore") return;
+          void prepareRemainingExploreClouds().catch((error) => {
+            console.error(
+              "[ENTERPRIZE] Remaining EXPLORE cloud preparation failed",
+              error,
+            );
+          });
+        });
         exploreP1Timer = window.setTimeout(() => {
           exploreP1Timer = 0;
           scheduleLowPriority(() => {
-            if (token !== exploreP1ScheduleToken || state !== "explore") return;
-            void prepareDeferredAssets()
-              .then(() => {
-                scheduleLowPriority(() => {
-                  void ensureExploreCloud(exploreModels[2]).catch((error) => {
-                    console.error(
-                      "[ENTERPRIZE] Explore cloud preload failed",
-                      error,
-                    );
-                  });
-                });
-              })
-              .catch(() => {});
+            if (token !== exploreCloudScheduleToken || state !== "explore") return;
+            void prepareDeferredAssets().catch((error) => {
+              console.error(
+                "[ENTERPRIZE] Deferred SCAN asset preparation failed",
+                error,
+              );
+            });
           });
         }, EXPLORE_P1_DELAY_MS);
       });
@@ -933,13 +1389,18 @@ async function boot({
     }
     const prev = state;
     state = next;
+    if (["scan", "scrub", "focus", "end"].includes(next)) {
+      freeCamera.layers.enable(DEFERRED_SCENE_LAYER);
+    } else {
+      freeCamera.layers.disable(DEFERRED_SCENE_LAYER);
+    }
     hud.setState(next);
     focus?.setHighlightTarget(next === "scrub" || next === "focus" ? 1 : 0);
     if (next === "explore") {
       exploreLastClickAt = elapsedNow; // 进入 EXPLORE 重新计时闲置引导
-      scheduleExploreP1();
+      scheduleExploreCloudCompletion();
     } else if (prev === "explore") {
-      cancelExploreP1Schedule();
+      cancelExploreCloudSchedule();
       clickGuide.hide();
     }
     if (next === "scrub") {
@@ -1871,7 +2332,11 @@ async function boot({
     if (state === "assemble" || state === "explore" || state === "scan") {
       applyViewOffset(); // 每帧应用, 跟随窗口尺寸变化
     }
-    focus?.update(delta, elapsed);
+    if (freeCamera.layers.isEnabled(DEFERRED_SCENE_LAYER)) {
+      // 先推进车辆动画，再同步 FOCUS anchor/proxy/camera，避免跟踪落后一帧。
+      robotSquadInstance?.update(delta);
+      focus?.update(delta, elapsed);
+    }
     // 点击引导圈: EXPLORE 闲置超时后跟随点云中心投影, 点击或离开状态即隐藏
     if (
       state === "explore" &&
@@ -1925,9 +2390,9 @@ async function boot({
     stage.setLightLevel(lightLevel);
 
     // 场地循环动画: gltf 内置 clip + 自发光呼吸
-    arenaInstance?.update(delta);
-    // 编队机器人动画: infantry/sentry 的 gltf clip 红蓝两侧循环播放
-    robotSquadInstance?.update(delta);
+    if (freeCamera.layers.isEnabled(DEFERRED_SCENE_LAYER)) {
+      arenaInstance?.update(delta);
+    }
     const glowPulse = VISUAL_CONFIG.arena.glow.pulse;
     emissiveMaterials.forEach(({ material, base }, index) => {
       material.emissiveIntensity =
@@ -2012,6 +2477,10 @@ async function boot({
 
   // ---------- 入场: 起始界面 -> 星线跃迁 -> ASSEMBLE ----------
   // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
+  introControl?.setProgress?.(0.88, "PREPARING EXPLORE CLOUDS");
+  performance.mark?.("enterprize:explore-clouds-build-start");
+  await prepareExploreCloudsForLaunch();
+  performance.mark?.("enterprize:explore-clouds-build-end");
   introControl?.setProgress?.(0.92, "COMPILING ARENA");
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
@@ -2121,6 +2590,32 @@ async function boot({
     },
     get deferredAssetsReady() {
       return deferredAssetsReady;
+    },
+    get deferredSceneLayerState() {
+      const collectMasks = (root) => {
+        const masks = new Set();
+        root?.traverse((object) => masks.add(object.layers.mask));
+        return [...masks];
+      };
+      return {
+        layer: DEFERRED_SCENE_LAYER,
+        cameraEnabled: freeCamera.layers.isEnabled(DEFERRED_SCENE_LAYER),
+        arenaMasks: collectMasks(arenaInstance?.root),
+        timelineMasks: collectMasks(stagedAssets.timeline?.scene),
+        squadMasks: collectMasks(robotSquadInstance?.root),
+      };
+    },
+    get deferredWarmReport() {
+      return deferredWarmReport.map((entry) => ({ ...entry }));
+    },
+    get exploreCloudKeysReady() {
+      return exploreModels.filter((entry) => entry.cloud).map((entry) => entry.key);
+    },
+    get exploreCloudBootState() {
+      return { ...exploreCloudBootState };
+    },
+    get exploreTransitioning() {
+      return exploreTransitioning;
     },
     get loadedAssetKeys() {
       return assetLoader.loadedKeys;

@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { VISUAL_CONFIG } from "../src/config.js";
 
-const targetUrl = process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
+const targetUrl =
+  process.argv[2] ?? process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
 const outputDirectory =
   process.env.ENTERPRIZE_VERIFY_DIR ?? path.join(os.tmpdir(), "enterprize-demo-verification");
 const edgeCandidates = [
@@ -74,13 +75,19 @@ try {
   });
   const page = await context.newPage();
   const consoleErrors = [];
+  const ignoredEmbedErrors = [];
   const pageErrors = [];
   const failedRequests = [];
   const modelResponses = [];
 
   page.on("console", (message) => {
     if (message.type() === "error") {
-      consoleErrors.push(message.text());
+      const text = message.text();
+      const isBilibiliIframeNoise =
+        text.includes("@bilibili/bili-user-fingerprint(report)") ||
+        (text.includes("WebSocket connection to 'wss://") &&
+          text.includes("web-player-tracker.biliapi.net"));
+      (isBilibiliIframeNoise ? ignoredEmbedErrors : consoleErrors).push(text);
     }
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -144,8 +151,12 @@ try {
         new DOMMatrix(getComputedStyle(document.querySelector(".hint-bar")).transform).c,
       ),
       hintColors: {
-        action: getComputedStyle(document.querySelector(".hint-bar")).color,
-        title: getComputedStyle(document.querySelector(".hint-bar b")).color,
+        action: getComputedStyle(
+          document.querySelector(".hint-bar__item .hud-bilingual__cn"),
+        ).color,
+        title: getComputedStyle(
+          document.querySelector(".hint-bar__item .hud-bilingual__en"),
+        ).color,
         stateAction: getComputedStyle(document.querySelector(".state-chip__label")).color,
         stateTitle: getComputedStyle(document.querySelector(".state-chip__index")).color,
       },
@@ -207,9 +218,12 @@ try {
 
   // SCRUB: 自动推进 (无滚轮输入)
   const progressBefore = await getProgress(page);
-  await page.waitForTimeout(6_000);
+  await page.waitForTimeout(1_000);
   const progressAfter = await getProgress(page);
-  failIf(progressAfter <= progressBefore + 0.05, "auto-drive pushes timeline without wheel input");
+  failIf(
+    progressAfter <= progressBefore + 0.02 || (await getState(page)) !== "scrub",
+    "auto-drive pushes timeline without leaving SCRUB before interaction checks",
+  );
 
   // SCRUB: 滚轮回滚
   const progressPeak = await getProgress(page);
@@ -411,6 +425,8 @@ try {
   );
   failIf(false, "END document mode still accepts wheel scrolling");
   await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForFunction(() => window.scrollY <= 1);
+  await page.mouse.wheel(0, -240);
   await waitState(page, "scrub", 10_000);
   failIf(
     await page.evaluate(() =>
@@ -425,6 +441,9 @@ try {
   failIf(rewoundProgress >= fullProgress, "wheel rewind works at 100% progress");
 
   // 运行时断言
+  if (ignoredEmbedErrors.length > 0) {
+    console.log(`[info] ignored ${ignoredEmbedErrors.length} Bilibili iframe telemetry errors`);
+  }
   failIf(consoleErrors.length > 0, `no console errors: ${consoleErrors.join(" | ")}`);
   failIf(pageErrors.length > 0, `no page errors: ${pageErrors.join(" | ")}`);
   failIf(failedRequests.length > 0, `no failed requests: ${failedRequests.join(" | ")}`);

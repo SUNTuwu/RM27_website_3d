@@ -393,14 +393,14 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/jpeg",
+			"mimeType":"image/webp",
 			"name":"dart",
-			"uri":"dart.jpg"
+			"uri":"dart.webp"
 		},
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/webp",
 			"name":"hit",
-			"uri":"hit.png"
+			"uri":"hit.webp"
 		}
 	],
 	"accessors":[

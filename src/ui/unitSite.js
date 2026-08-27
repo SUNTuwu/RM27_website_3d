@@ -81,9 +81,10 @@ function setupChapterNav(root, nav) {
       `<span class="archive-nav__label">${chapter.dataset.name}</span>` +
       `<span class="archive-nav__dot" aria-hidden="true"></span>`;
     button.addEventListener("click", () => {
-      chapterAnchors.get(chapter).scrollIntoView({
+      const anchor = chapterAnchors.get(chapter);
+      anchor.scrollIntoView({
         behavior: REDUCED_MOTION.matches ? "auto" : "smooth",
-        block: "start",
+        block: anchor.dataset.snapAlign === "center" ? "center" : "start",
       });
     });
     nav.appendChild(button);

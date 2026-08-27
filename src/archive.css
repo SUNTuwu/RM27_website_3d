@@ -50,36 +50,31 @@
   background: var(--archive-bg);
 }
 
-/* 文件夹边缘上推切换 (保留): 章节之间斜切折线
-   双层结构: ::before 为红蓝渐变描边层 (高 2px 露出折线轮廓), ::after 为底色填充层 */
-.archive-chapter + .archive-chapter::before,
-.archive-chapter + .archive-chapter::after {
+/* Six index headings share the open-source 46px single-outline fold.
+   Explicit side modifiers keep the alternation independent of DOM adjacency. */
+.archive-fold::after {
   content: "";
   position: absolute;
   left: 0;
+  top: -1px;
   width: 100%;
+  height: 46px;
   z-index: 3;
   pointer-events: none;
-  clip-path: polygon(0 100%, 0 55%, 6% 55%, 8% 0, 26% 0, 29% 55%, 100% 55%, 100% 100%);
-}
-
-.archive-chapter + .archive-chapter::before {
-  top: -92px;
-  height: 92px;
   background: linear-gradient(90deg, var(--archive-red), var(--archive-blue));
+  clip-path: polygon(
+    0 55%, 6% 55%, 8% 0, 26% 0, 29% 55%, 100% 55%,
+    100% calc(55% + 2px), 29% calc(55% + 2px),
+    26% 2px, 8% 2px, 6% calc(55% + 2px), 0 calc(55% + 2px)
+  );
 }
 
-.archive-chapter + .archive-chapter::after {
-  top: -90px;
-  height: 90px;
-  background: var(--archive-bg);
-  box-shadow: 0 -25px 50px rgba(0, 0, 0, 0.35);
-}
-
-/* ARCHIVE→TEAM 之间的折线移到右侧 */
-#archive-team::before,
-#archive-team::after {
-  clip-path: polygon(0 100%, 0 55%, 71% 55%, 74% 0, 92% 0, 94% 55%, 100% 55%, 100% 100%);
+.archive-fold--right::after {
+  clip-path: polygon(
+    0 55%, 71% 55%, 74% 0, 92% 0, 94% 55%, 100% 55%,
+    100% calc(55% + 2px), 94% calc(55% + 2px),
+    92% 2px, 74% 2px, 71% calc(55% + 2px), 0 calc(55% + 2px)
+  );
 }
 
 /* 章节标题 */
@@ -211,30 +206,105 @@
 }
 
 .archive-stat {
-  background: #ffffff;
-  border: 1px solid rgba(11, 15, 23, 0.06);
-  border-radius: 18px;
-  padding: 26px 24px;
-  box-shadow: 0 14px 36px rgba(11, 15, 23, 0.08);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  --archive-stat-accent: #ff2d4d;
+  --archive-stat-accent-rgb: 255, 45, 77;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 148px;
+  padding: 27px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--archive-stat-accent-rgb), 0.11),
+      transparent 44%
+    ),
+    linear-gradient(145deg, #101827 0%, #05070d 100%);
+  border: 1px solid rgba(var(--archive-stat-accent-rgb), 0.3);
+  border-radius: 15px;
+  box-shadow:
+    0 18px 42px rgba(5, 7, 13, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 4px 0 0 rgba(var(--archive-stat-accent-rgb), 0.8);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.archive-stat:nth-child(even) {
+  --archive-stat-accent: #7fd4ff;
+  --archive-stat-accent-rgb: 127, 212, 255;
+}
+
+.archive-stat::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--archive-stat-accent),
+    rgba(var(--archive-stat-accent-rgb), 0.18) 64%,
+    transparent
+  );
+}
+
+.archive-stat::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  width: 88px;
+  height: 100%;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(var(--archive-stat-accent-rgb), 0.1) 0 1px,
+    transparent 1px 10px
+  );
+  mask-image: linear-gradient(90deg, transparent, #000);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000);
+  pointer-events: none;
 }
 
 .archive-stat:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 22px 54px rgba(11, 15, 23, 0.15);
+  transform: translateY(-4px);
+  border-color: rgba(var(--archive-stat-accent-rgb), 0.58);
+  box-shadow:
+    0 24px 54px rgba(var(--archive-stat-accent-rgb), 0.17),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 4px 0 0 var(--archive-stat-accent);
 }
 
 .archive-stat b {
+  position: relative;
+  z-index: 1;
   display: block;
   font-family: var(--archive-font-en);
   font-size: clamp(32px, 3.4vw, 48px);
-  color: var(--archive-red);
-  margin-bottom: 8px;
+  font-weight: 400;
+  line-height: 1.05;
+  color: var(--archive-stat-accent);
+  margin-bottom: 18px;
+  text-shadow: 0 0 24px rgba(var(--archive-stat-accent-rgb), 0.26);
+}
+
+.archive-stat b i {
+  font-style: normal;
 }
 
 .archive-stat span {
+  position: relative;
+  z-index: 1;
   font-size: 14px;
-  color: #7a8699;
+  color: rgba(226, 236, 250, 0.78);
   line-height: 1.55;
 }
 
@@ -1717,12 +1787,7 @@
   overflow: hidden;
 }
 
-/* 重返战场背景: 低透明度赛场照片 + 上沿渐变衔接上一章
-   (替代通用的章节斜切折线分隔, 保证图像边缘柔和过渡) */
-.archive-chapter.archive-return::before,
-.archive-chapter.archive-return::after {
-  content: none;
-}
+/* The return photo keeps its soft fade; archive-fold supplies the shared edge. */
 
 .archive-return__bg {
   position: absolute;
@@ -2385,6 +2450,11 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
   transform: translateY(0);
 }
 
+/* Snap geometry must stay fixed while the one-time opacity reveal runs. */
+[data-snap-scene].reveal {
+  transform: none;
+}
+
 .archive-note {
   margin-top: 36px;
   font-size: 15px;
@@ -2568,17 +2638,8 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
   }
 
   .archive-stat {
-    background: rgba(5, 7, 13, 0.92);
-    border-color: rgba(127, 212, 255, 0.2);
-    box-shadow: 0 16px 40px rgba(5, 7, 13, 0.24);
-  }
-
-  .archive-stat b {
-    color: #7fd4ff;
-  }
-
-  .archive-stat span {
-    color: rgba(226, 236, 250, 0.76);
+    min-height: 132px;
+    padding: 23px 22px 20px;
   }
 }
 
@@ -2619,4 +2680,3 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
     height: 100%;
   }
 }
-

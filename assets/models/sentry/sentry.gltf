@@ -258,9 +258,9 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/webp",
 			"name":"tripo_image_255135ac_0",
-			"uri":"tripo_image_255135ac_0.png"
+			"uri":"base-color.webp"
 		}
 	],
 	"accessors":[

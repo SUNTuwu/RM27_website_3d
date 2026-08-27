@@ -8,6 +8,9 @@ const assetPaths = {
   timeline: "assets/models/timeline_0/arena.gltf",
   dart: "assets/models/dart/dart.gltf",
   arenaPoints: "assets/pointcloud/arena_points.bin",
+  dartPoints: "assets/pointcloud/dart_points.bin",
+  infantryPoints: "assets/pointcloud/infantry_points.bin",
+  engineerPoints: "assets/pointcloud/engineer_points.bin",
 };
 const failures = [];
 
@@ -61,20 +64,20 @@ function animationDuration(gltf, animation) {
   return maxima.length ? Math.max(...maxima) : 0;
 }
 
-async function validatePointCloud(relativePath) {
+async function validatePointCloud(label, relativePath) {
   const absolutePath = path.resolve(repositoryRoot, relativePath);
   const data = await readFile(absolutePath);
-  check(data.byteLength >= 32, "arena point-cloud data contains a complete header");
+  check(data.byteLength >= 32, `${label} point-cloud data contains a complete header`);
   if (data.byteLength < 32) {
     return { count: 0, bytes: data.byteLength };
   }
 
-  check(data.toString("ascii", 0, 4) === "EPC1", "arena point-cloud data uses EPC1 format");
+  check(data.toString("ascii", 0, 4) === "EPC1", `${label} point-cloud data uses EPC1 format`);
   const count = data.readUInt32LE(4);
-  check(count === 50_000, "arena point-cloud data contains 50,000 targets");
+  check(count === 50_000, `${label} point-cloud data contains 50,000 targets`);
   check(
     data.byteLength === 32 + count * 3 * Float32Array.BYTES_PER_ELEMENT,
-    "arena point-cloud data byte length matches its header",
+    `${label} point-cloud data byte length matches its header`,
   );
   const bounds = Array.from({ length: 6 }, (_, index) =>
     data.readFloatLE(8 + index * 4),
@@ -82,7 +85,7 @@ async function validatePointCloud(relativePath) {
   check(
     bounds.every(Number.isFinite) &&
       bounds.slice(0, 3).every((value, index) => value <= bounds[index + 3]),
-    "arena point-cloud data contains finite ordered bounds",
+    `${label} point-cloud data contains finite ordered bounds`,
   );
   return { count, bytes: data.byteLength, bounds };
 }
@@ -91,7 +94,15 @@ async function run() {
   const arena = await readGltf(assetPaths.arena);
   const timeline = await readGltf(assetPaths.timeline);
   const dart = await readGltf(assetPaths.dart);
-  const arenaPoints = await validatePointCloud(assetPaths.arenaPoints);
+  const arenaPoints = await validatePointCloud("arena", assetPaths.arenaPoints);
+  const explorePoints = Object.fromEntries(
+    await Promise.all(
+      ["dart", "infantry", "engineer"].map(async (key) => [
+        key,
+        await validatePointCloud(key, assetPaths[`${key}Points`]),
+      ]),
+    ),
+  );
 
   await Promise.all([
     validateExternalUris("arena", arena),
@@ -159,6 +170,14 @@ async function run() {
     Math.abs(arenaPoints.bounds[0] + arenaPoints.bounds[3]) < 0.1,
     "arena point-cloud X bounds are symmetric around the world origin",
   );
+  for (const [key, pointCloud] of Object.entries(explorePoints)) {
+    check(
+      [0, 1, 2].every(
+        (axis) => Math.abs(pointCloud.bounds[axis] + pointCloud.bounds[axis + 3]) < 0.01,
+      ),
+      `${key} EXPLORE point cloud is recentered for stable model rotation`,
+    );
+  }
 
   const cameraNodeIndex = (timeline.data.nodes ?? []).findIndex(
     (node) => node.camera !== undefined,
@@ -214,6 +233,16 @@ async function run() {
       meshes: arenaPoints.count.toLocaleString("en-US"),
       materials: "-",
       clips: `${(arenaPoints.bytes / 1024).toFixed(1)} KiB`,
+    },
+    explorePoints: {
+      nodes: "-",
+      meshes: Object.values(explorePoints)
+        .map((entry) => entry.count.toLocaleString("en-US"))
+        .join(" / "),
+      materials: "-",
+      clips: Object.values(explorePoints)
+        .map((entry) => `${(entry.bytes / 1024).toFixed(1)} KiB`)
+        .join(" / "),
     },
   });
 

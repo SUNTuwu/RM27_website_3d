@@ -48,7 +48,7 @@ page.on("request", (request) => {
   if (url.includes("/assets/models/")) {
     modelRequests.push(url);
   }
-  if (url.includes("/assets/pointcloud/arena_points.bin")) {
+  if (url.includes("/assets/pointcloud/") && url.includes("_points.bin")) {
     pointCloudRequests.push(url);
   }
 });
@@ -84,9 +84,9 @@ try {
       introPreReadyState.bootstrap?.runtimeImportStarted ||
       introPreReadyState.runtimeImportAt !== null ||
       introPreReadyState.geometryStartAt !== null ||
-      pointCloudRequests.length !== 1 ||
+      !pointCloudRequests.some((url) => url.includes("/arena_points.bin")) ||
       scriptRequests.some((url) => /(?:^|[/\\])three(?:\.module)?\.js(?:[?#]|$)/i.test(url)),
-    "typing starts with point-cloud network prefetch but without the Three runtime",
+    "typing starts point-cloud prefetch without importing the Three runtime",
     {
       introPreReadyState,
       pointCloudRequests,
@@ -166,14 +166,26 @@ try {
     loadedAssetKeys: window.__ENTERPRIZE_DEMO__?.loadedAssetKeys,
     deferredAssetsReady: window.__ENTERPRIZE_DEMO__?.deferredAssetsReady,
     archiveIslandsReady: window.__ENTERPRIZE_DEMO__?.archiveIslandsReady,
+    explorePointFetchDone:
+      window.__ENTERPRIZE_BOOTSTRAP__?.explorePointFetchDone ?? 0,
+    exploreCloudKeysReady:
+      window.__ENTERPRIZE_DEMO__?.exploreCloudKeysReady ?? [],
   }));
   failIf(
     modelRequests.length !== 0 ||
       !bootRuntimeState.introReady ||
       bootRuntimeState.loadedAssetKeys.length !== 0 ||
       bootRuntimeState.deferredAssetsReady ||
-      bootRuntimeState.archiveIslandsReady,
-    "BOOT leaves P1 glTF and 2D React islands deferred",
+      bootRuntimeState.archiveIslandsReady ||
+      pointCloudRequests.length !== 4 ||
+      !["arena", "dart", "infantry", "engineer"].every((key) =>
+        pointCloudRequests.some((url) => url.includes(`/${key}_points.bin`)),
+      ) ||
+      bootRuntimeState.explorePointFetchDone !== 3 ||
+      !["arena", "dart", "infantry", "engineer"].every((key) =>
+        bootRuntimeState.exploreCloudKeysReady.includes(key),
+      ),
+    "BOOT prebuilds EXPLORE clouds while leaving P1 glTF and 2D islands deferred",
     { modelRequests, bootRuntimeState },
   );
 

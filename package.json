@@ -13,6 +13,7 @@
     "preview": "vite preview --host",
     "refresh:metrics": "node scripts/refresh-metrics.mjs",
     "optimize:images": "node scripts/optimize-images.mjs --write",
+    "optimize:model-textures": "node scripts/optimize-model-textures.mjs",
     "verify:images": "node scripts/optimize-images.mjs --verify",
     "verify:deployment": "node scripts/verify-deployment.mjs",
     "generate:pointcloud": "node scripts/generate-pointcloud.mjs",
@@ -20,6 +21,7 @@
     "verify:staged": "node scripts/verify-staged-loading.mjs",
     "verify:entry-split": "node scripts/verify-entry-split.mjs",
     "verify:visual": "node scripts/verify-visual.mjs",
+    "verify:explore-polish": "node scripts/verify-explore-polish.mjs",
     "verify:zoom": "node scripts/verify-zoom-parallax.mjs",
     "typecheck": "tsc --noEmit",
     "check": "npm run validate:assets && npm run verify:images && npm run typecheck && npm run build:site && npm run verify:deployment"

@@ -24,7 +24,7 @@
       </div>
 
       <header class="masthead">
-        <span class="masthead__eyebrow">WELCOME TO OUR BATTLEGROUND</span>
+        <span class="masthead__eyebrow">WELCOME TO OUR BATTLEFIELD</span>
         <h1 class="masthead__title" aria-label="We imagine. We build. We battle.">
           <span class="masthead__line">WE IMAGINE.</span>
           <span class="masthead__line">WE BUILD.</span>
@@ -42,7 +42,7 @@
 
       <div class="hint-bar" id="hint-bar" aria-live="polite">
         <span class="hint-bar__pulse" aria-hidden="true"></span>
-        <span id="hint-text">INITIALIZING RENDERER…</span>
+        <span class="hint-bar__content" id="hint-text">INITIALIZING RENDERER…</span>
       </div>
 
       <section class="timeline-hud" id="timeline-hud" aria-label="主时间轴进度" hidden>
@@ -126,18 +126,30 @@
       </div>
 
       <div class="key-hints" id="key-hints">
-        <p class="key-hints__lead"><span>下滑进入</span><span>战场</span></p>
+        <p class="key-hints__lead hud-bilingual">
+          <span class="hud-bilingual__en">SCROLL TO ENTER</span>
+          <span class="hud-bilingual__cn">下滑进入战场</span>
+        </p>
         <button class="key-hint" id="key-prev" type="button" aria-label="上一个模型">
           <kbd class="key-hint__key">LEFT</kbd>
-          <span class="key-hint__action">prev / 前一个</span>
+          <span class="key-hint__action hud-bilingual">
+            <span class="hud-bilingual__en">PREV</span>
+            <span class="hud-bilingual__cn">前一个</span>
+          </span>
         </button>
         <button class="key-hint key-hint--space" id="key-space" type="button" aria-label="切换模型">
           <kbd class="key-hint__key">SPACE</kbd>
-          <span class="key-hint__action">switch / 切换</span>
+          <span class="key-hint__action hud-bilingual">
+            <span class="hud-bilingual__en">SWITCH</span>
+            <span class="hud-bilingual__cn">切换</span>
+          </span>
         </button>
         <button class="key-hint" id="key-next" type="button" aria-label="下一个模型">
           <kbd class="key-hint__key">RIGHT</kbd>
-          <span class="key-hint__action">next / 后一个</span>
+          <span class="key-hint__action hud-bilingual">
+            <span class="hud-bilingual__en">NEXT</span>
+            <span class="hud-bilingual__cn">下一个</span>
+          </span>
         </button>
       </div>
 
@@ -175,19 +187,17 @@
 
       <!-- 00 ARCHIVE HERO -->
       <section
-        class="archive-chapter archive-hero"
+        class="archive-chapter archive-hero archive-fold archive-fold--left"
         id="archive-hero"
         data-chapter
         data-num="00"
         data-name="ENTERPRIZE"
         data-cn="我们是谁"
-        data-snap-scene="archive-hero"
-        data-snap-align="start"
         aria-label="我们是谁"
       >
         <div class="archive-wrap">
-          <div class="archive-hero__inner reveal">
-            <div class="archive-hero__copy">
+          <div class="archive-hero__inner">
+            <div class="archive-hero__copy reveal">
               <p class="archive-eyebrow">WHO WE ARE // 我们是谁</p>
               <h2 class="archive-hero__title">ENTERPRIZE</h2>
               <p class="archive-hero__cn">机甲档案 · 全面解密</p>
@@ -215,7 +225,12 @@
               </div>
             </div>
             <figure class="archive-hero__media">
-              <img src="/assets/images/archive/arena-fleet-web.webp" alt="ENTERPRIZE 战队机器人列阵" />
+              <img
+                src="/assets/images/archive/arena-fleet-web.webp"
+                alt="ENTERPRIZE 战队机器人列阵"
+                data-snap-scene="archive-hero-image"
+                data-snap-align="center"
+              />
               <img
                 class="archive-hero__logo"
                 src="/assets/icon/blue_logo.png"
@@ -230,14 +245,12 @@
 
       <!-- 影像 MEDIA：居中主视频 + 三列高光回放 -->
       <section
-        class="archive-media"
+        class="archive-media archive-fold archive-fold--right"
         id="archive-media"
-        data-snap-scene="media-record"
-        data-snap-align="start"
         aria-label="影像记录"
       >
         <div class="archive-wrap">
-          <header class="archive-head reveal">
+          <header class="archive-head reveal" data-snap-scene="media-record" data-snap-align="start">
             <div class="archive-head__meta">
               <span class="archive-head__chip">MEDIA</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -355,17 +368,15 @@
 
       <!-- 01 TEAM 队伍信息（电路末端介绍） -->
       <section
-        class="archive-chapter"
+        class="archive-chapter archive-fold archive-fold--left"
         id="archive-team"
         data-chapter
         data-num="01"
         data-name="TEAM"
         data-cn="队伍信息"
-        data-snap-scene="team-history"
-        data-snap-align="start"
         aria-label="队伍信息"
       >
-        <div class="archive-wrap">
+        <div class="archive-wrap" data-snap-scene="team-history" data-snap-align="start">
           <header class="archive-head reveal">
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.01</span>
@@ -447,17 +458,15 @@
 
       <!-- 02 UNITS 兵种体系 -->
       <section
-        class="archive-chapter"
+        class="archive-chapter archive-fold archive-fold--right"
         id="archive-units"
         data-chapter
         data-num="02"
         data-name="UNITS"
         data-cn="兵种体系"
-        data-snap-scene="unit-archive"
-        data-snap-align="start"
         aria-label="兵种体系"
       >
-        <div class="archive-wrap">
+        <div class="archive-wrap" data-snap-scene="unit-archive" data-snap-align="start">
 
           <header class="archive-head reveal">
             <div class="archive-head__meta">
@@ -514,8 +523,6 @@
             class="unit-reveal"
             id="unit-reveal"
             data-unit-reveal
-            data-snap-scene="unit-reveal"
-            data-snap-align="center"
             aria-label="各兵种缺一不可"
           >
             <p class="unit-reveal__eyebrow reveal">FULL LINEUP // 全员就位</p>
@@ -542,7 +549,11 @@
                 <span class="unit-reveal__text">弹雨巡弋</span>
               </div>
               <div class="unit-reveal__line unit-reveal__line--plain">
-                <span class="unit-reveal__text">你的选择是什么？</span>
+                <span
+                  class="unit-reveal__text"
+                  data-snap-scene="unit-choice"
+                  data-snap-align="start"
+                >你的选择是什么？</span>
               </div>
               <div class="unit-reveal__line unit-reveal__line--plain">
                 <span class="unit-reveal__text unit-reveal__text--en">CHOOSE YOUR HERO</span>
@@ -642,18 +653,16 @@
 
       <!-- 03 JOIN 入队招新 -->
       <section
-        class="archive-chapter"
+        class="archive-chapter archive-fold archive-fold--left"
         id="archive-join"
         data-chapter
         data-num="03"
         data-name="JOIN"
         data-cn="入队招新"
-        data-snap-scene="join-fleet"
-        data-snap-align="start"
         aria-label="入队招新信息"
       >
         <div class="archive-wrap">
-          <header class="archive-head reveal">
+          <header class="archive-head reveal" data-snap-scene="join-fleet" data-snap-align="start">
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.03</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -1012,14 +1021,12 @@
 
       <!-- 04 RETURN 重返赛场 -->
       <section
-        class="archive-chapter archive-return"
+        class="archive-chapter archive-return archive-fold archive-fold--right"
         id="archive-return"
         data-chapter
         data-num="04"
         data-name="RETURN"
         data-cn="重返赛场"
-        data-snap-scene="return-arena"
-        data-snap-align="center"
         aria-label="重返 3D 赛场"
       >
         <img
@@ -1033,7 +1040,11 @@
         <span class="archive-return__fade" aria-hidden="true"></span>
         <span class="archive-return__ghost archive-return__ghost--left" data-ghost="left" aria-hidden="true">重返</span>
         <span class="archive-return__ghost archive-return__ghost--right" data-ghost="right" aria-hidden="true">战场</span>
-        <div class="archive-wrap archive-return__inner">
+        <div
+          class="archive-wrap archive-return__inner"
+          data-snap-scene="return-arena"
+          data-snap-align="center"
+        >
           <p class="archive-eyebrow reveal">FINAL TRANSMISSION // 最后通话</p>
           <h2 class="archive-return__title reveal" style="--rd: 90ms">BACK TO<br />THE ARENA</h2>
           <p class="archive-return__cn reveal" style="--rd: 180ms">

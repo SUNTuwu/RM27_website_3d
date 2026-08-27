@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
 
-const targetUrl = process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
+const targetUrl =
+  process.argv[2] ?? process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
 const edgeCandidates = [
   "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
   "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
@@ -35,9 +36,11 @@ await page.route("**/assets/models/**", async (route) => {
   await route.continue();
 });
 
-function check(condition, message) {
+function check(condition, message, detail) {
   if (!condition) {
-    throw new Error(message);
+    throw new Error(
+      `${message}${detail === undefined ? "" : `: ${JSON.stringify(detail)}`}`,
+    );
   }
   console.log(`[ok] ${message}`);
 }
@@ -169,7 +172,11 @@ try {
       Math.abs(bluePose.worldPosition[2] + redPose.worldPosition[2]) < 1e-4,
     "animated red and blue nodes remain symmetric around the world origin",
   );
-  check(pageErrors.length === 0, "the staged-loading path has no page errors");
+  check(
+    pageErrors.length === 0,
+    "the staged-loading path has no page errors",
+    pageErrors,
+  );
 } finally {
   releaseModelRequests();
   await browser.close();

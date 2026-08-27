@@ -66,9 +66,9 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/jpeg",
+			"mimeType":"image/webp",
 			"name":"dart",
-			"uri":"dart.jpg"
+			"uri":"dart.webp"
 		}
 	],
 	"accessors":[

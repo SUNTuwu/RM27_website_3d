@@ -4,7 +4,12 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Archive, ArrowRight, BookOpen } from "lucide-react";
 
-// 起始界面: 打字机对话 -> 入场按钮 -> 星线跃迁 -> 点云 EXPLORE
+import {
+  createSpaceStarfield,
+  type SpaceStarfieldController,
+} from "../space-starfield";
+
+// 起始界面: 打字机对话 -> 入场按钮 -> 背景星场加速离开 -> 点云 EXPLORE
 // 装饰语言对齐 open-source 页: 红蓝细线/折线 + 斜切平行四边形 + 135deg 斜线纹理。
 
 const REDUCED = () =>
@@ -24,131 +29,75 @@ const LINES: Segment[][] = [
 
 const CHAR_MS = 34;
 const LINE_PAUSE_MS = 480;
-const WARP_MS = 1700;
+const BACKGROUND_EXIT_MS = 880;
 const FADE_MS = 700;
+const COMPLETION_LAYOUT_MS = 560;
+const COMPLETION_COPY_MS = 440;
+const COMPLETION_GAP_MS = 80;
+const REDUCED_COPY_MS = 260;
 
-const WARP_COLORS = ["207,228,255", "255,45,77", "46,155,255"] as const;
-const WARP_WEIGHTS = [0.7, 0.12, 0.18] as const;
+type CompletionStage = "hidden" | "copy" | "cta" | "ready";
 
-function WarpCanvas({ onComplete }: { onComplete: () => void }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const onCompleteRef = useRef(onComplete);
+function SpaceBackground({
+  accelerating,
+  onAccelerationComplete,
+}: {
+  accelerating: boolean;
+  onAccelerationComplete: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const controllerRef = useRef<SpaceStarfieldController | null>(null);
+  const completionRef = useRef(onAccelerationComplete);
 
   useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
+    completionRef.current = onAccelerationComplete;
+  }, [onAccelerationComplete]);
 
   useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    let maxR = Math.hypot(width / 2, height / 2);
-
-    const resize = () => {
-      width = Math.max(window.innerWidth, 1);
-      height = Math.max(window.innerHeight, 1);
-      maxR = Math.hypot(width / 2, height / 2);
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.lineCap = "round";
-    };
-    resize();
-    window.addEventListener("resize", resize, { passive: true });
-
-    const pickColorIndex = () => {
-      const roll = Math.random();
-      let acc = 0;
-      for (let index = 0; index < WARP_WEIGHTS.length; index += 1) {
-        acc += WARP_WEIGHTS[index];
-        if (roll <= acc) return index;
-      }
-      return 0;
-    };
-    const starCount = width < 720 ? 180 : 300;
-    const stars = Array.from({ length: starCount }, () => {
-      const angle = Math.random() * Math.PI * 2;
-      return {
-        dx: Math.cos(angle),
-        dy: Math.sin(angle),
-        radiusRatio: 0.025 + Math.random() * 0.42,
-        speed: 0.78 + Math.random() * 0.55,
-        colorIndex: pickColorIndex(),
-      };
-    });
-
-    const groups = WARP_COLORS.map((_, colorIndex) =>
-      stars.filter((star) => star.colorIndex === colorIndex),
-    );
-    const duration = REDUCED() ? 450 : WARP_MS;
-    const startedAt = performance.now();
-    let raf = 0;
-    let paintRaf = 0;
-    let completeRaf = 0;
-    let completed = false;
-
-    const finishAfterPaint = () => {
-      if (completed) return;
-      completed = true;
-      performance.mark?.("enterprize:warp-center-cleared");
-      // Keep the empty-centre final frame on screen for a full paint before
-      // the Three scene starts its assemble transition.
-      paintRaf = requestAnimationFrame(() => {
-        completeRaf = requestAnimationFrame(() => onCompleteRef.current());
-      });
-    };
-
-    const frame = (now: number) => {
-      const k = Math.min((now - startedAt) / duration, 1);
-      const travelRatio = 0.15 * k + 1.45 * k * k * k;
-      const tail = maxR * (0.018 + 0.09 * k * k);
-      const cx = width / 2;
-      const cy = height / 2;
-      ctx.clearRect(0, 0, width, height);
-      ctx.lineWidth = 0.9 + k * 1.8;
-
-      groups.forEach((group, colorIndex) => {
-        ctx.beginPath();
-        for (const star of group) {
-          const radius =
-            maxR * (star.radiusRatio + travelRatio * star.speed);
-          const previousRadius = Math.max(radius - tail * star.speed, 0);
-          if (previousRadius > maxR || radius < 0) continue;
-          ctx.moveTo(
-            cx + star.dx * previousRadius,
-            cy + star.dy * previousRadius,
-          );
-          ctx.lineTo(cx + star.dx * radius, cy + star.dy * radius);
-        }
-        ctx.strokeStyle = `rgba(${WARP_COLORS[colorIndex]},${Math.min(0.28 + k * 0.68, 0.96)})`;
-        ctx.stroke();
-      });
-
-      if (k < 1) {
-        raf = requestAnimationFrame(frame);
-      } else {
-        finishAfterPaint();
-      }
-    };
-
-    performance.mark?.("enterprize:warp-start");
-    raf = requestAnimationFrame(frame);
+    const canvas = canvasRef.current;
+    if (!canvas || REDUCED()) return;
+    controllerRef.current = createSpaceStarfield(canvas);
     return () => {
-      window.removeEventListener("resize", resize);
-      cancelAnimationFrame(raf);
-      cancelAnimationFrame(paintRaf);
-      cancelAnimationFrame(completeRaf);
+      controllerRef.current?.destroy();
+      controllerRef.current = null;
     };
   }, []);
 
-  return <canvas ref={ref} className="absolute inset-0 h-full w-full" />;
+  useEffect(() => {
+    if (!accelerating) {
+      controllerRef.current?.setBoost(0);
+      return;
+    }
+
+    performance.mark?.("enterprize:background-acceleration-start");
+    controllerRef.current?.setBoost(1);
+    const timer = window.setTimeout(
+      () => {
+        performance.mark?.("enterprize:background-acceleration-complete");
+        completionRef.current();
+      },
+      REDUCED() ? 180 : BACKGROUND_EXIT_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [accelerating]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+      <div
+        data-intro-nebula
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(1100px 700px at 82% -10%, rgba(46,155,255,0.13), transparent 60%), radial-gradient(900px 600px at 5% 110%, rgba(255,45,77,0.09), transparent 62%), radial-gradient(700px 500px at 52% 46%, rgba(127,156,245,0.05), transparent 70%), #05070d",
+        }}
+      />
+      <canvas
+        ref={canvasRef}
+        data-intro-starfield
+        className="absolute inset-0 h-full w-full"
+      />
+    </div>
+  );
 }
 
 function useTypewriter(active: boolean) {
@@ -278,7 +227,9 @@ export function IntroScreen({
   control?: IntroControl;
   ready?: boolean;
 }) {
-  const [phase, setPhase] = useState<"typing" | "warp" | "fade">("typing");
+  const [phase, setPhase] = useState<"typing" | "accelerate" | "fade">(
+    "typing",
+  );
   const [canLaunch, setCanLaunch] = useState(ready);
   const [loadProgress, setLoadProgress] = useState(() =>
     Math.min(Math.max(control?.progress ?? 0, 0), 1),
@@ -290,14 +241,52 @@ export function IntroScreen({
     control?.error ?? null,
   );
   const [entryQueued, setEntryQueued] = useState(Boolean(control?.requested));
+  const [completionStage, setCompletionStage] =
+    useState<CompletionStage>("hidden");
   const { progress, done, finish } = useTypewriter(phase === "typing");
   const launchedRef = useRef(false);
   const sceneLaunchRef = useRef(false);
   const navigationRef = useRef(false);
   const doneTimerRef = useRef(0);
+  const completionFrameRef = useRef(0);
+  const completionCopyTimerRef = useRef(0);
+  const completionCtaTimerRef = useRef(0);
   const wheelAccumRef = useRef(0);
   const touchStartYRef = useRef<number | null>(null);
   const reducedMotion = REDUCED();
+
+  const revealCompletionCopy = useCallback(() => {
+    if (!done || phase !== "typing") return;
+    window.cancelAnimationFrame(completionFrameRef.current);
+    completionFrameRef.current = window.requestAnimationFrame(() => {
+      setCompletionStage((current) =>
+        current === "hidden" ? "copy" : current,
+      );
+    });
+  }, [done, phase]);
+
+  const revealCompletionCta = useCallback(() => {
+    if (!done || phase !== "typing") return;
+    window.clearTimeout(completionCtaTimerRef.current);
+    completionCtaTimerRef.current = window.setTimeout(() => {
+      window.cancelAnimationFrame(completionFrameRef.current);
+      completionFrameRef.current = window.requestAnimationFrame(() => {
+        setCompletionStage((current) =>
+          current === "copy" ? "cta" : current,
+        );
+      });
+    }, reducedMotion ? 40 : COMPLETION_GAP_MS);
+  }, [done, phase, reducedMotion]);
+
+  const enableCompletionCta = useCallback(() => {
+    if (!done || phase !== "typing") return;
+    window.cancelAnimationFrame(completionFrameRef.current);
+    completionFrameRef.current = window.requestAnimationFrame(() => {
+      setCompletionStage((current) =>
+        current === "cta" ? "ready" : current,
+      );
+    });
+  }, [done, phase]);
 
   useEffect(() => {
     setCanLaunch(ready);
@@ -306,6 +295,9 @@ export function IntroScreen({
   useEffect(
     () => () => {
       window.clearTimeout(doneTimerRef.current);
+      window.cancelAnimationFrame(completionFrameRef.current);
+      window.clearTimeout(completionCopyTimerRef.current);
+      window.clearTimeout(completionCtaTimerRef.current);
     },
     [],
   );
@@ -315,6 +307,40 @@ export function IntroScreen({
       onTypingDone?.();
     }
   }, [done, onTypingDone]);
+
+  useEffect(() => {
+    window.cancelAnimationFrame(completionFrameRef.current);
+    window.clearTimeout(completionCopyTimerRef.current);
+    window.clearTimeout(completionCtaTimerRef.current);
+
+    if (!done || phase !== "typing") {
+      setCompletionStage("hidden");
+      return;
+    }
+
+    // Mount the complete layout invisibly for one paint. Framer can then
+    // compensate the centered flex reflow before any newly mounted copy shows.
+    setCompletionStage("hidden");
+    if (reducedMotion) {
+      completionCopyTimerRef.current = window.setTimeout(
+        revealCompletionCopy,
+        80,
+      );
+    } else {
+      // The normal path advances from onLayoutAnimationComplete. This fallback
+      // also covers a browser that decides the measured layout delta is zero.
+      completionCopyTimerRef.current = window.setTimeout(
+        revealCompletionCopy,
+        COMPLETION_LAYOUT_MS + 120,
+      );
+    }
+
+    return () => {
+      window.cancelAnimationFrame(completionFrameRef.current);
+      window.clearTimeout(completionCopyTimerRef.current);
+      window.clearTimeout(completionCtaTimerRef.current);
+    };
+  }, [done, phase, reducedMotion, revealCompletionCopy]);
 
   const updateProgress = useCallback(
     (nextProgress: number, nextStatus?: string) => {
@@ -366,10 +392,10 @@ export function IntroScreen({
     }
     setEntryQueued(false);
     launchedRef.current = true;
-    setPhase("warp");
+    setPhase("accelerate");
   }, [canLaunch, control, loadError]);
 
-  const handleWarpComplete = useCallback(() => {
+  const handleBackgroundExitComplete = useCallback(() => {
     if (sceneLaunchRef.current) return;
     sceneLaunchRef.current = true;
     performance.mark?.("enterprize:assemble-requested");
@@ -485,6 +511,10 @@ export function IntroScreen({
       : entryQueued
         ? "LAUNCHING WHEN READY"
         : loadStatus;
+  const completionCopyVisible = completionStage !== "hidden";
+  const completionCtaVisible =
+    completionStage === "cta" || completionStage === "ready";
+  const completionCtaInteractive = completionStage === "ready";
 
   return (
     <motion.div
@@ -497,6 +527,10 @@ export function IntroScreen({
         if (phase === "typing" && !done) finish();
       }}
     >
+      <SpaceBackground
+        accelerating={phase === "accelerate"}
+        onAccelerationComplete={handleBackgroundExitComplete}
+      />
       <div
         className="absolute inset-x-0 top-0 h-px"
         style={{
@@ -517,7 +551,7 @@ export function IntroScreen({
 
       <motion.nav
         aria-label="引导页快速入口"
-        className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[calc(env(safe-area-inset-top)+4.5rem)] z-30 flex items-center gap-2 sm:top-[calc(env(safe-area-inset-top)+1.25rem)] sm:gap-3"
+        className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[calc(env(safe-area-inset-top)+4.5rem)] z-30 flex items-center gap-3 sm:top-[calc(env(safe-area-inset-top)+1.25rem)]"
         initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
         animate={{ opacity: phase === "typing" ? 1 : 0, y: 0 }}
         transition={{ duration: reducedMotion ? 0.2 : 0.55, delay: 0.1 }}
@@ -530,10 +564,9 @@ export function IntroScreen({
             event.preventDefault();
             handleOpenArchive();
           }}
-          className="flex h-10 items-center gap-2 border border-white/20 bg-[#080d16]/90 px-3 text-[10px] text-[#c7d1df] outline-none transition-colors hover:border-[#7fd4ff]/70 hover:text-white focus-visible:ring-2 focus-visible:ring-[#cfe4ff] sm:h-11 sm:px-4 sm:text-[11px]"
-          style={{ transform: "skewX(-12deg)" }}
+          className="intro-outline-link"
         >
-          <span className="flex items-center gap-2 whitespace-nowrap" style={{ transform: "skewX(12deg)" }}>
+          <span className="intro-outline-link__inner">
             <BookOpen className="h-4 w-4" aria-hidden="true" />
             2D 介绍
           </span>
@@ -542,10 +575,9 @@ export function IntroScreen({
           href="/open-source.html"
           data-intro-open-source
           onClick={() => control?.markCompleted?.()}
-          className="flex h-10 items-center gap-2 border border-white/20 bg-[#080d16]/90 px-3 text-[10px] text-[#c7d1df] outline-none transition-colors hover:border-[#ff2d4d]/70 hover:text-white focus-visible:ring-2 focus-visible:ring-[#cfe4ff] sm:h-11 sm:px-4 sm:text-[11px]"
-          style={{ transform: "skewX(-12deg)" }}
+          className="intro-outline-link"
         >
-          <span className="flex items-center gap-2 whitespace-nowrap" style={{ transform: "skewX(12deg)" }}>
+          <span className="intro-outline-link__inner">
             <Archive className="h-4 w-4" aria-hidden="true" />
             开源档案
           </span>
@@ -553,6 +585,7 @@ export function IntroScreen({
       </motion.nav>
 
       <motion.div
+        data-intro-completion-stage={completionStage}
         className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center [font-family:var(--archive-font-en)]"
         animate={phase === "typing" ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
         transition={{ duration: 0.5, ease: "easeIn" }}
@@ -655,18 +688,53 @@ export function IntroScreen({
           style={{ background: "#2e9bff", transform: "skewX(-16deg)" }}
         />
 
-        <TypedLines progress={progress} />
-        {!done && (
-          <span className="mt-2 inline-block h-[1.2em] w-[2px] animate-pulse bg-white/80" />
-        )}
+        <motion.div
+          data-intro-typed-copy
+          layout="position"
+          layoutDependency={done}
+          transition={{
+            layout: reducedMotion
+              ? { duration: 0 }
+              : {
+                  duration: COMPLETION_LAYOUT_MS / 1000,
+                  ease: [0.4, 0, 0.2, 1],
+                },
+          }}
+          onLayoutAnimationComplete={revealCompletionCopy}
+          className="relative flex w-full max-w-full flex-col items-center"
+        >
+          <TypedLines progress={progress} />
+          <span
+            aria-hidden="true"
+            className={`absolute left-1/2 top-full mt-2 h-[1.2em] w-[2px] -translate-x-1/2 bg-white/80 transition-opacity duration-150 ${
+              done ? "opacity-0" : "animate-pulse opacity-100"
+            }`}
+          />
+        </motion.div>
 
         {done && phase === "typing" && (
           <>
             {/* 队名由来中文段落 */}
             <motion.p
+              data-intro-origin-copy
               initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
-              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: reducedMotion ? 0.25 : 0.7, ease: "easeOut" }}
+              animate={
+                completionCopyVisible
+                  ? { opacity: 1, y: 0 }
+                  : reducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: 14 }
+              }
+              transition={{
+                duration: reducedMotion
+                  ? REDUCED_COPY_MS / 1000
+                  : COMPLETION_COPY_MS / 1000,
+                ease: "easeOut",
+              }}
+              onAnimationComplete={() => {
+                if (completionStage === "copy") revealCompletionCta();
+              }}
+              aria-hidden={!completionCopyVisible}
               className="mt-9 max-w-[44em] text-[clamp(13px,1.3vw,17px)] leading-[1.9] text-[#b8c2cf] [font-family:var(--archive-font-cn)]"
             >
               队名取自《星际迷航》的星舰 Enterprise。我们不只眺望远方，而是亲手造出抵达那里的机器。在这里，你会和队友一起设计、制造、调试真正的机器人，把图纸上的方案送上赛场。
@@ -674,12 +742,38 @@ export function IntroScreen({
 
             {/* 入场 CTA: 单一动作, 避免中文口号和按钮命令互相抢占。 */}
             <motion.div
+              data-intro-cta-wrap
               initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 18 }}
-              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              transition={{ duration: reducedMotion ? 0.25 : 0.55, ease: "easeOut", delay: 0.45 }}
-              whileHover={reducedMotion ? undefined : { y: -2 }}
-              whileTap={reducedMotion ? undefined : { y: 1 }}
-              className="relative mt-24 w-[min(88vw,760px)] md:mt-[7.5rem]"
+              animate={
+                completionCtaVisible
+                  ? { opacity: 1, y: 0 }
+                  : reducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: 18 }
+              }
+              transition={{
+                duration: reducedMotion ? 0.22 : 0.45,
+                ease: "easeOut",
+              }}
+              onAnimationComplete={() => {
+                if (completionStage === "cta") enableCompletionCta();
+              }}
+              whileHover={
+                !reducedMotion && completionCtaInteractive
+                  ? { y: -2 }
+                  : undefined
+              }
+              whileTap={
+                !reducedMotion && completionCtaInteractive
+                  ? { y: 1 }
+                  : undefined
+              }
+              aria-hidden={!completionCtaVisible}
+              className={`relative mt-12 w-[min(88vw,760px)] md:mt-[3.75rem] ${
+                completionCtaInteractive
+                  ? "pointer-events-auto"
+                  : "pointer-events-none"
+              }`}
             >
               {/* 蓝色错位衬底平行四边形 */}
               <div
@@ -692,6 +786,8 @@ export function IntroScreen({
               <button
                 type="button"
                 data-intro-cta
+                disabled={!completionCtaInteractive}
+                tabIndex={completionCtaInteractive ? 0 : -1}
                 aria-busy={!canLaunch && !loadError}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -740,14 +836,30 @@ export function IntroScreen({
                 </span>
               </button>
             </motion.div>
-            <p className="mt-8 hidden max-w-[24em] text-[11px] leading-5 tracking-[0.26em] text-[#9ca8b8] [font-family:var(--archive-font-cn)] pointer-coarse:block">
+            <motion.p
+              data-intro-mobile-hint
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 18 }}
+              animate={
+                completionCtaVisible
+                  ? { opacity: 1, y: 0 }
+                  : reducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: 18 }
+              }
+              transition={{
+                duration: reducedMotion ? 0.22 : 0.45,
+                ease: "easeOut",
+                delay: reducedMotion ? 0.08 : 0.16,
+              }}
+              aria-hidden={!completionCtaVisible}
+              className="mt-14 hidden max-w-[24em] text-[11px] leading-5 text-[#9ca8b8] [font-family:var(--archive-font-cn)] pointer-coarse:block"
+            >
               向上滑动进入<br />更好体验见桌面版
-            </p>
+            </motion.p>
           </>
         )}
       </motion.div>
 
-      {phase !== "typing" && <WarpCanvas onComplete={handleWarpComplete} />}
     </motion.div>
   );
 }

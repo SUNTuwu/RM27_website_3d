@@ -61,7 +61,19 @@ function directArchiveTarget() {
   return requestedView === ARCHIVE_VIEW_VALUE ? "#archive-hero" : null;
 }
 
+function resolveSnapAnchor(element) {
+  if (!element) return null;
+  return element.matches("[data-snap-scene]")
+    ? element
+    : (element.querySelector("[data-snap-scene]") ?? element);
+}
+
 const pointCloudUrl = assetUrl("pointcloud/arena_points.bin");
+const explorePointCloudUrls = Object.freeze({
+  dart: assetUrl("pointcloud/dart_points.bin"),
+  infantry: assetUrl("pointcloud/infantry_points.bin"),
+  engineer: assetUrl("pointcloud/engineer_points.bin"),
+});
 const bootstrap = {
   mode: directArchiveTarget() ? "archive" : "arena",
   introMounted: false,
@@ -71,6 +83,10 @@ const bootstrap = {
   pointFetchDone: false,
   pointFetchAttempts: 0,
   pointBytes: 0,
+  explorePointFetchStarted: false,
+  explorePointFetchDone: 0,
+  explorePointFetchErrors: 0,
+  explorePointBytes: 0,
   loadProgress: 0,
   loadStatus: "WAITING FOR INTRO",
   loadError: null,
@@ -174,12 +190,17 @@ function openDirectArchive(targetHash = "#archive-hero") {
         glowingChannels.mountGlowingChannels();
         await waitForNextPaint();
         window.dispatchEvent(new Event("enterprize:zoom-activate"));
+        await document.fonts?.ready;
         await waitForNextPaint();
-        const target =
+        const section =
           document.querySelector(targetHash) ??
           document.querySelector("#archive-team") ??
           document.querySelector("#unit-site");
-        target?.scrollIntoView({ behavior: "auto", block: "start" });
+        const target = resolveSnapAnchor(section);
+        target?.scrollIntoView({
+          behavior: "auto",
+          block: target.dataset.snapAlign === "center" ? "center" : "start",
+        });
         bootstrap.directArchiveReady = true;
         performance.mark?.("enterprize:direct-archive-ready");
       },
@@ -268,6 +289,29 @@ async function startArena() {
   // an early network failure is never reported as an unhandled rejection.
   void pointCloudBufferPromise.catch(() => {});
 
+  // Give the arena point cloud network priority, then use the remaining typing
+  // window to fetch the three EXPLORE variants without importing Three.js yet.
+  const explorePointCloudBufferPromises = Object.fromEntries(
+    Object.entries(explorePointCloudUrls).map(([key, url]) => {
+      const promise = pointCloudBufferPromise
+        .then(() => {
+          bootstrap.explorePointFetchStarted = true;
+          return fetchPointCloudBuffer(url);
+        })
+        .then((buffer) => {
+          bootstrap.explorePointFetchDone += 1;
+          bootstrap.explorePointBytes += buffer.byteLength;
+          return buffer;
+        })
+        .catch((error) => {
+          bootstrap.explorePointFetchErrors += 1;
+          throw error;
+        });
+      void promise.catch(() => {});
+      return [key, promise];
+    }),
+  );
+
   if (intro) {
     await waitForNextPaint();
     if (mode !== "arena") return;
@@ -296,6 +340,8 @@ async function startArena() {
     intro,
     pointCloudUrl,
     pointCloudBufferPromise,
+    explorePointCloudUrls,
+    explorePointCloudBufferPromises,
     onSceneReady: (launch) => {
       launchArenaScene = launch;
       reportProgress(1, "ARENA READY");

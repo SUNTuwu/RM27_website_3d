@@ -80,11 +80,17 @@ const ENTERPRIZE_LAYOUT: readonly ZoomParallaxSlot[] = [
 
 export function ZoomParallaxSection() {
   const scrollTo = React.useCallback((selector: string) => {
-    document.querySelector(selector)?.scrollIntoView({
+    const requested = document.querySelector(selector);
+    const target = requested?.matches("[data-snap-scene]")
+      ? requested
+      : (requested?.querySelector("[data-snap-scene]") ?? requested);
+    target?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "auto"
         : "smooth",
-      block: "start",
+      block: target instanceof HTMLElement && target.dataset.snapAlign === "center"
+        ? "center"
+        : "start",
     });
   }, []);
 
@@ -94,7 +100,11 @@ export function ZoomParallaxSection() {
       className="relative z-[60] w-full text-foreground"
       id="zoom-parallax-section"
     >
-      <header className="relative flex min-h-[44svh] items-end bg-[linear-gradient(180deg,transparent_0%,rgb(5_8_15/0.55)_42%,rgb(5_8_15/0.35)_72%,transparent_100%)] px-5 pb-8 pt-20 sm:px-8 md:px-12 md:pb-12 xl:px-16">
+      <header
+        className="relative flex min-h-[44svh] items-end bg-[linear-gradient(180deg,transparent_0%,rgb(5_8_15/0.55)_42%,rgb(5_8_15/0.35)_72%,transparent_100%)] px-5 pb-8 pt-20 sm:px-8 md:px-12 md:pb-12 xl:px-16"
+        data-snap-align="start"
+        data-snap-scene="beyond-arena"
+      >
         <div className="mx-auto grid w-full max-w-[1500px] items-end gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="max-w-5xl">
             <p className="mb-5 font-mono text-xs font-semibold uppercase text-muted-foreground md:text-sm">

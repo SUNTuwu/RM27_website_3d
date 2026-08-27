@@ -345,7 +345,7 @@ h1 {
   gap: 8px;
   padding: 11px 22px;
   font: 400 13px var(--os-font-en);
-  letter-spacing: 1px;
+  letter-spacing: 0;
   transform: skewX(var(--os-slant));
   transition: transform 0.2s, filter 0.2s, box-shadow 0.2s;
 }

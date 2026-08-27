@@ -5,7 +5,8 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
-const targetUrl = process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
+const targetUrl =
+  process.env.ENTERPRIZE_URL ?? process.argv[2] ?? "http://127.0.0.1:5173/";
 const outputDirectory = path.resolve("shots");
 const edgeCandidates = [
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
@@ -66,6 +67,7 @@ try {
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
     timeout: 60_000,
   });
+  await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
   await page.waitForFunction(
     () => window.__ENTERPRIZE_DEMO__?.state === "explore",
     null,
@@ -81,13 +83,13 @@ try {
   failIf(initial.keyHintOpacity < 0.9, "key hint visible in EXPLORE");
   failIf(!initial.keyText.includes("SPACE"), "key hint contains SPACE");
   failIf(
-    !initial.keyText.includes("switch") || !initial.keyText.includes("切换"),
+    !initial.keyText.includes("SWITCH") || !initial.keyText.includes("切换"),
     `key hint action text: "${initial.keyText}"`,
   );
   failIf(!initial.keyText.includes("LEFT"), "key hint contains LEFT");
   failIf(!initial.keyText.includes("RIGHT"), "key hint contains RIGHT");
   failIf(
-    !initial.keyText.includes("前一个") || !initial.keyText.includes("后一个"),
+    !initial.keyText.includes("前一个") || !initial.keyText.includes("下一个"),
     "LEFT/RIGHT annotated as prev/next",
   );
   failIf(
@@ -143,33 +145,52 @@ try {
   // 按键方块可点击: SPACE 按钮 = 上一款, RIGHT 按钮 = 下一款
   const readIndex = () =>
     page.evaluate(() => document.querySelector("#explore-index").textContent);
+  const waitForExploreSwitch = () =>
+    page.waitForFunction(
+      () => window.__ENTERPRIZE_DEMO__?.exploreTransitioning === false,
+      null,
+      { timeout: 20_000 },
+    );
+  await waitForExploreSwitch();
   const beforeSpaceBtn = await readIndex();
   await page.click("#key-space");
-  await page.waitForTimeout(300);
+  await page.waitForFunction(
+    (before) => document.querySelector("#explore-index").textContent !== before,
+    beforeSpaceBtn,
+    { timeout: 2_000 },
+  );
   const afterSpaceBtn = await readIndex();
   failIf(
     beforeSpaceBtn === afterSpaceBtn,
     `SPACE button switches model (${beforeSpaceBtn} -> ${afterSpaceBtn})`,
   );
-  await page.waitForTimeout(2_200); // 等切换动画结束
+  await waitForExploreSwitch();
   const beforeNextBtn = await readIndex();
   await page.click("#key-next");
-  await page.waitForTimeout(300);
+  await page.waitForFunction(
+    (before) => document.querySelector("#explore-index").textContent !== before,
+    beforeNextBtn,
+    { timeout: 2_000 },
+  );
   const afterNextBtn = await readIndex();
   failIf(
     beforeNextBtn === afterNextBtn,
     `RIGHT button switches model (${beforeNextBtn} -> ${afterNextBtn})`,
   );
   const beforePrevBtn = afterNextBtn;
-  await page.waitForTimeout(2_200);
+  await waitForExploreSwitch();
   await page.click("#key-prev");
-  await page.waitForTimeout(300);
+  await page.waitForFunction(
+    (before) => document.querySelector("#explore-index").textContent !== before,
+    beforePrevBtn,
+    { timeout: 2_000 },
+  );
   const afterPrevBtn = await readIndex();
   failIf(
     beforePrevBtn === afterPrevBtn,
     `LEFT button switches model (${beforePrevBtn} -> ${afterPrevBtn})`,
   );
-  await page.waitForTimeout(2_200);
+  await waitForExploreSwitch();
   await page.screenshot({ path: path.join(outputDirectory, "guide-after-space.png") });
 
   failIf(pageErrors.length > 0, `no page errors: ${pageErrors.join(" | ")}`);

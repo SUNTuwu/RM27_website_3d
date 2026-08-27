@@ -69,6 +69,14 @@ function poseDistance(a, b) {
   );
 }
 
+function isKnownBilibiliConsoleNoise(message) {
+  return (
+    message.includes("@bilibili/bili-user-fingerprint(report)") ||
+    (/WebSocket connection to/.test(message) &&
+      /web-player-tracker\.biliapi\.net/.test(message))
+  );
+}
+
 try {
   const mobile = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -82,7 +90,12 @@ try {
   const consoleErrors = [];
   const pageErrors = [];
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (
+      message.type() === "error" &&
+      !isKnownBilibiliConsoleNoise(message.text())
+    ) {
+      consoleErrors.push(message.text());
+    }
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
@@ -101,7 +114,11 @@ try {
   const exploreHint = await page.locator("#hint-text").textContent();
   check(
     "explore exposes touch guidance",
-    exploreHint.includes("SWIPE UP") && exploreHint.includes("TAP"),
+    exploreHint.includes("SWIPE UP") &&
+      exploreHint.includes("TAP") &&
+      exploreHint.includes("点按波纹") &&
+      exploreHint.includes("拖拽环视") &&
+      exploreHint.includes("滑动进入"),
     exploreHint,
   );
 
@@ -130,9 +147,12 @@ try {
   const scrubHint = await page.locator("#hint-text").textContent();
   check(
     "SCRUB describes timeline, look-around, and FOCUS",
-    scrubHint.includes("TIMELINE") &&
-      scrubHint.includes("LOOK AROUND") &&
-      scrubHint.includes("FOCUS"),
+    scrubHint.includes("SWIPE VERTICAL") &&
+      scrubHint.includes("DRAG HORIZONTAL") &&
+      scrubHint.includes("TAP ROBOT") &&
+      scrubHint.includes("推进时间轴") &&
+      scrubHint.includes("拖拽环视") &&
+      scrubHint.includes("聚焦兵种"),
     scrubHint,
   );
 

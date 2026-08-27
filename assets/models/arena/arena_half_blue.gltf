@@ -386,9 +386,9 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/png",
+			"mimeType":"image/webp",
 			"name":"arena_new",
-			"uri":"arena_new.png"
+			"uri":"arena_new.webp"
 		}
 	],
 	"accessors":[

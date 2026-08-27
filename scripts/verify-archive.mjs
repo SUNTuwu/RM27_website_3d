@@ -6,7 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
-const targetUrl = process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
+const targetUrl =
+  process.argv[2] ?? process.env.ENTERPRIZE_URL ?? "http://127.0.0.1:5173/";
 const outputDirectory =
   process.env.ENTERPRIZE_VERIFY_DIR ??
   path.join(os.tmpdir(), "enterprize-archive-verification");
@@ -56,10 +57,17 @@ try {
   });
   const page = await context.newPage();
   const consoleErrors = [];
+  const ignoredEmbedErrors = [];
   const pageErrors = [];
   const failedRequests = [];
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() !== "error") return;
+    const text = message.text();
+    const isBilibiliIframeNoise =
+      text.includes("@bilibili/bili-user-fingerprint(report)") ||
+      (text.includes("WebSocket connection to 'wss://") &&
+        text.includes("web-player-tracker.biliapi.net"));
+    (isBilibiliIframeNoise ? ignoredEmbedErrors : consoleErrors).push(text);
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
@@ -72,6 +80,7 @@ try {
     null,
     { timeout: 60_000 },
   );
+  await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
   await waitState(page, "explore", 30_000);
 
   // 快进到 END: EXPLORE 滚轮 -> SCAN -> SCRUB, 推满时间轴后再滚一格
@@ -102,10 +111,17 @@ try {
 
   // 进入 END 前的额外滚轮会继续原生滚动文档; 归位到档案首页再检查
   await page.evaluate(() => document.fonts?.ready);
-  const heroTitle = page.locator(".archive-hero__title");
-  await heroTitle.scrollIntoViewIfNeeded();
+  const heroSnap = page.locator("[data-snap-scene='archive-hero-image']");
+  await heroSnap.evaluate((element) =>
+    element.scrollIntoView({ behavior: "instant", block: "center" }),
+  );
+  await page.waitForFunction(() =>
+    document.querySelector("#unit-site")?.classList.contains("is-archive-active"),
+  );
   await page.waitForTimeout(900);
-  await heroTitle.scrollIntoViewIfNeeded();
+  await heroSnap.evaluate((element) =>
+    element.scrollIntoView({ behavior: "instant", block: "center" }),
+  );
   await page.waitForTimeout(400);
   await page.screenshot({
     path: path.join(outputDirectory, "archive-00-hero.png"),
@@ -224,7 +240,9 @@ try {
     .waitForFunction(
       () =>
         Math.abs(
-          document.getElementById("archive-team").getBoundingClientRect().top,
+          document
+            .querySelector("[data-snap-scene='team-history']")
+            .getBoundingClientRect().top,
         ) < 4,
       null,
       { timeout: 8_000, polling: 200 },
@@ -251,6 +269,9 @@ try {
   const backAtTop = await page.evaluate(() => window.scrollY);
   failIf(backAtTop !== 0, "return button restores the 3D viewport (scrollY 0)");
 
+  if (ignoredEmbedErrors.length > 0) {
+    console.log(`[info] ignored ${ignoredEmbedErrors.length} Bilibili iframe telemetry errors`);
+  }
   failIf(
     consoleErrors.length > 0,
     `no console errors: ${consoleErrors.join(" | ")}`,
@@ -287,22 +308,29 @@ try {
   const mobilePage = await mobileContext.newPage();
   const mobileErrors = [];
   mobilePage.on("pageerror", (error) => mobileErrors.push(error.message));
-  await mobilePage.goto(targetUrl, {
+  const directArchiveUrl = new URL(targetUrl);
+  directArchiveUrl.searchParams.set("view", "archive");
+  await mobilePage.goto(directArchiveUrl.href, {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
   });
   await mobilePage.waitForTimeout(2_500);
   const mobileChecks = await mobilePage.evaluate(() => ({
     demoHandle: window.__ENTERPRIZE_DEMO__,
-    mobileScreen:
-      !document.querySelector("#mobile-screen").hidden &&
-      document.querySelector(".mobile-screen__cue")?.textContent.length > 0,
+    documentMode: document.documentElement.classList.contains("is-document-mode"),
+    archiveActive: document
+      .querySelector("#unit-site")
+      ?.classList.contains("is-archive-active"),
     navHidden:
       getComputedStyle(document.querySelector("#archive-nav")).display ===
       "none",
   }));
-  failIf(mobileChecks.demoHandle !== undefined, "mobile does not boot the 3D demo");
-  failIf(!mobileChecks.mobileScreen, "mobile fallback shows scroll-down guidance");
+  failIf(
+    mobileChecks.demoHandle !== undefined,
+    "mobile direct archive route does not boot the 3D demo",
+  );
+  failIf(!mobileChecks.documentMode, "mobile direct archive route enters document mode");
+  failIf(!mobileChecks.archiveActive, "mobile archive background activates");
   failIf(!mobileChecks.navHidden, "chapter nav hidden on mobile");
 
   await mobilePage.evaluate(() => document.fonts?.ready);

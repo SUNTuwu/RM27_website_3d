@@ -15,6 +15,8 @@ for (const file of [
   "src/components/ui/zoom-parallax.tsx",
   "src/introEntry.js",
   "src/main.js",
+  "src/open-source.js",
+  "src/space-starfield.ts",
   "src/styles.css",
   "src/timeline/lookAroundController.js",
   "src/ui/hud.js",
@@ -44,6 +46,8 @@ check(
 
 const intro = source["src/components/intro-screen.tsx"];
 const entry = source["src/introEntry.js"];
+const openSource = source["src/open-source.js"];
+const starfield = source["src/space-starfield.ts"];
 check(
   intro.includes('role="progressbar"') &&
     intro.includes("data-intro-cta") &&
@@ -52,10 +56,13 @@ check(
   "Intro CTA exposes progress, queued entry, and visible retry states",
 );
 check(
-  intro.includes("const starCount = width < 720 ? 180 : 300") &&
-    intro.includes("enterprize:warp-center-cleared") &&
-    !intro.includes("star.r = 16"),
-  "warp uses one bounded star batch and records an empty final frame",
+  intro.includes("createSpaceStarfield") &&
+    openSource.includes("createSpaceStarfield") &&
+    !intro.includes("function WarpCanvas") &&
+    starfield.includes("SPACE_STARFIELD_BASE_VELOCITY = 16.5") &&
+    starfield.includes("velocityPerSecond * deltaSeconds") &&
+    starfield.includes("animationFrame === 0"),
+  "Intro and open-source share one frame-rate-independent half-speed starfield",
 );
 check(
   intro.includes('event.code !== "Space"') &&
@@ -74,23 +81,31 @@ check(
 
 const hud = source["src/ui/hud.js"];
 check(
-  (hud.match(/点按波纹 &nbsp;·&nbsp; 拖拽环视 &nbsp;·&nbsp; 滑动进入/g) ?? [])
-    .length >= 2,
-  "desktop and touch EXPLORE hints use the requested Chinese copy",
+  ["点按波纹", "拖拽环视", "滑动进入"].every(
+    (copy) => (hud.match(new RegExp(copy, "g")) ?? []).length >= 2,
+  ) &&
+    ["CLICK", "TAP", "DRAG", "SCROLL", "SWIPE UP"].every((copy) =>
+      hud.includes(`en: "${copy}"`),
+    ),
+  "desktop and touch EXPLORE hints use matching English and Chinese actions",
 );
 check(
-  source["index.html"].includes(
-    '<p class="key-hints__lead"><span>下滑进入</span><span>战场</span></p>',
-  ),
-  "EXPLORE key controls include the battlefield entry lead",
+  source["index.html"].includes("SCROLL TO ENTER") &&
+    source["index.html"].includes("下滑进入战场") &&
+    source["index.html"].includes("hud-bilingual__en") &&
+    source["index.html"].includes("hud-bilingual__cn"),
+  "EXPLORE key controls use one bilingual battlefield-entry hierarchy",
 );
 
 const styles = source["src/styles.css"];
 check(
-  styles.includes("background: var(--bg);") &&
+    styles.includes("background: var(--bg);") &&
     styles.includes("#app[data-state=\"explore\"] .explore-brand-mark::before") &&
-    styles.includes("animation: explore-brand-float"),
-  "3D transition background and EXPLORE logo animation share the configured visual system",
+    styles.includes("animation: explore-brand-float") &&
+    styles.includes("transform: translate3d(0, -10px, 0);") &&
+    styles.includes(".hud-bilingual__en") &&
+    styles.includes(".hud-bilingual__cn"),
+  "EXPLORE logo starts continuously and HUD bilingual colors share one visual system",
 );
 check(
   /\.timeline-track\s*\{[^}]*height:\s*34px/s.test(styles) &&
@@ -98,7 +113,7 @@ check(
   "timeline labels are positioned below the progress line",
 );
 check(
-  styles.includes(".key-hints__lead span { display: block; }") &&
+  styles.includes("flex-direction: column;") &&
     styles.includes(".archive-return-fade.is-visible"),
   "mobile battlefield lead wraps and archive return has a full-page fade",
 );
@@ -113,8 +128,15 @@ check(
 check(
   main.includes('new Event("enterprize:video-prewarm")') &&
     main.includes("enterprize:explore-first-paint") &&
-    main.includes("enterprize:p1-start"),
-  "Timeline video prewarm and delayed EXPLORE P1 scheduling are instrumented",
+    main.includes("enterprize:p1-start") &&
+    main.includes("DEFERRED_SCENE_LAYER") &&
+    main.includes("warmDeferredRoots") &&
+    main.includes("EXPLORE_CLOUD_BOOT_BUDGET_MS") &&
+    main.includes("prepareRemainingExploreClouds") &&
+    main.includes("warmCamera.layers.set(DEFERRED_SCENE_LAYER)") &&
+    main.includes("object.frustumCulled = false") &&
+    entry.includes("explorePointCloudBufferPromises"),
+  "EXPLORE point artifacts use bounded startup work and isolated GPU warmup",
 );
 check(
   main.includes("returnToArenaOverview") &&
@@ -129,8 +151,10 @@ check(
     archive,
   ) &&
     archive.includes(".archive-hero__media .archive-hero__logo") &&
-    archive.includes("background: rgba(5, 7, 13, 0.92)"),
-  "mobile archive title, logo visibility, and dark stats are explicitly constrained",
+    archive.includes("linear-gradient(145deg, #101827 0%, #05070d 100%)") &&
+    archive.includes(".archive-stat:nth-child(even)") &&
+    archive.includes("border-radius: 15px"),
+  "archive title stays constrained while stats use dark accent cards on every viewport",
 );
 check(
   source["src/components/glowing-channels-section.tsx"].includes("p-7") &&

@@ -14,8 +14,16 @@ const STATE_META = {
   explore: {
     index: "01",
     label: "POINT CLOUD",
-    hint: "点按波纹 &nbsp;·&nbsp; 拖拽环视 &nbsp;·&nbsp; 滑动进入",
-    touchHint: "点按波纹 &nbsp;·&nbsp; 拖拽环视 &nbsp;·&nbsp; 滑动进入",
+    hint: [
+      { en: "CLICK", cn: "点按波纹" },
+      { en: "DRAG", cn: "拖拽环视" },
+      { en: "SCROLL", cn: "滑动进入" },
+    ],
+    touchHint: [
+      { en: "TAP", cn: "点按波纹" },
+      { en: "DRAG", cn: "拖拽环视" },
+      { en: "SWIPE UP", cn: "滑动进入" },
+    ],
   },
   scan: {
     index: "02",
@@ -25,14 +33,28 @@ const STATE_META = {
   scrub: {
     index: "03",
     label: "TIMELINE_0",
-    hint: "<b>SCROLL</b> DRIVE TIMELINE &nbsp;·&nbsp; <b>DRAG</b> LOOK AROUND &nbsp;·&nbsp; <b>CLICK ROBOT</b> FOCUS",
-    touchHint: "<b>SWIPE VERTICAL</b> TIMELINE &nbsp;·&nbsp; <b>DRAG HORIZONTAL</b> LOOK AROUND &nbsp;·&nbsp; <b>TAP ROBOT</b> FOCUS",
+    hint: [
+      { en: "SCROLL", cn: "推进时间轴" },
+      { en: "DRAG", cn: "拖拽环视" },
+      { en: "CLICK ROBOT", cn: "聚焦兵种" },
+    ],
+    touchHint: [
+      { en: "SWIPE VERTICAL", cn: "推进时间轴" },
+      { en: "DRAG HORIZONTAL", cn: "拖拽环视" },
+      { en: "TAP ROBOT", cn: "聚焦兵种" },
+    ],
   },
   focus: {
     index: "04",
     label: "UNIT FOCUS",
-    hint: "<b>DRAG</b> ORBIT UNIT &nbsp;·&nbsp; <b>SCROLL</b> EXIT FOCUS",
-    touchHint: "<b>DRAG</b> ORBIT &nbsp;·&nbsp; <b>SWIPE UP</b> EXIT",
+    hint: [
+      { en: "DRAG", cn: "环绕观察" },
+      { en: "SCROLL", cn: "退出聚焦" },
+    ],
+    touchHint: [
+      { en: "DRAG", cn: "环绕观察" },
+      { en: "SWIPE UP", cn: "退出聚焦" },
+    ],
   },
   end: {
     index: "05",
@@ -254,6 +276,35 @@ export function createHud() {
   const keySpace = document.querySelector("#key-space");
   const keyNext = document.querySelector("#key-next");
 
+  function renderHint(content) {
+    if (!Array.isArray(content)) {
+      hintText.textContent = content ?? "";
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    content.forEach(({ en, cn }, index) => {
+      const item = document.createElement("span");
+      item.className = "hint-bar__item hud-bilingual";
+      if (index > 0) {
+        const separator = document.createElement("span");
+        separator.className = "hint-bar__separator";
+        separator.setAttribute("aria-hidden", "true");
+        separator.textContent = "·";
+        item.appendChild(separator);
+      }
+      const english = document.createElement("span");
+      english.className = "hud-bilingual__en";
+      english.textContent = en;
+      const chinese = document.createElement("span");
+      chinese.className = "hud-bilingual__cn";
+      chinese.textContent = cn;
+      item.append(english, chinese);
+      fragment.appendChild(item);
+    });
+    hintText.replaceChildren(fragment);
+  }
+
   return {
     setState(state) {
       const meta = STATE_META[state];
@@ -263,7 +314,7 @@ export function createHud() {
       app.dataset.state = state;
       stateIndex.textContent = meta.index;
       stateLabel.textContent = meta.label;
-      hintText.innerHTML = isCoarsePointer && meta.touchHint ? meta.touchHint : meta.hint;
+      renderHint(isCoarsePointer && meta.touchHint ? meta.touchHint : meta.hint);
       timelineHud.hidden = !(state === "scrub" || state === "focus");
       // 滚动引导: 进入 EXPLORE 后延迟 beginTimeOffsetSeconds 再激活 (出现时动画从 0 相位启动)
       if (scrollCueEl) {

@@ -152,9 +152,9 @@
 	],
 	"images":[
 		{
-			"mimeType":"image/jpeg",
+			"mimeType":"image/webp",
 			"name":"tripo_node_d7df7fef-2a09-40ee-a8b3-6e150dd117bf_BaseColor",
-			"uri":"tripo_node_d7df7fef-2a09-40ee-a8b3-6e150dd117bf_BaseColor.jpg"
+			"uri":"base-color.webp"
 		}
 	],
 	"accessors":[
