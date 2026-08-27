@@ -175,6 +175,25 @@ body {
     linear-gradient(180deg, rgba(2, 4, 9, 0.35) 0%, transparent 18%, transparent 82%, rgba(2, 4, 9, 0.45) 100%);
 }
 
+/* SCRUB 回滚到起点 -> 渐隐黑场重载 EXPLORE (时长由 JS 按 config 写入) */
+.state-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background: #04060c;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.45s ease,
+    visibility 0.45s ease;
+}
+
+.state-fade.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* ASSEMBLE / EXPLORE 右侧品牌水印: 入场左滑, SCAN 起向右撤出 */
 .explore-brand-mark {
   position: absolute;

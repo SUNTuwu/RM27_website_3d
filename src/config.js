@@ -128,7 +128,6 @@ export const VISUAL_CONFIG = {
     // rippleBoost: 涟漪波速/振幅倍率 (在按模型比例自动缩放的基础上再放大/缩小)
     models: {
       arena: { fitScale: 1, rippleBoost: 1 },
-      robot: { fitScale: 0.5, rippleBoost: 2 },
       dart: { fitScale: 0.7, rippleBoost: 2 },
       infantry: { fitScale: 0.5, rippleBoost: 2 },
       engineer: { fitScale: 0.5, rippleBoost: 2 },
@@ -141,6 +140,12 @@ export const VISUAL_CONFIG = {
       ringSpeedMultiplier: 40, // 切换旋转中点时背景环的峰值速度倍率
       maskFeather: 0.03, // 屏幕高度归一化后的蒙版柔边宽度
       maskGlowStrength: 2.5, // 蒙版边缘白色 HDR 高亮强度，由 Bloom 扩散成光晕
+    },
+    // SCRUB 回滚到时间轴起点时: 继续上滚渐隐黑场, 从点云聚拢前重新加载 EXPLORE
+    reloadFromStart: {
+      progressThreshold: 0.003, // 时间轴进度 <= 该值时触发 (0~1)
+      fadeOutSeconds: 0.45, // 场景 -> 黑场时长 (秒)
+      fadeInSeconds: 0.7, // 黑场 -> 重新聚拢动画时长 (秒)
     },
   },
 

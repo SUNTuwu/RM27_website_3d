@@ -6,7 +6,6 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const assetPaths = {
   arena: "assets/models/arena/arena_half_blue.gltf",
   timeline: "assets/models/timeline_0/arena.gltf",
-  robot: "assets/models/robot_1/robot_1.gltf",
   dart: "assets/models/dart/dart.gltf",
   arenaPoints: "assets/pointcloud/arena_points.bin",
 };
@@ -91,14 +90,12 @@ async function validatePointCloud(relativePath) {
 async function run() {
   const arena = await readGltf(assetPaths.arena);
   const timeline = await readGltf(assetPaths.timeline);
-  const robot = await readGltf(assetPaths.robot);
   const dart = await readGltf(assetPaths.dart);
   const arenaPoints = await validatePointCloud(assetPaths.arenaPoints);
 
   await Promise.all([
     validateExternalUris("arena", arena),
     validateExternalUris("timeline_0", timeline),
-    validateExternalUris("robot_1", robot),
     validateExternalUris("dart", dart),
   ]);
 
@@ -189,9 +186,6 @@ async function run() {
   check(primaryClip?.duration >= 6 && primaryClip?.duration <= 6.1, "timeline clip duration is approximately 6.04s");
   check(primaryClip?.channels === 11, "timeline clip contains 11 animation channels");
 
-  const robotNode = (robot.data.nodes ?? []).find((node) => node.name?.startsWith("robot_"));
-  check(Boolean(robotNode), "robot asset exposes a robot_* node");
-
   const dartNode = (dart.data.nodes ?? []).find((node) => node.name === "dart");
   check(Boolean(dartNode), "dart asset exposes the dart node");
 
@@ -208,12 +202,6 @@ async function run() {
       meshes: timeline.data.meshes?.length ?? 0,
       materials: timeline.data.materials?.length ?? 0,
       clips: clipSummary.map((clip) => `${clip.name} ${clip.duration.toFixed(2)}s`).join(", "),
-    },
-    robot: {
-      nodes: robot.data.nodes?.length ?? 0,
-      meshes: robot.data.meshes?.length ?? 0,
-      materials: robot.data.materials?.length ?? 0,
-      clips: robot.data.animations?.length ?? 0,
     },
     dart: {
       nodes: dart.data.nodes?.length ?? 0,

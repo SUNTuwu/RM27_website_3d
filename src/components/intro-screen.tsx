@@ -405,6 +405,9 @@ export function IntroScreen({
                 </span>
               </button>
             </motion.div>
+            <p className="mt-8 hidden text-[11px] tracking-[0.35em] text-white/40 [font-family:var(--archive-font-cn)] pointer-coarse:block">
+              竖向滑动即可探索 · 更好体验见桌面版
+            </p>
           </>
         )}
       </motion.div>

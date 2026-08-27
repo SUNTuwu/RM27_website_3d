@@ -4,7 +4,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const ASSET_MANIFEST = Object.freeze({
   arena: "models/arena/arena_half_blue.gltf",
   timeline: "models/timeline_0/arena.gltf",
-  robot: "models/robot_1/robot_1.gltf",
   dart: "models/dart/dart.gltf",
   hero: "models/hero/hero.gltf",
   engineer: "models/engineer/engineer.gltf",
@@ -196,9 +195,6 @@ export function auditProjectAssets(
   const timelineStats = assets.timeline
     ? collectSceneStats(assets.timeline.scene)
     : emptySceneStats();
-  const robotStats = assets.robot
-    ? collectSceneStats(assets.robot.scene)
-    : emptySceneStats();
   const dartStats = assets.dart
     ? collectSceneStats(assets.dart.scene)
     : emptySceneStats();
@@ -239,12 +235,6 @@ export function auditProjectAssets(
   if (assets.timeline && clips.length === 0) {
     issues.push("timeline_0 contains no animation clips");
   }
-  if (
-    assets.robot &&
-    !robotStats.meshes.some((mesh) => mesh.name.startsWith("robot_"))
-  ) {
-    issues.push("robot asset does not expose a robot_* mesh");
-  }
   if (assets.dart && dartStats.meshes.length === 0) {
     issues.push("dart asset contains no renderable meshes");
   }
@@ -257,7 +247,6 @@ export function auditProjectAssets(
   const allMaterials = new Set([
     ...arenaStats.materials,
     ...timelineStats.materials,
-    ...robotStats.materials,
     ...dartStats.materials,
     ...squadKeys.flatMap((key) => squadStats[key].materials),
   ]);
@@ -277,7 +266,6 @@ export function auditProjectAssets(
       clips,
       sourceClips: assets.timeline?.animations ?? [],
     },
-    robot: robotStats,
     dart: dartStats,
     hero: squadStats.hero,
     engineer: squadStats.engineer,
@@ -287,7 +275,6 @@ export function auditProjectAssets(
       meshes:
         arenaStats.meshes.length +
         timelineStats.meshes.length +
-        robotStats.meshes.length +
         dartStats.meshes.length +
         squadMeshCount,
       materials: allMaterials.size,

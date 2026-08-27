@@ -131,13 +131,6 @@ async function boot() {
       cloud,
     },
     {
-      key: "robot",
-      name: "ROBOT_1",
-      desc: "步兵机器人整机表面采样点云, 源自高精度 glTF 模型。",
-      cloud: null,
-      loadPromise: null,
-    },
-    {
       key: "dart",
       name: "DART",
       desc: "飞镖弹体表面采样点云, 保留 glTF 导出的姿态与外形细节。",
@@ -168,23 +161,6 @@ async function boot() {
 
   // ---------- FOCUS 右侧图片卡 (每个可聚焦机器人一组幻灯片, 首图用各兵种的 0.jpg) ----------
   const focusSlidesByKey = {
-    robot: [
-      {
-        image: assetUrl("images/hero/wheel-leg-4-web.jpg"),
-        title: "WHEEL-LEG / 赛场实拍",
-        desc: "轮腿构型机器人在赛场中央区域的机动瞬间, 兼具轮式速度与腿式越障能力。",
-      },
-      {
-        image: assetUrl("images/hero/arena-fleet.jpg"),
-        title: "BASE / 基地与前哨",
-        desc: "蓝方基地与前哨站全景, 机器人列阵待命, 等待开局倒计时。",
-      },
-      {
-        image: assetUrl("images/hero/rm2024-supercapacitor-controller.webp"),
-        title: "SUPERCAP / 超级电容控制器",
-        desc: "RM2024 超级电容控制器与电容组, 为底盘爆发机动提供瞬时大功率输出。",
-      },
-    ],
     hero: [
       {
         image: assetUrl("images/hero/arena-fleet.jpg"),
@@ -261,11 +237,11 @@ async function boot() {
   };
   let focusSlideIndex = 0;
   let focusMediaInitialized = false;
-  let activeFocusKey = "robot";
+  let activeFocusKey = "hero";
   const preloadedFocusSlides = new Set();
 
   function activeFocusSlides() {
-    return focusSlidesByKey[activeFocusKey] ?? focusSlidesByKey.robot;
+    return focusSlidesByKey[activeFocusKey] ?? focusSlidesByKey.hero;
   }
 
   function preloadFocusSlide(index) {
@@ -551,7 +527,6 @@ async function boot() {
       const loaded = await assetLoader.loadMany([
         "arena",
         "timeline",
-        "robot",
         "hero",
         "engineer",
         "infantry",
@@ -567,7 +542,6 @@ async function boot() {
         required: [
           "arena",
           "timeline",
-          "robot",
           "hero",
           "engineer",
           "infantry",
@@ -580,7 +554,6 @@ async function boot() {
 
       configureProjectAsset("arena", loaded.arena);
       configureProjectAsset("timeline", loaded.timeline);
-      configureProjectAsset("robot", loaded.robot);
       configureProjectAsset("hero", loaded.hero);
       configureProjectAsset("engineer", loaded.engineer);
       configureProjectAsset("infantry", loaded.infantry);
@@ -597,7 +570,6 @@ async function boot() {
       [
         ...report.arena.materials,
         ...report.timeline.materials,
-        ...report.robot.materials,
         ...robotSquadInstance.materials,
       ].forEach((material) => {
         material.clippingPlanes = [scanPlane];
@@ -605,7 +577,6 @@ async function boot() {
       });
       stage.scene.add(
         loaded.arena.scene,
-        loaded.robot.scene,
         loaded.timeline.scene,
         robotSquadInstance.root,
       );
@@ -641,14 +612,13 @@ async function boot() {
         Math.max(SCAN_DURATION - 0.1, 0),
       );
 
-      // FOCUS 目标: robot_1 + 红蓝编队机器人全部可点击 (红侧光环用红色);
+      // FOCUS 目标: 红蓝编队机器人全部可点击 (红侧光环用红色);
       // guide = SCRUB 屏幕点击引导圈, 只给 蓝engineer/蓝infantry/红hero/红sentry
       const focusPanels = {
-        robot: { name: "ROBOT_1", index: "#00", cn: "点云标定机器人", desc: "FOCUS 视角标定用占位机器人, 整机点云重建采样源。" },
         hero: { name: "HERO", index: "#01", cn: "英雄机器人", desc: "地面主力输出兵种, 发射 42mm 弹丸, 可对前哨站与基地造成高额伤害, 是推进战线的核心火力单位。" },
         engineer: { name: "ENGINEER", index: "#02", cn: "工程机器人", desc: "资源调度与救援保障单位, 机械臂完成取矿兑换, 为团队提供持续经济来源。" },
-        infantry: { name: "INFANTRY", index: "#03", cn: "步兵机器人", desc: "正面交火主力兵种, 高射速 17mm 弹丸持续输出, 灵活穿梭于掩体之间。" },
-        sentry: { name: "SENTRY", index: "#04", cn: "哨兵机器人", desc: "全自动巡逻防守单位, 自动索敌反击, 是基地与前哨站前的最后防线。" },
+        infantry: { name: "INFANTRY", index: "#04", cn: "步兵机器人", desc: "正面交火主力兵种, 高射速 17mm 弹丸持续输出, 灵活穿梭于掩体之间。" },
+        sentry: { name: "SENTRY", index: "#07", cn: "哨兵机器人", desc: "全自动巡逻防守单位, 自动索敌反击, 是基地与前哨站前的最后防线。" },
       };
       const squad = robotSquadInstance;
       const squadTarget = (key, side) => ({
@@ -661,7 +631,6 @@ async function boot() {
         panel: focusPanels[key],
       });
       focusTargets = [
-        { key: "robot", name: "ROBOT_1", root: loaded.robot.scene, panel: focusPanels.robot },
         { ...squadTarget("hero", "blue") },
         { ...squadTarget("engineer", "blue"), guide: "#2e9bff" },
         { ...squadTarget("infantry", "blue"), guide: "#2e9bff" },
@@ -696,18 +665,15 @@ async function boot() {
       });
 
       const timelineBounds = new THREE.Box3().setFromObject(loaded.timeline.scene);
-      const robotBounds = new THREE.Box3().setFromObject(loaded.robot.scene);
       const squadBounds = new THREE.Box3().setFromObject(robotSquadInstance.root);
       contentMinX = Math.min(
         cloud.bounds.min.x,
         timelineBounds.min.x,
-        robotBounds.min.x,
         squadBounds.min.x,
       );
       contentMaxX = Math.max(
         cloud.bounds.max.x,
         timelineBounds.max.x,
-        robotBounds.max.x,
         squadBounds.max.x,
       );
       scanPlane.constant = contentMinX - 1;
@@ -897,7 +863,7 @@ async function boot() {
         .then(() => {
           scheduleLowPriority(() => {
             void ensureExploreCloud(exploreModels[2]).catch((error) => {
-              console.error("[ENTERPRIZE] Dart preload failed", error);
+              console.error("[ENTERPRIZE] Explore cloud preload failed", error);
             });
           });
         })
@@ -934,6 +900,72 @@ async function boot() {
     lockPageScroll();
     setState("scrub");
     hud.setTimeline(timeline.progress);
+  }
+
+  // ---------- SCRUB 回滚到起点: 渐隐黑场后从点云聚拢前重新加载 EXPLORE ----------
+  const stateFade = document.querySelector("#state-fade");
+  let exploreReloading = false;
+
+  function restartExploreFromStart() {
+    if (exploreReloading || state !== "scrub") {
+      return;
+    }
+    exploreReloading = true;
+    timeline.setAutoDrive(false);
+    robotGuides.forEach((guide) => guide?.hide());
+    const reloadConfig = VISUAL_CONFIG.explore.reloadFromStart;
+    stateFade.style.transitionDuration = `${reloadConfig.fadeOutSeconds}s`;
+    stateFade.classList.add("is-visible");
+    window.setTimeout(() => {
+      // 黑场中复位: 时间轴/环视/扫描裁剪回到起点, 实体重新隐藏, 点云回到聚拢前
+      timeline.seekImmediate(0);
+      hud.setTimeline(0);
+      lookAround.reset();
+      scanRequested = false;
+      scanPlane.constant = contentMinX - 1;
+      cloud.setScanX(contentMinX - 1);
+      cloud.points.rotation.y = 0;
+      cloud.resetScreenMask();
+      cloud.points.visible = true;
+      cloud.setProgress(0);
+      exploreModels.forEach((entry, index) => {
+        if (entry.cloud && index !== ARENA_MODEL_INDEX) {
+          entry.cloud.points.visible = false;
+          entry.cloud.resetScreenMask();
+        }
+      });
+      exploreModelIndex = ARENA_MODEL_INDEX;
+      const arenaEntry = exploreModels[ARENA_MODEL_INDEX];
+      hud.setExploreModel(
+        ARENA_MODEL_INDEX,
+        exploreModels.length,
+        arenaEntry.name,
+        arenaEntry.desc,
+      );
+      // 与启航一致的左偏构图 + 背景环渐显
+      viewOffsetX = window.innerWidth * VISUAL_CONFIG.explore.sideOffset;
+      viewOffsetY = -window.innerHeight * VISUAL_CONFIG.explore.verticalOffset;
+      backRing.group.visible = true;
+      backRing.setLevel(0);
+      addTween({
+        duration: backRingConfig.fadeInSeconds,
+        onUpdate: (k) => {
+          backRing.setLevel(k);
+        },
+      });
+      setState("assemble");
+      stateFade.style.transitionDuration = `${reloadConfig.fadeInSeconds}s`;
+      stateFade.classList.remove("is-visible");
+      addTween({
+        duration: ASSEMBLE_DURATION,
+        ease: (x) => x, // shader 内部已做逐点缓动, 进度线性推进
+        onUpdate: (k) => cloud.setProgress(k),
+        onComplete: () => {
+          exploreReloading = false;
+          setState("explore");
+        },
+      });
+    }, reloadConfig.fadeOutSeconds * 1000);
   }
 
   // 档案末端 "RETURN TO THE ARENA" 按钮 = 滚轮回顶的显式入口
@@ -1122,7 +1154,7 @@ async function boot() {
     if (target?.panel) {
       hud.setFocusUnit(target.panel);
     }
-    activeFocusKey = (target?.key ?? "robot").replace(
+    activeFocusKey = (target?.key ?? "hero").replace(
       /-red$/,
       "",
     );
@@ -1181,7 +1213,7 @@ async function boot() {
       }
       raycaster.setFromCamera(pointerNdc, freeCamera);
       if (raycaster.ray.intersectPlane(groundPlane, clickPoint)) {
-        // 激活模型的点云可能有缩放/平移 (ROBOT_1), 涟漪参数需要本地坐标
+        // 激活模型的点云可能有缩放/平移, 涟漪参数需要本地坐标
         const active = exploreModels[exploreModelIndex].cloud;
         const localPoint = active.points.worldToLocal(clickPoint.clone());
         localPoint.x = THREE.MathUtils.clamp(
@@ -1248,6 +1280,15 @@ async function boot() {
         requestScan();
       }
     } else if (state === "scrub") {
+      if (
+        delta < 0 &&
+        lookAround.isIdle &&
+        timeline.progress <=
+          VISUAL_CONFIG.explore.reloadFromStart.progressThreshold
+      ) {
+        restartExploreFromStart();
+        return;
+      }
       if (delta > 0 && lookAround.isIdle && timeline.isComplete) {
         enterUnitArchive();
         return;
@@ -1364,6 +1405,16 @@ async function boot() {
           requestScan();
         }
       } else if (state === "scrub") {
+        if (
+          event.deltaY < 0 &&
+          lookAround.isIdle &&
+          timeline.progress <=
+            VISUAL_CONFIG.explore.reloadFromStart.progressThreshold
+        ) {
+          event.preventDefault();
+          restartExploreFromStart();
+          return;
+        }
         if (event.deltaY > 0 && lookAround.isIdle && timeline.isComplete) {
           enterUnitArchive();
           return;
@@ -1452,7 +1503,7 @@ async function boot() {
     const pointPixelRatio = stage.renderer.getPixelRatio();
     const viewportHeight = stage.renderer.domElement.height;
     cloud.update(elapsed, pointPixelRatio, viewportHeight);
-    // arena 之外的展示点云 (robot/dart/infantry/engineer) 仅在可见时更新
+    // arena 之外的展示点云 (dart/infantry/engineer) 仅在可见时更新
     exploreModels.forEach((entry) => {
       if (entry.cloud && entry.cloud !== cloud && entry.cloud.points.visible) {
         entry.cloud.update(elapsed, pointPixelRatio, viewportHeight);

@@ -41,7 +41,7 @@ await page.waitForFunction(
 );
 await page.waitForTimeout(1500);
 
-// 切换到 ROBOT_1, 捕捉过渡中段与结束帧
+// 切换到下一个展示模型, 捕捉过渡中段与结束帧
 await page.click("#explore-next");
 await page.waitForTimeout(900);
 await page.screenshot({ path: "shots/recenter-mid.png" });

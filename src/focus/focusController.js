@@ -11,7 +11,7 @@ function easeInOutCubic(x) {
 }
 
 /**
- * 兵种聚焦状态 (FOCUS), 支持多个机器人目标 (蓝方编队 + robot_1):
+ * 兵种聚焦状态 (FOCUS), 支持多个机器人目标 (红蓝编队机器人):
  * enter(i) -> 相机从当前姿态 tween 到目标 i 旁锚点
  * active   -> 拖拽围绕机器人观察, 松手弹簧回中
  * exit     -> 相机 tween 回 timeline_0 冻结进度的相机姿态
