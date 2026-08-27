@@ -56,10 +56,10 @@ async function revealIntroCompletion(page) {
             elapsed: now - startedAt,
             stage: stageRoot?.dataset.introCompletionStage ?? null,
             typedTop: typedRect?.top ?? null,
-            copyOpacity: copy ? Number(getComputedStyle(copy).opacity) : null,
+            copyOpacity: copy ? Number(getComputedStyle(copy).opacity) : 0,
             ctaOpacity: wrapper
               ? Number(getComputedStyle(wrapper).opacity)
-              : null,
+              : 0,
             hintOpacity: hintStyle ? Number(hintStyle.opacity) : null,
             hintVisible: hintStyle?.display !== "none",
             disabled: button?.disabled ?? null,
@@ -96,7 +96,7 @@ async function revealIntroCompletion(page) {
           }
           requestAnimationFrame(frame);
         };
-        requestAnimationFrame(frame);
+        frame(performance.now());
       }),
   );
 }
@@ -107,7 +107,7 @@ function checkCompletionSequence(sequence, label, { reduced = false } = {}) {
   const copyStart = sequence.samples.find((sample) => sample.copyOpacity > 0.02);
   const ctaStart = sequence.samples.find((sample) => sample.ctaOpacity > 0.02);
   const beforeReady = sequence.samples.filter(
-    (sample) => sample.stage !== "ready",
+    (sample) => sample.stage !== "ready" && sample.disabled !== null,
   );
 
   check(
