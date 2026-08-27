@@ -3,17 +3,24 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "build:site": "node scripts/build-site.mjs",
     "preview": "vite preview --host",
+    "refresh:metrics": "node scripts/refresh-metrics.mjs",
+    "test:middleware": "node --test functions/_middleware.test.mjs",
+    "verify:deployment": "node scripts/verify-deployment.mjs",
     "generate:pointcloud": "node scripts/generate-pointcloud.mjs",
     "validate:assets": "node scripts/validate-assets.mjs",
     "verify:staged": "node scripts/verify-staged-loading.mjs",
     "verify:visual": "node scripts/verify-visual.mjs",
     "verify:zoom": "node scripts/verify-zoom-parallax.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "npm run validate:assets && npm run typecheck && npm run build"
+    "check": "npm run validate:assets && npm run typecheck && npm run test:middleware && npm run build:site && npm run verify:deployment"
   },
   "dependencies": {
     "@tsparticles/engine": "^3.9.1",
