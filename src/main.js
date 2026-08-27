@@ -45,6 +45,14 @@ function scheduleLowPriority(callback) {
   }
 }
 
+function waitForNextPaint() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(resolve);
+    });
+  });
+}
+
 const hud = createHud();
 
 let archiveIslandsPromise = null;
@@ -102,6 +110,18 @@ boot().catch((error) => {
 
 async function boot() {
   hud.setState("boot");
+  let launchIntroScene = () => {};
+  const intro = mountIntroScreen({
+    onLaunch: () => launchIntroScene(),
+    ready: false,
+  });
+  performance.mark?.("enterprize:intro-mounted");
+  const introControl = intro?.control ?? null;
+  if (intro) {
+    await waitForNextPaint();
+    performance.mark?.("enterprize:intro-paint-window");
+  }
+
   const canvas = document.querySelector("#scene-canvas");
   const unitSite = document.querySelector("#unit-site");
   const documentIntro = document.querySelector("#zoom-parallax-root") ?? unitSite;
@@ -810,7 +830,6 @@ async function boot() {
 
   // ---------- 全局状态机 ----------
   let state = "boot";
-  let introControl = null;
   let documentRevealFrame = 0;
   let documentRevealInProgress = false;
 
@@ -1458,9 +1477,13 @@ async function boot() {
           requestScan();
         }
       } else if (state === "scrub") {
+        if (!lookAround.isIdle) {
+          event.preventDefault();
+          lookAround.zoom(event.deltaY);
+          return;
+        }
         if (
           event.deltaY < 0 &&
-          lookAround.isIdle &&
           timeline.progress <=
             VISUAL_CONFIG.explore.reloadFromStart.progressThreshold
         ) {
@@ -1468,15 +1491,12 @@ async function boot() {
           restartExploreFromStart();
           return;
         }
-        if (event.deltaY > 0 && lookAround.isIdle && timeline.isComplete) {
+        if (event.deltaY > 0 && timeline.isComplete) {
           enterUnitArchive();
           return;
         }
         event.preventDefault();
-        // 环视状态机交回相机控制权后才恢复滚轮。
-        if (lookAround.isIdle) {
-          timeline.addWheel(event.deltaY);
-        }
+        timeline.addWheel(event.deltaY);
       } else if (state === "focus") {
         event.preventDefault();
         exitFocus();
@@ -1698,6 +1718,7 @@ async function boot() {
   // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
+  performance.mark?.("enterprize:p0-ready");
 
   hud.finishLoading();
 
@@ -1729,9 +1750,12 @@ async function boot() {
     });
   };
 
-  // 点云聚拢由起始界面的入场按钮触发 (跃迁转场结束后渐隐)
-  const intro = mountIntroScreen({ onLaunch: beginAssemble });
-  introControl = intro?.control ?? null;
+  // 点云聚拢由起始界面的入场按钮触发；P0 预热完成后才解锁 CTA。
+  launchIntroScene = beginAssemble;
+  if (introControl) {
+    introControl.ready = true;
+    introControl.setReady?.(true);
+  }
   if (!intro) {
     beginAssemble(); // 兜底: 容器缺失时直接进入聚拢
   }
@@ -1758,6 +1782,12 @@ async function boot() {
     get lookAroundMode() {
       return lookAround.mode;
     },
+    get lookAroundDistance() {
+      return lookAround.distance;
+    },
+    get lookAroundHoldRemaining() {
+      return lookAround.holdRemaining;
+    },
     get debugTweens() {
       return tweens.size;
     },
@@ -1769,6 +1799,9 @@ async function boot() {
     },
     get renderLoopActive() {
       return stage.running;
+    },
+    get introReady() {
+      return introControl?.ready ?? !intro;
     },
     get archiveIslandsReady() {
       return archiveIslandsMounted;

@@ -70,10 +70,44 @@ page.on("request", (request) => {
 
 try {
   await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.waitForSelector("#intro-root > *", { timeout: 8_000 });
+  const introPreReadyState = await page.evaluate(() => {
+    const introRoot = document.querySelector("#intro-root");
+    return {
+      demoReady: window.__ENTERPRIZE_DEMO__?.ready === true,
+      hasIntroRoot: Boolean(introRoot),
+      hasIntroContent: Boolean(introRoot?.children.length),
+      modelRequests: performance
+        .getEntriesByType("resource")
+        .filter((entry) => entry.name.includes("/assets/models/")).length,
+    };
+  });
+  failIf(
+    !introPreReadyState.hasIntroRoot || !introPreReadyState.hasIntroContent,
+    "Intro root renders before waiting for the 3D runtime",
+    introPreReadyState,
+  );
+
   await page.waitForFunction(
     () => window.__ENTERPRIZE_DEMO__?.ready === true,
     null,
     { timeout: 90_000 },
+  );
+  const bootOrderState = await page.evaluate(() => {
+    const lastMark = (name) =>
+      performance.getEntriesByName(name).at(-1)?.startTime ?? null;
+    return {
+      introMountedAt: lastMark("enterprize:intro-mounted"),
+      introPaintWindowAt: lastMark("enterprize:intro-paint-window"),
+      p0ReadyAt: lastMark("enterprize:p0-ready"),
+    };
+  });
+  failIf(
+    bootOrderState.introPaintWindowAt === null ||
+      bootOrderState.p0ReadyAt === null ||
+      bootOrderState.introPaintWindowAt > bootOrderState.p0ReadyAt,
+    "Intro paint window is scheduled before P0 scene readiness",
+    bootOrderState,
   );
 
   const initialVideoState = await page.evaluate(() => ({
@@ -92,12 +126,14 @@ try {
   );
   const bootRuntimeState = await page.evaluate(() => ({
     state: window.__ENTERPRIZE_DEMO__?.state,
+    introReady: window.__ENTERPRIZE_DEMO__?.introReady,
     loadedAssetKeys: window.__ENTERPRIZE_DEMO__?.loadedAssetKeys,
     deferredAssetsReady: window.__ENTERPRIZE_DEMO__?.deferredAssetsReady,
     archiveIslandsReady: window.__ENTERPRIZE_DEMO__?.archiveIslandsReady,
   }));
   failIf(
     modelRequests.length !== 0 ||
+      !bootRuntimeState.introReady ||
       bootRuntimeState.loadedAssetKeys.length !== 0 ||
       bootRuntimeState.deferredAssetsReady ||
       bootRuntimeState.archiveIslandsReady,
@@ -108,6 +144,34 @@ try {
   await page.evaluate(() => window.__ENTERPRIZE_DEMO__?.launchIntro());
   await waitState(page, "explore", 45_000);
   await page.waitForTimeout(1_000);
+  const exploreFlowState = await page.evaluate(() => {
+    const centerElement = document.elementFromPoint(
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+    );
+    const archiveHeroRect = document
+      .querySelector("#archive-hero")
+      ?.getBoundingClientRect();
+    const unitSiteRect = document.querySelector("#unit-site")?.getBoundingClientRect();
+    return {
+      state: window.__ENTERPRIZE_DEMO__?.state,
+      documentMode: document.documentElement.classList.contains("is-document-mode"),
+      scrollY: window.scrollY,
+      centerInArchive: Boolean(
+        centerElement?.closest("#unit-site, #zoom-parallax-root"),
+      ),
+      archiveHeroTop: archiveHeroRect?.top ?? null,
+      unitSiteTop: unitSiteRect?.top ?? null,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  failIf(
+    exploreFlowState.documentMode ||
+      exploreFlowState.centerInArchive ||
+      exploreFlowState.archiveHeroTop < exploreFlowState.viewportHeight * 0.75,
+    "Intro hands off to EXPLORE instead of the 2D archive hero",
+    exploreFlowState,
+  );
   failIf(
     bilibiliPlayerRequests.length !== 0,
     "EXPLORE does not create Bilibili player documents",
@@ -167,23 +231,82 @@ try {
     null,
     { timeout: 5_000 },
   );
-  const lookReturnStart = Date.now();
   await page.mouse.up();
   await page.waitForFunction(
-    () => window.__ENTERPRIZE_DEMO__?.lookAroundMode === "idle",
+    () => window.__ENTERPRIZE_DEMO__?.lookAroundMode === "holding",
     null,
     { timeout: 3_000 },
   );
-  const lookReturnMs = Date.now() - lookReturnStart;
-  const afterLookReturn = await page.evaluate(() => ({
+  const heldLookAround = await page.evaluate(() => ({
     state: window.__ENTERPRIZE_DEMO__?.state,
     lookAroundMode: window.__ENTERPRIZE_DEMO__?.lookAroundMode,
+    distance: window.__ENTERPRIZE_DEMO__?.lookAroundDistance,
+    holdRemaining: window.__ENTERPRIZE_DEMO__?.lookAroundHoldRemaining,
+    progress: window.__ENTERPRIZE_DEMO__?.timelineProgress,
     velocity: window.__ENTERPRIZE_DEMO__?.debugTimelineVelocity,
   }));
+  await page.waitForTimeout(700);
+  const afterHoldWindow = await page.evaluate(() => ({
+    mode: window.__ENTERPRIZE_DEMO__?.lookAroundMode,
+    progress: window.__ENTERPRIZE_DEMO__?.timelineProgress,
+  }));
   failIf(
-    lookReturnMs > 1_900,
-    "look-around returns without the old 2s hold and long exponential tail",
-    { lookReturnMs, afterLookReturn },
+    afterHoldWindow.mode !== "holding" ||
+      Math.abs(afterHoldWindow.progress - heldLookAround.progress) > 1e-4,
+    "look-around stays available after pointer-up and keeps the timeline frozen",
+    { heldLookAround, afterHoldWindow },
+  );
+
+  await page.mouse.wheel(0, -180);
+  await page.waitForTimeout(200);
+  const zoomedLookAround = await page.evaluate(() => ({
+    mode: window.__ENTERPRIZE_DEMO__?.lookAroundMode,
+    distance: window.__ENTERPRIZE_DEMO__?.lookAroundDistance,
+    holdRemaining: window.__ENTERPRIZE_DEMO__?.lookAroundHoldRemaining,
+  }));
+  failIf(
+    zoomedLookAround.mode === "idle" ||
+      zoomedLookAround.distance >= heldLookAround.distance - 0.05 ||
+      zoomedLookAround.holdRemaining < 2,
+    "wheel zooms in during look-around and refreshes its hold window",
+    { heldLookAround, zoomedLookAround },
+  );
+
+  const heldFocusTarget = await findVisibleFocusTarget(page, viewport);
+  failIf(!heldFocusTarget, "a focus target remains hittable while look-around is held");
+  await page.mouse.click(heldFocusTarget.x, heldFocusTarget.y);
+  await waitState(page, "focus", 20_000);
+  await page.mouse.wheel(0, 320);
+  await page.waitForFunction(
+    () =>
+      window.__ENTERPRIZE_DEMO__?.state === "scrub" &&
+      window.__ENTERPRIZE_DEMO__?.focusMode === "idle",
+    null,
+    { timeout: 4_000 },
+  );
+
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(viewport.width / 2 + 260, viewport.height / 2, {
+    steps: 12,
+  });
+  await page.mouse.up();
+  await page.waitForFunction(
+    () => window.__ENTERPRIZE_DEMO__?.lookAroundMode === "holding",
+    null,
+    { timeout: 3_000 },
+  );
+  const lookReturnStart = Date.now();
+  await page.waitForFunction(
+    () => window.__ENTERPRIZE_DEMO__?.lookAroundMode === "idle",
+    null,
+    { timeout: 6_000 },
+  );
+  const lookReturnMs = Date.now() - lookReturnStart;
+  failIf(
+    lookReturnMs < 2_300 || lookReturnMs > 4_200,
+    "look-around returns to the timeline after its click window expires",
+    { lookReturnMs },
   );
 
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -254,6 +377,8 @@ try {
       focusExitMs,
       lookReturnMs,
       bilibiliPlayerRequests: bilibiliPlayerRequests.length,
+      introPreReadyState,
+      bootOrderState,
       mediaVideoState,
       clickedVideoState,
     }),

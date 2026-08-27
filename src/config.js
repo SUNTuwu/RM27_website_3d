@@ -238,16 +238,19 @@ export const VISUAL_CONFIG = {
       velocityDecay: 3, // 速度回稳衰减常数 (越大回稳越快)
       autoHoldSeconds: 1.5, // 滚动后自动播放基线的暂停时长 (回退不被自动播放吞掉)
     },
-    // SCRUB 拖拽环视: 拖拽时过渡到绕场地中心斜向下环绕视角, 松手过渡回 timeline 姿态
+    // SCRUB 拖拽环视: 松手后短暂停留以便点击机器人，超时再回 timeline；滚轮缩放环视距离
     lookAround: {
       elevationDeg: 45, // 环绕时斜向下俯角
       yawSpeed: 0.0032, // 水平拖动 -> 环绕角速度 (弧度/像素)
       radiusMin: 12, // 环绕半径下限
       radiusMax: 40, // 环绕半径上限 (半径取 timeline 相机到场地中心的水平距离, 钳制在此区间)
-      distanceMin: 14, // 环视相机到场地中心的直线距离下限 (米)
-      distanceMax: 30, // 直线距离上限 (米); 不管 timeline 相机停在多远, 环视距离都钳制在此区间
+      distanceMin: 8, // 滚轮最近可缩到的直线距离 (米)
+      distanceMax: 36, // 滚轮最远可拉到的直线距离 (米)
+      zoomSpeed: 0.0014, // 滚轮缩放灵敏度: 上滚拉近、下滚拉远
+      maxWheelDelta: 180, // 限制单次触控板/滚轮尖峰，避免缩放突跳
       blendInSpeed: 4, // 拖入环视的过渡速度
-      returnDurationMin: 0.55, // 松手回 timeline 的最短时长, 不再额外 hold
+      holdSeconds: 2.5, // 松手后保留环视的点击窗口；滚轮操作会重新计时
+      returnDurationMin: 0.55, // 停留结束后回 timeline 的最短时长
       returnDurationMax: 1.25, // 松手回 timeline 的最长时长, 避免远距离长尾
       returnWorldSpeed: 42, // 按世界距离估算回正时间 (米/秒)
       returnAngleSeconds: 0.8, // 180° 角度差对应的回正时间

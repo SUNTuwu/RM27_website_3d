@@ -185,41 +185,74 @@ function TypedLines({ progress }: { progress: number }) {
   );
 }
 
-export type IntroControl = { launch: () => void; requested?: boolean };
+export type IntroControl = {
+  launch: () => void;
+  requested?: boolean;
+  ready?: boolean;
+  setReady?: (ready: boolean) => void;
+};
 
 export function IntroScreen({
   onLaunch,
   onDone,
   control,
+  ready = true,
 }: {
   onLaunch: () => void;
   onDone: () => void;
   control?: IntroControl;
+  ready?: boolean;
 }) {
   const [phase, setPhase] = useState<"typing" | "warp" | "fade">("typing");
+  const [canLaunch, setCanLaunch] = useState(ready);
   const { progress, done, finish } = useTypewriter(phase === "typing");
   const launchedRef = useRef(false);
   const reducedMotion = REDUCED();
 
+  useEffect(() => {
+    setCanLaunch(ready);
+  }, [ready]);
+
+  const updateReady = useCallback(
+    (nextReady: boolean) => {
+      if (control) {
+        control.ready = nextReady;
+      }
+      setCanLaunch(nextReady);
+    },
+    [control],
+  );
+
   const handleLaunch = useCallback(() => {
     if (launchedRef.current) return;
+    if (!canLaunch) {
+      if (control) {
+        control.requested = true;
+      }
+      return;
+    }
+    if (control) {
+      control.requested = false;
+    }
     launchedRef.current = true;
     setPhase("warp");
     const duration = REDUCED() ? 450 : WARP_MS;
     window.setTimeout(() => onLaunch(), duration * LAUNCH_AT);
     window.setTimeout(() => setPhase("fade"), duration);
     window.setTimeout(() => onDone(), duration + FADE_MS + 60);
-  }, [onLaunch, onDone]);
+  }, [canLaunch, control, onLaunch, onDone]);
 
   useEffect(() => {
     if (control) {
+      control.ready = canLaunch;
+      control.setReady = updateReady;
       control.launch = handleLaunch;
-      if (control.requested) {
+      if (canLaunch && control.requested) {
         control.requested = false;
         handleLaunch();
       }
     }
-  }, [control, handleLaunch]);
+  }, [canLaunch, control, handleLaunch, updateReady]);
 
   return (
     <motion.div
@@ -392,15 +425,23 @@ export function IntroScreen({
               />
               <button
                 type="button"
+                disabled={!canLaunch}
+                aria-busy={!canLaunch}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLaunch();
                 }}
-                className="group relative cursor-pointer px-8 py-4 outline-none focus-visible:ring-2 focus-visible:ring-[#cfe4ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070d] md:px-12 md:py-5"
+                className={`group relative px-8 py-4 outline-none transition-opacity duration-300 focus-visible:ring-2 focus-visible:ring-[#cfe4ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070d] disabled:cursor-wait md:px-12 md:py-5 ${
+                  canLaunch ? "cursor-pointer" : "opacity-70"
+                }`}
                 style={{
-                  background: "linear-gradient(120deg, #ff2d4d, #d81f3e)",
+                  background: canLaunch
+                    ? "linear-gradient(120deg, #ff2d4d, #d81f3e)"
+                    : "linear-gradient(120deg, rgba(46,155,255,0.42), rgba(80,98,132,0.55))",
                   transform: "skewX(-16deg)",
-                  boxShadow: "0 10px 24px rgba(255,45,77,0.24)",
+                  boxShadow: canLaunch
+                    ? "0 10px 24px rgba(255,45,77,0.24)"
+                    : "0 8px 20px rgba(46,155,255,0.12)",
                 }}
               >
                 <span
@@ -408,12 +449,16 @@ export function IntroScreen({
                   style={{ transform: "skewX(16deg)" }}
                 >
                   <span className="text-xl font-bold tracking-[0.16em] text-white [font-family:var(--archive-font-en)] md:text-2xl md:tracking-[0.2em]">
-                    ENTER THE ARENA
+                    {canLaunch ? "ENTER THE ARENA" : "PREPARING ARENA"}
                   </span>
                   <span className="hidden text-[10px] tracking-[0.28em] text-white/70 [font-family:var(--archive-font-en)] md:inline">
-                    BEGIN EXPLORE SEQUENCE
+                    {canLaunch ? "BEGIN EXPLORE SEQUENCE" : "COMPILING POINT CLOUD"}
                   </span>
-                  <ArrowRight className="h-5 w-5 text-white transition-transform duration-300 group-hover:translate-x-1 md:h-6 md:w-6" />
+                  <ArrowRight
+                    className={`h-5 w-5 text-white transition-transform duration-300 md:h-6 md:w-6 ${
+                      canLaunch ? "group-hover:translate-x-1" : "opacity-40"
+                    }`}
+                  />
                 </span>
               </button>
             </motion.div>

@@ -8,7 +8,7 @@ function easeInOutCubic(x) {
 
 /**
  * SCRUB 环视子状态机:
- * idle -> entering -> active -> exiting -> idle
+ * idle -> entering -> active -> holding -> exiting -> idle
  * 所有过渡都从 freeCamera 的当前姿态开始，便于被 FOCUS 等状态无缝接管。
  */
 export function createLookAroundController({ camera, pivot, config }) {
@@ -28,6 +28,8 @@ export function createLookAroundController({ camera, pivot, config }) {
   let transitionBlend = 0;
   let transitionTime = 0;
   let transitionDuration = 0;
+  let orbitDistance = null;
+  let holdRemaining = 0;
 
   function captureTransition(nextMode) {
     transitionStartPosition.copy(camera.position);
@@ -93,17 +95,25 @@ export function createLookAroundController({ camera, pivot, config }) {
       orbitPivot.y + height,
       orbitPivot.z + radius * Math.sin(orbitYaw),
     );
-    // 3D 距离约束: 半径钳制只管水平分量, 这里把相机到场地中心的
-    // 直线距离也钳制在 [distanceMin, distanceMax], 不管 timeline 相机多远多近
-    if (Number.isFinite(config.distanceMin) && Number.isFinite(config.distanceMax)) {
-      orbitPosition.sub(orbitPivot);
-      const distance = THREE.MathUtils.clamp(
-        orbitPosition.length(),
-        config.distanceMin,
-        config.distanceMax,
+    // 独立保存环视距离，避免每帧被 timeline 相机姿态覆盖，滚轮才能稳定缩放。
+    const baseDistance = orbitPosition.distanceTo(orbitPivot);
+    const distanceMin = Number.isFinite(config.distanceMin)
+      ? config.distanceMin
+      : baseDistance;
+    const distanceMax = Number.isFinite(config.distanceMax)
+      ? config.distanceMax
+      : baseDistance;
+    if (!Number.isFinite(orbitDistance)) {
+      orbitDistance = THREE.MathUtils.clamp(
+        baseDistance,
+        distanceMin,
+        distanceMax,
       );
-      orbitPosition.setLength(distance).add(orbitPivot);
     }
+    orbitPosition
+      .sub(orbitPivot)
+      .setLength(THREE.MathUtils.clamp(orbitDistance, distanceMin, distanceMax))
+      .add(orbitPivot);
     lookMatrix.lookAt(orbitPosition, orbitPivot, worldUp);
     orbitQuaternion.setFromRotationMatrix(lookMatrix);
   }
@@ -113,6 +123,19 @@ export function createLookAroundController({ camera, pivot, config }) {
     camera.quaternion.copy(orbitQuaternion);
   }
 
+  function armHold() {
+    holdRemaining = Math.max(config.holdSeconds ?? 2.5, 0);
+  }
+
+  function beginHoldOrExit() {
+    armHold();
+    if (holdRemaining > 0) {
+      mode = "holding";
+    } else {
+      captureTransition("exiting");
+    }
+  }
+
   return {
     get mode() {
       return mode;
@@ -120,10 +143,21 @@ export function createLookAroundController({ camera, pivot, config }) {
     get isIdle() {
       return mode === "idle";
     },
+    get distance() {
+      return Number.isFinite(orbitDistance)
+        ? orbitDistance
+        : camera.position.distanceTo(orbitPivot);
+    },
+    get holdRemaining() {
+      return holdRemaining;
+    },
     startDrag() {
       dragging = true;
       if (mode === "idle" || mode === "exiting") {
         captureTransition("entering");
+      } else if (mode === "holding") {
+        holdRemaining = 0;
+        mode = "active";
       }
     },
     drag(deltaX) {
@@ -135,9 +169,48 @@ export function createLookAroundController({ camera, pivot, config }) {
     },
     endDrag() {
       dragging = false;
-      if (mode === "active" || mode === "entering") {
-        captureTransition("exiting");
+      if (mode === "active") {
+        beginHoldOrExit();
+      } else if (mode === "entering") {
+        armHold();
       }
+    },
+    zoom(deltaY) {
+      if (mode === "idle" || !Number.isFinite(deltaY) || deltaY === 0) {
+        return false;
+      }
+
+      const distanceMin = Number.isFinite(config.distanceMin)
+        ? config.distanceMin
+        : 1;
+      const distanceMax = Number.isFinite(config.distanceMax)
+        ? config.distanceMax
+        : Number.POSITIVE_INFINITY;
+      const maxWheelDelta = Math.max(config.maxWheelDelta ?? 180, 1);
+      const normalizedDelta = THREE.MathUtils.clamp(
+        deltaY,
+        -maxWheelDelta,
+        maxWheelDelta,
+      );
+      const currentDistance = Number.isFinite(orbitDistance)
+        ? orbitDistance
+        : THREE.MathUtils.clamp(
+            camera.position.distanceTo(orbitPivot),
+            distanceMin,
+            distanceMax,
+          );
+      orbitDistance = THREE.MathUtils.clamp(
+        currentDistance * Math.exp(normalizedDelta * (config.zoomSpeed ?? 0.0014)),
+        distanceMin,
+        distanceMax,
+      );
+
+      // 回轨已经开始时，滚轮会重新接管环视；其余模式则刷新停留计时。
+      if (mode === "exiting") {
+        captureTransition("entering");
+      }
+      armHold();
+      return true;
     },
     /** 清理环视状态但保留相机当前姿态，供下一个全局状态接管。 */
     reset() {
@@ -147,6 +220,8 @@ export function createLookAroundController({ camera, pivot, config }) {
       transitionBlend = 0;
       transitionTime = 0;
       transitionDuration = 0;
+      orbitDistance = null;
+      holdRemaining = 0;
     },
     update(delta, timelinePose) {
       if (mode === "idle") {
@@ -172,7 +247,7 @@ export function createLookAroundController({ camera, pivot, config }) {
           if (dragging) {
             mode = "active";
           } else {
-            captureTransition("exiting");
+            beginHoldOrExit();
           }
         }
         return { owner: "lookAround" };
@@ -181,6 +256,16 @@ export function createLookAroundController({ camera, pivot, config }) {
       if (mode === "active") {
         computeOrbitPose(timelinePose);
         applyOrbitPose();
+        return { owner: "lookAround" };
+      }
+
+      if (mode === "holding") {
+        computeOrbitPose(timelinePose);
+        applyOrbitPose();
+        holdRemaining = Math.max(holdRemaining - delta, 0);
+        if (holdRemaining === 0) {
+          captureTransition("exiting");
+        }
         return { owner: "lookAround" };
       }
 
@@ -204,6 +289,8 @@ export function createLookAroundController({ camera, pivot, config }) {
         camera.quaternion.copy(transitionTargetQuaternion);
         mode = "idle";
         yaw = 0;
+        orbitDistance = null;
+        holdRemaining = 0;
         return { owner: "handoff", finishedThisFrame: true };
       }
       return { owner: "lookAround" };

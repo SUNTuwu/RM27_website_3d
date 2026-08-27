@@ -10,21 +10,28 @@ export type IntroHandle = {
 
 export function mountIntroScreen({
   onLaunch,
+  ready = true,
 }: {
   onLaunch: () => void;
+  ready?: boolean;
 }): IntroHandle | null {
   const container = document.querySelector<HTMLElement>("#intro-root");
   if (!container || reactRoot) return null;
 
   const control: IntroControl = {
+    ready,
     launch: () => {
       control.requested = true;
+    },
+    setReady: (nextReady) => {
+      control.ready = nextReady;
     },
   };
   reactRoot = createRoot(container);
   reactRoot.render(
     <IntroScreen
       control={control}
+      ready={ready}
       onLaunch={onLaunch}
       onDone={() => {
         reactRoot?.unmount();

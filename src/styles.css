@@ -1419,14 +1419,18 @@ body {
 .unit-site {
   position: relative;
   z-index: 70;
-  /* 负 margin 让档案提前 100svh 进入，与图集缩放末段同时进行 */
-  margin-top: -100svh;
+  margin-top: 0;
   min-height: 100vh;
   min-height: 100svh;
   background: #f7f9fb;
   color: #0b0f17;
   isolation: isolate;
   box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.72);
+}
+
+html.is-document-mode .unit-site {
+  /* 负 margin 只属于 2D 交接: 档案提前 100svh 进入，与图集缩放末段同时进行 */
+  margin-top: -100svh;
 }
 
 html.is-document-mode #app {
