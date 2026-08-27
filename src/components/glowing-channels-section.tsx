@@ -138,7 +138,7 @@ function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
   );
 
   const cardClass = cn(
-    "group relative flex h-full flex-col gap-2.5 rounded-xl bg-card/40 p-6 backdrop-blur-sm",
+    "group relative flex h-full flex-col gap-2.5 rounded-xl bg-card/40 p-7 backdrop-blur-sm sm:p-8",
     "transition-transform duration-300 hover:-translate-y-1",
   );
 
@@ -154,7 +154,10 @@ function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
       }}
       className="list-none"
     >
-      <div className="relative h-full rounded-2xl border border-border/50 p-1.5">
+      <div
+        className="relative h-full rounded-2xl border border-border/50 p-2"
+        data-channel-frame
+      >
         <GlowingEffect
           spread={40}
           glow
@@ -170,11 +173,12 @@ function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
             target={channel.href.startsWith("mailto:") ? undefined : "_blank"}
             rel={channel.href.startsWith("mailto:") ? undefined : "noopener"}
             className={cn(cardClass, "no-underline")}
+            data-channel-card
           >
             {body}
           </a>
         ) : (
-          <div className={cardClass}>{body}</div>
+          <div className={cardClass} data-channel-card>{body}</div>
         )}
       </div>
     </motion.li>

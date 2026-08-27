@@ -2546,8 +2546,39 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
 }
 
 @media (max-width: 600px) {
+  .archive-hero__copy {
+    padding-inline: 20px;
+  }
+
+  .archive-hero__title {
+    width: max-content;
+    max-width: 100%;
+    font-size: clamp(32px, 10.5vw, 44px);
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .archive-hero__media .archive-hero__logo {
+    display: none;
+  }
+
   .archive-stats {
     grid-template-columns: 1fr;
+  }
+
+  .archive-stat {
+    background: rgba(5, 7, 13, 0.92);
+    border-color: rgba(127, 212, 255, 0.2);
+    box-shadow: 0 16px 40px rgba(5, 7, 13, 0.24);
+  }
+
+  .archive-stat b {
+    color: #7fd4ff;
+  }
+
+  .archive-stat span {
+    color: rgba(226, 236, 250, 0.76);
   }
 }
 

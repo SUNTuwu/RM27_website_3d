@@ -177,8 +177,13 @@ try {
     { modelRequests, bootRuntimeState },
   );
 
-  await page.waitForSelector("#intro-root button:not([disabled])", { timeout: 10_000 });
-  await page.click("#intro-root button:not([disabled])");
+  const launchButtonSelector = "#intro-root [data-intro-cta]";
+  await page.waitForFunction(
+    (selector) => document.querySelector(selector)?.getAttribute("aria-busy") === "false",
+    launchButtonSelector,
+    { timeout: 10_000 },
+  );
+  await page.click(launchButtonSelector);
   await waitState(page, "explore", 45_000);
   await page.waitForTimeout(1_000);
   const exploreFlowState = await page.evaluate(() => {
@@ -234,11 +239,38 @@ try {
   await page.mouse.wheel(0, 600);
   await waitState(page, "scan", 12_000);
   await waitState(page, "scrub", 120_000);
-  await page.waitForTimeout(500);
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll('iframe[data-video-hydrated="preloaded"]').length >= 2,
+    null,
+    { timeout: 5_000 },
+  );
+  const scrubVideoState = await page.evaluate(() => ({
+    playing: document.querySelectorAll('iframe[data-video-playing="true"]').length,
+    sources: [...document.querySelectorAll('iframe[data-video-hydrated="preloaded"]')].map(
+      (frame) => ({
+        autoplay: new URL(frame.src).searchParams.get("autoplay"),
+        muted: new URL(frame.src).searchParams.get("muted"),
+        facadeHidden: frame.parentElement?.querySelector("[data-video-facade]")?.hidden,
+      }),
+    ),
+  }));
+  const scrubPrewarmRequests = [...bilibiliPlayerRequests];
+  const scrubPrewarmIntervals = scrubPrewarmRequests
+    .slice(1)
+    .map((entry, index) => entry.at - scrubPrewarmRequests[index].at);
   failIf(
-    bilibiliPlayerRequests.length !== 0,
-    "SCRUB timeline still has zero Bilibili player requests",
-    bilibiliPlayerRequests,
+    scrubPrewarmRequests.length < 2 ||
+      scrubVideoState.playing !== 0 ||
+      scrubVideoState.sources.some(
+        (source) =>
+          source.autoplay !== "0" ||
+          source.muted !== "1" ||
+          source.facadeHidden !== false,
+      ) ||
+      scrubPrewarmIntervals.some((interval) => interval < 500),
+    "SCRUB prewarms muted Bilibili players without autoplay through a staggered queue",
+    { scrubVideoState, scrubPrewarmRequests, scrubPrewarmIntervals },
   );
 
   const beforeScrubDrag = await page.evaluate(() => ({
@@ -425,38 +457,123 @@ try {
     { documentRevealMs, probedRevealMs, documentModeState },
   );
 
-  await page.evaluate(() =>
-    document.querySelector("#archive-media")?.scrollIntoView({ block: "start" }),
+  await page.waitForFunction(
+    () => document.querySelectorAll('iframe[data-video-hydrated="preloaded"]').length === 5,
+    null,
+    { timeout: 10_000 },
   );
-  await page.waitForTimeout(2_800);
-  const mediaVideoState = await page.evaluate(() => ({
-    hydrated: document.querySelectorAll("iframe[data-video-hydrated]").length,
-    directSrc: document.querySelectorAll(
-      'iframe[src^="https://player.bilibili.com/player.html"]',
+  const preMediaVideoState = await page.evaluate(() => ({
+    playing: document.querySelectorAll('iframe[data-video-playing="true"]').length,
+    sources: [...document.querySelectorAll("iframe[data-video-hydrated]")].map((frame) => ({
+      state: frame.dataset.videoHydrated,
+      autoplay: new URL(frame.src).searchParams.get("autoplay"),
+      muted: new URL(frame.src).searchParams.get("muted"),
+      facadeHidden: frame.parentElement?.querySelector("[data-video-facade]")?.hidden,
+    })),
+  }));
+  failIf(
+    preMediaVideoState.sources.length !== 5 ||
+      preMediaVideoState.playing !== 0 ||
+      preMediaVideoState.sources.some(
+        (source) =>
+          source.state !== "preloaded" ||
+          source.autoplay !== "0" ||
+          source.muted !== "1" ||
+          source.facadeHidden !== false,
+      ),
+    "all Bilibili players remain preloaded and paused before their media enters the viewport",
+    preMediaVideoState,
+  );
+
+  const archiveMediaFrameCount = await page.locator("#archive-media iframe").count();
+  failIf(
+    archiveMediaFrameCount !== 4,
+    "ON THE RECORD exposes the expected four deferred players",
+    { archiveMediaFrameCount },
+  );
+  await page.evaluate(() =>
+    document
+      .querySelector("#archive-media .archive-media__feature .archive-media__player")
+      ?.scrollIntoView({ block: "center" }),
+  );
+  await page.waitForFunction(
+    () =>
+      document.querySelector(
+        '#archive-media .archive-media__feature iframe[data-video-playing="true"]',
+      ),
+    null,
+    { timeout: 8_000 },
+  );
+  const featureVisibleState = await page.evaluate(() => ({
+    featurePlaying: document.querySelectorAll(
+      '#archive-media .archive-media__feature iframe[data-video-playing="true"]',
     ).length,
-    sources: [...document.querySelectorAll("iframe[data-video-hydrated]")].map(
+    featureAutoplay: new URL(
+      document.querySelector("#archive-media .archive-media__feature iframe").src,
+    ).searchParams.get("autoplay"),
+    gridPlaying: document.querySelectorAll(
+      '#archive-media .archive-media__grid iframe[data-video-playing="true"]',
+    ).length,
+    gridAutoplay: [
+      ...document.querySelectorAll("#archive-media .archive-media__grid iframe"),
+    ].map((frame) => new URL(frame.src).searchParams.get("autoplay")),
+  }));
+  failIf(
+    featureVisibleState.featurePlaying !== 1 ||
+      featureVisibleState.featureAutoplay !== "1" ||
+      featureVisibleState.gridPlaying !== 0 ||
+      featureVisibleState.gridAutoplay.some((autoplay) => autoplay !== "0"),
+    "the feature player starts only after it is visible while the highlight grid stays paused",
+    featureVisibleState,
+  );
+
+  await page.evaluate(() =>
+    document
+      .querySelector("#archive-media .archive-media__grid")
+      ?.scrollIntoView({ block: "center" }),
+  );
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll(
+        '#archive-media .archive-media__grid iframe[data-video-playing="true"]',
+      ).length === 3,
+    null,
+    { timeout: 8_000 },
+  );
+  const mediaVideoState = await page.evaluate(() => ({
+    hydrated: document.querySelectorAll("#archive-media iframe[data-video-hydrated]").length,
+    playing: document.querySelectorAll('#archive-media iframe[data-video-playing="true"]').length,
+    sources: [...document.querySelectorAll("#archive-media iframe[data-video-hydrated]")].map(
       (frame) => ({
         autoplay: new URL(frame.src).searchParams.get("autoplay"),
         muted: new URL(frame.src).searchParams.get("muted"),
         allow: frame.getAttribute("allow"),
       }),
     ),
+    offscreenSource: document.querySelector(".archive-media-row--intro iframe")?.src,
+    offscreenPlaying: document
+      .querySelector(".archive-media-row--intro iframe")
+      ?.hasAttribute("data-video-playing"),
   }));
-  const requestIntervals = bilibiliPlayerRequests
-    .slice(1, 4)
-    .map((entry, index) => entry.at - bilibiliPlayerRequests[index].at);
+  const visiblePlayRequests = bilibiliPlayerRequests.filter(
+    (entry) => new URL(entry.url).searchParams.get("autoplay") === "1",
+  );
+  const offscreenParams = new URL(mediaVideoState.offscreenSource).searchParams;
   failIf(
     mediaVideoState.hydrated !== 4 ||
-      mediaVideoState.directSrc !== 4 ||
+      mediaVideoState.playing !== 4 ||
       mediaVideoState.sources.some(
         (source) =>
           source.autoplay !== "1" ||
           source.muted !== "1" ||
           !source.allow?.includes("autoplay"),
       ) ||
-      requestIntervals.some((interval) => interval < 500),
-    "MATCH HIGHLIGHTS autoplay muted and hydrate through a staggered queue",
-    { mediaVideoState, requestIntervals, bilibiliPlayerRequests },
+      visiblePlayRequests.length < 1 ||
+      mediaVideoState.offscreenPlaying !== false ||
+      offscreenParams.get("autoplay") !== "0" ||
+      offscreenParams.get("muted") !== "1",
+    "MATCH HIGHLIGHTS autoplay only after becoming visible while later media stays paused",
+    { mediaVideoState, visiblePlayRequests, bilibiliPlayerRequests },
   );
 
   await page.evaluate(() =>
@@ -464,7 +581,14 @@ try {
       .querySelector(".archive-media-row--intro")
       ?.scrollIntoView({ block: "center" }),
   );
-  await page.waitForTimeout(1_000);
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector(".archive-media-row--intro iframe")
+        ?.hasAttribute("data-video-playing"),
+    null,
+    { timeout: 8_000 },
+  );
   const whatIsRmVideoState = await page.evaluate(() => ({
     hydrated: document.querySelectorAll("iframe[data-video-hydrated]").length,
     directSrc: document.querySelectorAll(
@@ -478,20 +602,44 @@ try {
       whatIsRmVideoState.directSrc !== 5 ||
       whatIsRmParams.get("autoplay") !== "1" ||
       whatIsRmParams.get("muted") !== "1",
-    "What is RoboMaster autoplays when its row approaches the viewport",
+    "What is RoboMaster autoplays only when its row is visible",
     whatIsRmVideoState,
   );
 
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await waitState(page, "scrub", 15_000);
-  await page.waitForTimeout(700);
+  await page.evaluate(() =>
+    document
+      .querySelector('[data-action="return-arena"]')
+      ?.scrollIntoView({ block: "center" }),
+  );
+  await page.click('[data-action="return-arena"]');
+  await page.waitForFunction(
+    () =>
+      window.__ENTERPRIZE_DEMO__?.state === "scrub" &&
+      window.__ENTERPRIZE_DEMO__?.lookAroundMode !== "idle" &&
+      document.documentElement.dataset.arenaReturnPhase === "idle",
+    null,
+    { timeout: 15_000 },
+  );
   const returnedState = await page.evaluate(() => ({
     state: window.__ENTERPRIZE_DEMO__?.state,
     renderLoopActive: window.__ENTERPRIZE_DEMO__?.renderLoopActive,
+    lookAroundMode: window.__ENTERPRIZE_DEMO__?.lookAroundMode,
+    documentMode: document.documentElement.classList.contains("is-document-mode"),
+    fadeVisible: document
+      .querySelector("#archive-return-fade")
+      ?.classList.contains("is-visible"),
+    returnCompleteMarks: performance.getEntriesByName(
+      "enterprize:arena-return-complete",
+    ).length,
   }));
   failIf(
-    returnedState.renderLoopActive !== true || returnedState.state !== "scrub",
-    "returning to timeline resumes Three without immediately re-entering the archive",
+    returnedState.renderLoopActive !== true ||
+      returnedState.state !== "scrub" ||
+      returnedState.lookAroundMode === "idle" ||
+      returnedState.documentMode ||
+      returnedState.fadeVisible ||
+      returnedState.returnCompleteMarks !== 1,
+    "ENTER THE ARENA fades into a stable look-around view without re-entering the archive",
     returnedState,
   );
 

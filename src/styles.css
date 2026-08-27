@@ -41,7 +41,7 @@
   --hud-control-hatch: rgba(127, 212, 255, 0.16);
 }
 
-:where(*:not(#zoom-parallax-root *):not(#stagger-testimonials-root *)) {
+:where(*:not(#zoom-parallax-root *):not(#stagger-testimonials-root *):not(#glowing-channels-root *):not(#intro-root *)) {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -220,7 +220,7 @@ body {
   inset: 0;
   z-index: 90;
   pointer-events: none;
-  background: #04060c;
+  background: var(--bg);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -246,14 +246,6 @@ body {
   max-height: var(--explore-brand-max-height, 120vh);
   aspect-ratio: 29 / 32;
   overflow: hidden;
-  background: linear-gradient(
-    var(--explore-brand-gradient-angle, 135deg),
-    var(--explore-brand-color-start, #ff2d4d) 6%,
-    var(--explore-brand-color-middle, #d54488) 48%,
-    var(--explore-brand-color-end, #2e9bff) 94%
-  );
-  -webkit-mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
-  mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
   opacity: 0;
   transform: translate3d(calc(100% + 80px), -50%, 0);
   transition:
@@ -265,8 +257,19 @@ body {
   will-change: opacity, transform;
 }
 
-.explore-brand-mark::after {
-  content: none;
+.explore-brand-mark::before {
+  content: "";
+  position: absolute;
+  inset: -12px 0;
+  background: linear-gradient(
+    var(--explore-brand-gradient-angle, 135deg),
+    var(--explore-brand-color-start, #ff2d4d) 6%,
+    var(--explore-brand-color-middle, #d54488) 48%,
+    var(--explore-brand-color-end, #2e9bff) 94%
+  );
+  -webkit-mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  will-change: transform;
 }
 
 #app[data-state="assemble"] .explore-brand-mark,
@@ -275,16 +278,13 @@ body {
   transform: translate3d(0, -50%, 0);
 }
 
-@keyframes brand-mark-rhythm {
-  0%,
-  18% {
-    transform: translate3d(45%, 45%, 0);
-  }
+#app[data-state="explore"] .explore-brand-mark::before {
+  animation: explore-brand-float var(--explore-brand-rhythm-duration, 3.2s) ease-in-out infinite alternate;
+}
 
-  72%,
-  100% {
-    transform: translate3d(-45%, -45%, 0);
-  }
+@keyframes explore-brand-float {
+  from { transform: translate3d(0, -10px, 0); }
+  to { transform: translate3d(0, 10px, 0); }
 }
 
 /* ---------- HUD frame ---------- */
@@ -567,7 +567,7 @@ body {
 
 .timeline-track {
   position: relative;
-  height: 18px;
+  height: 34px;
 }
 
 .timeline-track__base {
@@ -591,10 +591,11 @@ body {
 
 .timeline-marker {
   position: absolute;
-  top: 0;
+  top: 15px;
   transform: translateX(-50%);
   font-family: var(--font-en);
   font-size: 8px;
+  line-height: 1;
   color: var(--ink-faint);
   text-align: center;
 }
@@ -633,17 +634,46 @@ body {
   align-items: flex-start;
   gap: 14px;
   opacity: 0;
-  visibility: hidden;
-  transform: translateY(6px);
-  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+  visibility: visible;
+  transition: opacity 0.5s ease;
   pointer-events: none;
   user-select: none;
+  contain: layout paint;
+  will-change: opacity;
 }
 
 #app[data-state="explore"] .key-hints {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.key-hints__lead {
+  display: flex;
+  gap: 0.35em;
+  margin-bottom: 2px;
+  color: var(--ink);
+  font-family: var(--font-cn);
+  font-size: 13px;
+  line-height: 1.45;
+  text-shadow: 0 0 14px rgba(127, 212, 255, 0.28);
+}
+
+.archive-return-fade {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: var(--bg);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.32s ease,
+    visibility 0.32s ease;
+}
+
+.archive-return-fade.is-visible {
+  opacity: 1;
   visibility: visible;
-  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -1453,7 +1483,20 @@ html.is-document-mode #scene-canvas {
 
   .state-chip { top: 26px; right: 28px; }
   .coordinate-readout { display: none; }
-  .key-hints { display: none; }
+  .key-hints {
+    left: 28px;
+    bottom: 28px;
+    display: flex;
+    gap: 0;
+  }
+  .key-hints__lead {
+    display: block;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .key-hints__lead span { display: block; }
+  .key-hint { display: none; }
   .scroll-cue { display: none; }
   .timeline-hud { right: 28px; bottom: 28px; width: 220px; }
   .hint-bar { bottom: 28px; max-width: calc(100vw - 56px); white-space: normal; }
@@ -1609,4 +1652,15 @@ html.is-document-mode #scene-canvas {
     font-size: 10px;
   }
 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app[data-state="explore"] .explore-brand-mark::before {
+    animation: none;
+    transform: none;
+  }
+
+  .archive-return-fade {
+    transition-duration: 0.01ms;
+  }
 }

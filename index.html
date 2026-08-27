@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ENTERPRIZE RoboMaster 招新 3D 交互演示" />
     <meta name="theme-color" content="#05070d" />
-    <link rel="icon" href="data:," />
+    <link rel="icon" type="image/png" href="/assets/icon/blue_logo.png" />
     <link rel="stylesheet" href="/src/archive.css" />
     <title>ENTERPRIZE / ROBOMASTER</title>
   </head>
@@ -126,6 +126,7 @@
       </div>
 
       <div class="key-hints" id="key-hints">
+        <p class="key-hints__lead"><span>下滑进入</span><span>战场</span></p>
         <button class="key-hint" id="key-prev" type="button" aria-label="上一个模型">
           <kbd class="key-hint__key">LEFT</kbd>
           <span class="key-hint__action">prev / 前一个</span>
@@ -164,6 +165,8 @@
 
     <div id="intro-root"></div>
 
+    <div class="archive-return-fade" id="archive-return-fade" aria-hidden="true"></div>
+
     <main class="unit-site" id="unit-site" aria-label="ENTERPRIZE 战队档案">
       <div class="archive-progress" aria-hidden="true">
         <span class="archive-progress__fill" id="archive-progress-fill"></span>
@@ -195,7 +198,7 @@
               <div class="archive-stats">
                 <div class="archive-stat">
                   <b>2015</b>
-                  <span>成立年份 · EST.</span>
+                  <span>成立年份 · SINCE</span>
                 </div>
                 <div class="archive-stat">
                   <b>TOP 12</b>
@@ -378,7 +381,7 @@
               <article class="archive-flag" style="--flag-img: url('/assets/images/dept/mechanics-blueprint.webp')">
                 <span class="archive-flag__index">2015 // SET SAIL</span>
                 <h3>舰队启航</h3>
-                <span class="archive-flag__en">ESTABLISHED 2015</span>
+                <span class="archive-flag__en">SINCE 2015</span>
                 <p>HKUST RoboMaster Team 成立，全球最早踏上 RoboMaster 赛场的队伍之一，代表香港科技大学征战至今。</p>
               </article>
             </div>
@@ -1039,7 +1042,7 @@
           </p>
           <button class="archive-return__btn reveal" style="--rd: 260ms" type="button" data-action="return-arena">
             <span class="archive-return__btn-cn">重返 3D 赛场</span>
-            <span class="archive-return__btn-en">RETURN TO THE ARENA</span>
+            <span class="archive-return__btn-en">ENTER THE ARENA</span>
           </button>
           <p class="archive-return__hint reveal" style="--rd: 340ms">SCROLL UP TO RETURN · 向上滚动同样返回</p>
           <a class="archive-return__os reveal" style="--rd: 420ms" href="/open-source.html">
@@ -1048,7 +1051,7 @@
           </a>
         </div>
         <footer class="archive-footer">
-          <p><b>ENTERPRIZE</b> · HKUST RoboMaster Team · EST. 2015</p>
+          <p><b>ENTERPRIZE</b> · HKUST RoboMaster Team · SINCE 2015</p>
           <p class="archive-footer__note">新舰起航 · 数据快照 2026-07 · 赛事、战绩与招新安排以官方通知为准</p>
         </footer>
       </section>

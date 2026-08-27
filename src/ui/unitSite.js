@@ -184,31 +184,40 @@ function setupVideoFacades(root) {
     });
   };
 
-  const sourceFor = (frame) => {
+  const sourceFor = (frame, autoplay) => {
     const source = new URL(frame.dataset.src, window.location.href);
+    source.searchParams.set("autoplay", autoplay ? "1" : "0");
     if (frame.hasAttribute("data-video-autoload")) {
-      source.searchParams.set("autoplay", "1");
       source.searchParams.set("muted", "1");
     }
     return source.href;
   };
 
-  const hydrate = (frame) => {
-    if (frame.hasAttribute("src") || !frame.dataset.src) {
-      return;
-    }
+  const facadeFor = (frame) =>
+    frame.parentElement?.querySelector("[data-video-facade]");
+
+  const preload = (frame) => {
+    if (frame.dataset.videoHydrated || !frame.dataset.src) return false;
     ensureConnectionHints();
-    frame.src = sourceFor(frame);
-    frame.dataset.videoHydrated = "true";
-    const facade = frame.parentElement?.querySelector("[data-video-facade]");
-    if (facade) {
-      facade.hidden = true;
-    }
+    frame.loading = "eager";
+    frame.src = sourceFor(frame, false);
+    frame.dataset.videoHydrated = "preloaded";
+    return true;
+  };
+
+  const play = (frame) => {
+    if (frame.dataset.videoPlaying || !frame.dataset.src) return;
+    ensureConnectionHints();
+    frame.loading = "eager";
+    frame.src = sourceFor(frame, true);
+    frame.dataset.videoHydrated = "playing";
+    frame.dataset.videoPlaying = "true";
+    const facade = facadeFor(frame);
+    if (facade) facade.hidden = true;
   };
 
   frames.forEach((frame) => {
-    const facade = frame.parentElement?.querySelector("[data-video-facade]");
-    facade?.addEventListener("click", () => hydrate(frame));
+    facadeFor(frame)?.addEventListener("click", () => play(frame));
   });
 
   const autoFrames = frames.filter((frame) =>
@@ -235,8 +244,8 @@ function setupVideoFacades(root) {
     while (hydrationQueue.length) {
       const frame = hydrationQueue.shift();
       queuedFrames.delete(frame);
-      if (!frame.hasAttribute("src")) {
-        hydrate(frame);
+      if (!frame.dataset.videoHydrated) {
+        preload(frame);
         break;
       }
     }
@@ -245,7 +254,7 @@ function setupVideoFacades(root) {
     }
   };
   const enqueue = (frame) => {
-    if (frame.hasAttribute("src") || queuedFrames.has(frame)) {
+    if (frame.dataset.videoHydrated || queuedFrames.has(frame)) {
       return;
     }
     ensureConnectionHints();
@@ -255,6 +264,11 @@ function setupVideoFacades(root) {
       hydrationTimer = window.setTimeout(runHydrationQueue, 120);
     }
   };
+  window.addEventListener(
+    "enterprize:video-prewarm",
+    () => autoFrames.forEach((frame) => enqueue(frame)),
+    { once: true },
+  );
   const checkAutoFrames = () => {
     if (!canAutoHydrate()) {
       return;
@@ -268,7 +282,7 @@ function setupVideoFacades(root) {
       }
     });
     autoTargets.forEach(({ frame, group }) => {
-      if (frame.hasAttribute("src")) {
+      if (frame.dataset.videoHydrated) {
         return;
       }
       if (nearbyGroups.has(group)) {
@@ -277,35 +291,63 @@ function setupVideoFacades(root) {
     });
   };
 
-  onScrub(checkAutoFrames);
+  const isActuallyVisible = (target) => {
+    const rect = target.getBoundingClientRect();
+    if (rect.height <= 0) return false;
+    const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+    return visibleHeight / Math.min(rect.height, window.innerHeight) >= 0.2;
+  };
+
+  const checkVisibleFrames = () => {
+    if (!canAutoHydrate()) return;
+    autoTargets.forEach(({ frame, target }) => {
+      if (!frame.dataset.videoPlaying && isActuallyVisible(target)) play(frame);
+    });
+  };
+
+  const checkVideoFrames = () => {
+    checkAutoFrames();
+    checkVisibleFrames();
+  };
+
+  onScrub(checkVideoFrames);
   window.addEventListener("enterprize:zoom-activate", () => {
-    requestAnimationFrame(checkAutoFrames);
+    requestAnimationFrame(checkVideoFrames);
   });
-  if (!("IntersectionObserver" in window)) {
-    return;
+
+  if ("IntersectionObserver" in window) {
+    const targetToFrame = new WeakMap();
+    const preloadObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting || !canAutoHydrate()) return;
+          const frame = targetToFrame.get(entry.target);
+          if (frame) enqueue(frame);
+          preloadObserver.unobserve(entry.target);
+        });
+      },
+      { rootMargin: "80% 0px 35% 0px", threshold: 0.01 },
+    );
+    const playObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.2 || !canAutoHydrate()) {
+            return;
+          }
+          const frame = targetToFrame.get(entry.target);
+          if (frame) play(frame);
+          playObserver.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.2 },
+    );
+
+    autoTargets.forEach(({ frame, target }) => {
+      targetToFrame.set(target, frame);
+      preloadObserver.observe(target);
+      playObserver.observe(target);
+    });
   }
-
-  const targetToFrame = new WeakMap();
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting || !canAutoHydrate()) {
-          return;
-        }
-        const frame = targetToFrame.get(entry.target);
-        if (frame) {
-          enqueue(frame);
-        }
-        observer.unobserve(entry.target);
-      });
-    },
-    { rootMargin: "80% 0px 35% 0px", threshold: 0.01 },
-  );
-
-  autoTargets.forEach(({ frame, target }) => {
-    targetToFrame.set(target, frame);
-    observer.observe(target);
-  });
 }
 
 /* ---------- 兵种图文揭示: GIF 裁切展开 (scrub) + 悬停跟随大图 ---------- */

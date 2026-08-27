@@ -31,6 +31,7 @@ const ASSEMBLE_DURATION = 2.6;
 const SCAN_DURATION = 3.2;
 const DOCUMENT_REVEAL_DURATION_MS = 560;
 const DOCUMENT_CANVAS_PARALLAX_RATIO = 0.14;
+const EXPLORE_P1_DELAY_MS = 550;
 
 function easeInOutCubic(x) {
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
@@ -42,6 +43,19 @@ function scheduleLowPriority(callback) {
   } else {
     window.setTimeout(callback, 0);
   }
+}
+
+function yieldToMainThread() {
+  if (globalThis.scheduler?.yield) {
+    return globalThis.scheduler.yield();
+  }
+  return new Promise((resolve) => {
+    if (document.visibilityState === "hidden") {
+      window.setTimeout(resolve, 0);
+      return;
+    }
+    window.requestAnimationFrame(() => window.setTimeout(resolve, 0));
+  });
 }
 
 const hud = createHud();
@@ -98,6 +112,7 @@ let runtimePromise = null;
 export function startArenaRuntime(options = {}) {
   if (!runtimePromise) {
     runtimePromise = boot(options).catch((error) => {
+      options.intro?.control?.setError?.(error?.message ?? String(error));
       console.error("[ENTERPRIZE] Arena runtime failed", error);
       hud.showError(error);
       releasePageScroll();
@@ -115,6 +130,7 @@ async function boot({
 } = {}) {
   hud.setState("boot");
   const introControl = intro?.control ?? null;
+  introControl?.setError?.(null);
 
   const canvas = document.querySelector("#scene-canvas");
   const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
@@ -142,10 +158,12 @@ async function boot({
   hud.setLoading(0, pointCloudUrl);
   const pointBuffer = await pointBufferPromise;
   hud.setLoading(1, pointCloudUrl);
+  introControl?.setProgress?.(0.72, "POINT CLOUD RECEIVED");
   performance.mark?.("enterprize:point-buffer-ready");
   performance.mark?.("enterprize:p0-geometry-start");
   const pointData = parsePointCloudData(pointBuffer, pointCloudUrl);
   const cloud = createPointCloudFromData(pointData, VISUAL_CONFIG.pointCloud);
+  introControl?.setProgress?.(0.82, "POINT CLOUD READY");
   performance.mark?.("enterprize:p0-geometry-created");
   const minX = cloud.bounds.min.x;
   const maxX = cloud.bounds.max.x;
@@ -509,14 +527,20 @@ async function boot({
       return deferredAssetsPromise;
     }
 
+    performance.mark?.("enterprize:p1-start");
     deferredAssetsPromise = (async () => {
+      const assetLoadConcurrency = isCoarsePointer ? 1 : 2;
       const scanCore = await assetLoader.loadMany(["arena", "timeline"], {
-        concurrency: 2,
+        concurrency: assetLoadConcurrency,
       });
+      performance.mark?.("enterprize:p1-scan-core-loaded");
+      await yieldToMainThread();
       const squadAssets = await assetLoader.loadMany(
         ["hero", "engineer", "infantry", "sentry"],
-        { concurrency: 2 },
+        { concurrency: assetLoadConcurrency },
       );
+      performance.mark?.("enterprize:p1-squad-loaded");
+      await yieldToMainThread();
       const loaded = { ...scanCore, ...squadAssets };
       arenaInstance = createSymmetricArena(
         loaded.arena,
@@ -551,7 +575,11 @@ async function boot({
         infantry: loaded.infantry,
         sentry: loaded.sentry,
       }, { ...VISUAL_CONFIG.arena.symmetry, ...VISUAL_CONFIG.robots });
+      performance.mark?.("enterprize:p1-squad-created");
+      await yieldToMainThread();
       await ensureExploreCloud(exploreModels[1]);
+      performance.mark?.("enterprize:p1-dart-cloud-ready");
+      await yieldToMainThread();
 
       [
         ...report.arena.materials,
@@ -696,8 +724,11 @@ async function boot({
         return { material, base };
       });
 
+      performance.mark?.("enterprize:p1-compile-start");
       await stage.renderer.compileAsync(stage.scene, freeCamera);
+      performance.mark?.("enterprize:p1-compile-end");
       deferredAssetsReady = true;
+      performance.mark?.("enterprize:p1-ready");
       console.info("[ENTERPRIZE] deferred SCAN assets ready");
       continueScanRequest();
       return stagedAssets;
@@ -855,6 +886,47 @@ async function boot({
     documentRevealFrame = requestAnimationFrame(step);
   }
 
+  let exploreP1ScheduleToken = 0;
+  let exploreP1Timer = 0;
+
+  function cancelExploreP1Schedule() {
+    exploreP1ScheduleToken += 1;
+    if (exploreP1Timer) {
+      window.clearTimeout(exploreP1Timer);
+      exploreP1Timer = 0;
+    }
+  }
+
+  function scheduleExploreP1() {
+    cancelExploreP1Schedule();
+    const token = exploreP1ScheduleToken;
+    performance.mark?.("enterprize:explore-enter");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (token !== exploreP1ScheduleToken || state !== "explore") return;
+        performance.mark?.("enterprize:explore-first-paint");
+        exploreP1Timer = window.setTimeout(() => {
+          exploreP1Timer = 0;
+          scheduleLowPriority(() => {
+            if (token !== exploreP1ScheduleToken || state !== "explore") return;
+            void prepareDeferredAssets()
+              .then(() => {
+                scheduleLowPriority(() => {
+                  void ensureExploreCloud(exploreModels[2]).catch((error) => {
+                    console.error(
+                      "[ENTERPRIZE] Explore cloud preload failed",
+                      error,
+                    );
+                  });
+                });
+              })
+              .catch(() => {});
+          });
+        }, EXPLORE_P1_DELAY_MS);
+      });
+    });
+  }
+
   function setState(next) {
     if (next !== state && (state === "scrub" || next === "scrub")) {
       lookAround.reset();
@@ -865,21 +937,15 @@ async function boot({
     focus?.setHighlightTarget(next === "scrub" || next === "focus" ? 1 : 0);
     if (next === "explore") {
       exploreLastClickAt = elapsedNow; // 进入 EXPLORE 重新计时闲置引导
-      void prepareDeferredAssets()
-        .then(() => {
-          scheduleLowPriority(() => {
-            void ensureExploreCloud(exploreModels[2]).catch((error) => {
-              console.error("[ENTERPRIZE] Explore cloud preload failed", error);
-            });
-          });
-        })
-        .catch(() => {});
+      scheduleExploreP1();
     } else if (prev === "explore") {
+      cancelExploreP1Schedule();
       clickGuide.hide();
     }
     if (next === "scrub") {
       timeline?.setAutoDrive(true); // 切换到 timeline_0 自动推进进度条
       scheduleLowPriority(requestArchiveIslands);
+      window.dispatchEvent(new Event("enterprize:video-prewarm"));
     }
   }
 
@@ -928,6 +994,94 @@ async function boot({
     lockPageScroll();
     setState("scrub");
     hud.setTimeline(timeline.progress);
+  }
+
+  const archiveReturnFade = document.querySelector("#archive-return-fade");
+  let arenaReturnInProgress = false;
+
+  function cssTimeToMs(value) {
+    const trimmed = value.trim();
+    const numeric = Number.parseFloat(trimmed);
+    if (!Number.isFinite(numeric)) return 0;
+    return trimmed.endsWith("ms") ? numeric : numeric * 1_000;
+  }
+
+  function waitForOpacityTransition(element) {
+    if (!element) return Promise.resolve();
+    const style = getComputedStyle(element);
+    const durations = style.transitionDuration.split(",").map(cssTimeToMs);
+    const delays = style.transitionDelay.split(",").map(cssTimeToMs);
+    const maxDuration = durations.reduce(
+      (max, duration, index) =>
+        Math.max(max, duration + (delays[index % delays.length] ?? 0)),
+      0,
+    );
+    if (maxDuration <= 0) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        element.removeEventListener("transitionend", onTransitionEnd);
+        window.clearTimeout(timeout);
+        resolve();
+      };
+      const onTransitionEnd = (event) => {
+        if (event.target === element && event.propertyName === "opacity") finish();
+      };
+      const timeout = window.setTimeout(finish, maxDuration + 100);
+      element.addEventListener("transitionend", onTransitionEnd);
+    });
+  }
+
+  async function setArchiveReturnFade(visible) {
+    if (!archiveReturnFade) return;
+    void archiveReturnFade.offsetWidth;
+    const transition = waitForOpacityTransition(archiveReturnFade);
+    archiveReturnFade.classList.toggle("is-visible", visible);
+    await transition;
+  }
+
+  function waitForTwoFrames() {
+    return new Promise((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+    });
+  }
+
+  async function returnToArenaOverview() {
+    if (state !== "end" || arenaReturnInProgress) return;
+    arenaReturnInProgress = true;
+    archiveAutoEntryArmed = false;
+    archiveAutoEntryRequiresInput = true;
+    const root = document.documentElement;
+    root.dataset.arenaReturnPhase = "covering";
+    performance.mark?.("enterprize:arena-return-start");
+
+    try {
+      await setArchiveReturnFade(true);
+      root.dataset.arenaReturnPhase = "preparing";
+      stage.resume();
+      stopDocumentReveal();
+      window.scrollTo(0, 0);
+      root.classList.remove("is-document-mode");
+      root.style.removeProperty("--document-canvas-shift");
+      lockPageScroll();
+      setState("scrub");
+      hud.setTimeline(timeline.progress);
+      archiveAutoEntryArmed = false;
+      archiveAutoEntryRequiresInput = true;
+      lookAround.enterOverview();
+
+      await waitForTwoFrames();
+      root.dataset.arenaReturnPhase = "revealing";
+      await setArchiveReturnFade(false);
+      performance.mark?.("enterprize:arena-return-complete");
+    } finally {
+      archiveReturnFade?.classList.remove("is-visible");
+      root.dataset.arenaReturnPhase = "idle";
+      arenaReturnInProgress = false;
+    }
   }
 
   // ---------- SCRUB 回滚到起点: 渐隐黑场后从点云聚拢前重新加载 EXPLORE ----------
@@ -998,8 +1152,12 @@ async function boot({
     }, reloadConfig.fadeOutSeconds * 1000);
   }
 
-  // 档案末端 "RETURN TO THE ARENA" 按钮 = 滚轮回顶的显式入口
-  unitSiteUi.setReturnHandler(returnToTimeline);
+  // 档案末端按钮以黑场交接到稳定环视；滚轮/回顶仍保持原 Timeline 返回语义。
+  unitSiteUi.setReturnHandler(() => {
+    void returnToArenaOverview().catch((error) => {
+      console.error("[ENTERPRIZE] Unable to return to arena overview", error);
+    });
+  });
 
   // SCAN 相机混合: 先接入 cameraTimeOffset 姿态, 再贴合当前预设轨迹
   const scanHandoffPos = new THREE.Vector3();
@@ -1215,6 +1373,9 @@ async function boot({
   const interactionDebug = {
     lastTouchAxis: null,
     lastTouchSwipeDelta: 0,
+    lastPinchDelta: 0,
+    pinchZoomEvents: 0,
+    activeTouchCount: 0,
     focusExitAttempts: 0,
     lastClick: null,
   };
@@ -1320,14 +1481,42 @@ async function boot({
   }
 
   // 触屏先锁定主轴：横向交给环视/FOCUS，纵向保留给时间轴和状态退出。
+  // SCRUB 环视期间双指距离独立映射为缩放，并在整次 pinch 内屏蔽点击与纵向时间轴。
+  const activeTouchPoints = new Map();
+  const PINCH_ZOOM_SCALE = 2;
   const touchGesture = {
     originState: null,
+    primaryPointerId: null,
     axis: null,
     accumX: 0,
     accumY: 0,
     swipeAccum: 0,
     dragTarget: null,
+    pinching: false,
+    pinchDistance: 0,
+    suppressUntilClear: false,
   };
+
+  function touchDistance() {
+    const points = [...activeTouchPoints.values()];
+    if (points.length < 2) return 0;
+    return Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+  }
+
+  function resetTouchGesture() {
+    pointer.down = false;
+    touchGesture.originState = null;
+    touchGesture.primaryPointerId = null;
+    touchGesture.axis = null;
+    touchGesture.accumX = 0;
+    touchGesture.accumY = 0;
+    touchGesture.swipeAccum = 0;
+    touchGesture.dragTarget = null;
+    touchGesture.pinching = false;
+    touchGesture.pinchDistance = 0;
+    touchGesture.suppressUntilClear = false;
+    interactionDebug.activeTouchCount = 0;
+  }
 
   function startTouchDrag() {
     if (touchGesture.dragTarget) return;
@@ -1386,21 +1575,51 @@ async function boot({
   }
 
   canvas.addEventListener("pointerdown", (event) => {
+    canvas.setPointerCapture(event.pointerId);
+    if (event.pointerType === "touch") {
+      activeTouchPoints.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+      interactionDebug.activeTouchCount = activeTouchPoints.size;
+      if (activeTouchPoints.size === 1) {
+        pointer.down = true;
+        pointer.x = event.clientX;
+        pointer.y = event.clientY;
+        pointer.moved = 0;
+        pointer.time = performance.now();
+        touchGesture.originState = state;
+        touchGesture.primaryPointerId = event.pointerId;
+        touchGesture.axis = null;
+        touchGesture.accumX = 0;
+        touchGesture.accumY = 0;
+        touchGesture.swipeAccum = 0;
+        touchGesture.dragTarget = null;
+        touchGesture.pinching = false;
+        touchGesture.pinchDistance = 0;
+        touchGesture.suppressUntilClear = false;
+        return;
+      }
+
+      pointer.moved = Number.POSITIVE_INFINITY;
+      touchGesture.suppressUntilClear = true;
+      touchGesture.axis = null;
+      endTouchDrag();
+      touchGesture.pinching =
+        activeTouchPoints.size === 2 &&
+        touchGesture.originState === "scrub" &&
+        state === "scrub" &&
+        !lookAround.isIdle;
+      touchGesture.pinchDistance = touchGesture.pinching ? touchDistance() : 0;
+      return;
+    }
+
     pointer.down = true;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
     pointer.moved = 0;
     pointer.time = performance.now();
-    canvas.setPointerCapture(event.pointerId);
-    if (event.pointerType === "touch") {
-      // 触屏手势先不定轴向, 超过阈值后锁定 (EXPLORE 水平环绕, 竖直为滚轮等效)。
-      touchGesture.originState = state;
-      touchGesture.axis = null;
-      touchGesture.accumX = 0;
-      touchGesture.accumY = 0;
-      touchGesture.swipeAccum = 0;
-      touchGesture.dragTarget = null;
-    } else if (state === "focus") {
+    if (state === "focus") {
       focus.startDrag();
     } else if (state === "scrub") {
       lookAround.startDrag();
@@ -1408,15 +1627,35 @@ async function boot({
   });
 
   canvas.addEventListener("pointermove", (event) => {
-    if (!pointer.down) {
-      return;
-    }
-    const dx = event.clientX - pointer.x;
-    const dy = event.clientY - pointer.y;
-    pointer.x = event.clientX;
-    pointer.y = event.clientY;
-    pointer.moved += Math.abs(dx) + Math.abs(dy);
     if (event.pointerType === "touch") {
+      const previous = activeTouchPoints.get(event.pointerId);
+      if (!previous) return;
+      const dx = event.clientX - previous.x;
+      const dy = event.clientY - previous.y;
+      activeTouchPoints.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+      interactionDebug.activeTouchCount = activeTouchPoints.size;
+
+      if (touchGesture.suppressUntilClear) {
+        if (touchGesture.pinching && activeTouchPoints.size === 2) {
+          const nextDistance = touchDistance();
+          const pinchDelta =
+            (touchGesture.pinchDistance - nextDistance) * PINCH_ZOOM_SCALE;
+          touchGesture.pinchDistance = nextDistance;
+          if (Math.abs(pinchDelta) > 0.01 && lookAround.zoom(pinchDelta)) {
+            interactionDebug.lastPinchDelta = pinchDelta;
+            interactionDebug.pinchZoomEvents += 1;
+          }
+        }
+        return;
+      }
+      if (event.pointerId !== touchGesture.primaryPointerId) return;
+
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      pointer.moved += Math.abs(dx) + Math.abs(dy);
       touchGesture.accumX += dx;
       touchGesture.accumY += dy;
       if (
@@ -1437,7 +1676,24 @@ async function boot({
       if (touchGesture.axis === "x") {
         startTouchDrag();
       }
+      if (state === "explore") {
+        orbit.drag(dx, dy);
+      } else if (state === "focus") {
+        focus.drag(dx, dy);
+      } else if (state === "scrub") {
+        lookAround.drag(dx);
+      }
+      return;
     }
+
+    if (!pointer.down) {
+      return;
+    }
+    const dx = event.clientX - pointer.x;
+    const dy = event.clientY - pointer.y;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    pointer.moved += Math.abs(dx) + Math.abs(dy);
     if (state === "explore") {
       orbit.drag(dx, dy);
     } else if (state === "focus") {
@@ -1448,29 +1704,47 @@ async function boot({
   });
 
   canvas.addEventListener("pointerup", (event) => {
-    pointer.down = false;
     if (event.pointerType === "touch") {
+      if (!activeTouchPoints.delete(event.pointerId)) return;
+      interactionDebug.activeTouchCount = activeTouchPoints.size;
+      if (touchGesture.suppressUntilClear) {
+        if (activeTouchPoints.size === 0) resetTouchGesture();
+        return;
+      }
+      if (event.pointerId !== touchGesture.primaryPointerId) return;
+
+      pointer.down = false;
       endTouchDrag();
-    } else if (state === "focus") {
+      const isClick =
+        pointer.moved < 18 && performance.now() - pointer.time < 700;
+      if (isClick) {
+        handleClick({ clientX: pointer.x, clientY: pointer.y });
+      }
+      resetTouchGesture();
+      return;
+    }
+
+    pointer.down = false;
+    if (state === "focus") {
       focus.endDrag();
     } else if (state === "scrub") {
       lookAround.endDrag();
     }
-    const moveThreshold = event.pointerType === "touch" ? 18 : 6;
-    const timeThreshold = event.pointerType === "touch" ? 700 : 500;
     const isClick =
-      pointer.moved < moveThreshold &&
-      performance.now() - pointer.time < timeThreshold;
+      pointer.moved < 6 && performance.now() - pointer.time < 500;
     if (isClick) {
       handleClick({ clientX: pointer.x, clientY: pointer.y });
     }
-    touchGesture.originState = null;
   });
 
-  canvas.addEventListener("pointercancel", () => {
+  canvas.addEventListener("pointercancel", (event) => {
+    if (event.pointerType === "touch") {
+      activeTouchPoints.clear();
+      endTouchDrag();
+      resetTouchGesture();
+      return;
+    }
     pointer.down = false;
-    touchGesture.originState = null;
-    endTouchDrag();
     focus?.endDrag();
     lookAround.endDrag();
   });
@@ -1577,6 +1851,7 @@ async function boot({
   let fpsFrames = 0;
   let fpsTime = 0;
   let lightLevel = VISUAL_CONFIG.arena.lighting.brightness;
+  let assembled = false;
 
   stage.start(({ delta, elapsed }) => {
     elapsedNow = elapsed;
@@ -1724,27 +1999,32 @@ async function boot({
       fpsTime = 0;
     }
   });
+  if (introControl) {
+    stage.pause();
+  }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       stage.pause();
-    } else if (state !== "end") {
+    } else if (state !== "end" && (!introControl || assembled)) {
       stage.resume();
     }
   });
 
   // ---------- 入场: 起始界面 -> 星线跃迁 -> ASSEMBLE ----------
   // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
+  introControl?.setProgress?.(0.92, "COMPILING ARENA");
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
+  introControl?.setProgress?.(1, "ARENA READY");
   performance.mark?.("enterprize:p0-ready");
 
   hud.finishLoading();
 
-  let assembled = false;
   const beginAssemble = () => {
     if (assembled) {
       return;
     }
+    stage.resume();
     assembled = true;
     setState("assemble");
     // 左偏构图: 点云按 sideOffset 比例左移, 右侧面板展示模型名

@@ -193,7 +193,9 @@ function ParallaxLayer({
   imageClassName,
 }: ParallaxLayerProps) {
   const item = resolveImage(image, index);
+  const imageRef = React.useRef<HTMLImageElement | null>(null);
   const [loaded, setLoaded] = React.useState(false);
+  const [retryCount, setRetryCount] = React.useState(0);
   const mobileTarget = slot.mobile?.scale ?? slot.scale;
   const targetScale = compact ? mobileTarget : slot.scale;
   const rawScale = useTransform(progress, [0, 1], [1, targetScale]);
@@ -204,9 +206,30 @@ function ParallaxLayer({
       ? smoothedScale
       : rawScale;
 
+  const requestedSource = React.useMemo(() => {
+    if (!shouldLoad) return undefined;
+    if (retryCount === 0) return item.src;
+    const separator = item.src.includes("?") ? "&" : "?";
+    return `${item.src}${separator}retry=${retryCount}`;
+  }, [item.src, retryCount, shouldLoad]);
+
+  React.useLayoutEffect(() => {
+    const node = imageRef.current;
+    if (!shouldLoad || !node) {
+      setLoaded(false);
+      return;
+    }
+    setLoaded(node.complete && node.naturalWidth > 0);
+  }, [requestedSource, shouldLoad]);
+
   React.useEffect(() => {
-    setLoaded(false);
+    setRetryCount(0);
   }, [item.src, shouldLoad]);
+
+  const handleLoadError = React.useCallback(() => {
+    setLoaded(false);
+    setRetryCount((current) => Math.min(current + 1, 1));
+  }, []);
 
   const slotStyle: SlotVariables = {
     "--zoom-slot-x": slot.x,
@@ -247,12 +270,15 @@ function ParallaxLayer({
             item.className,
           )}
           data-zoom-image=""
+          data-zoom-load-state={loaded ? "loaded" : retryCount ? "retrying" : "loading"}
           decoding="async"
           fetchPriority={item.priority || index === 0 ? "high" : "auto"}
           loading={shouldLoad ? "eager" : "lazy"}
+          onError={handleLoadError}
           onLoad={() => setLoaded(true)}
+          ref={imageRef}
           sizes={item.sizes ?? "(max-width: 767px) 56vw, 35vw"}
-          src={shouldLoad ? item.src : undefined}
+          src={requestedSource}
           style={{ objectPosition: item.objectPosition }}
         />
       </figure>

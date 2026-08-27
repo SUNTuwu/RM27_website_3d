@@ -60,13 +60,17 @@
   #stagger-testimonials-root *::after,
   #glowing-channels-root *,
   #glowing-channels-root *::before,
-  #glowing-channels-root *::after {
+  #glowing-channels-root *::after,
+  #intro-root *,
+  #intro-root *::before,
+  #intro-root *::after {
     box-sizing: border-box;
   }
 
   #zoom-parallax-root :where(*),
   #stagger-testimonials-root :where(*),
-  #glowing-channels-root :where(*) {
+  #glowing-channels-root :where(*),
+  #intro-root :where(*) {
     margin: 0;
     padding: 0;
   }
@@ -79,7 +83,8 @@
 
   #zoom-parallax-root :where(button, input, select, textarea),
   #stagger-testimonials-root :where(button, input, select, textarea),
-  #glowing-channels-root :where(button, input, select, textarea) {
+  #glowing-channels-root :where(button, input, select, textarea),
+  #intro-root :where(button, input, select, textarea) {
     color: inherit;
     font: inherit;
     letter-spacing: inherit;
@@ -87,7 +92,8 @@
 
   #zoom-parallax-root :where(img, svg),
   #stagger-testimonials-root :where(img, svg),
-  #glowing-channels-root :where(img, svg) {
+  #glowing-channels-root :where(img, svg),
+  #intro-root :where(img, svg) {
     display: block;
     vertical-align: middle;
   }

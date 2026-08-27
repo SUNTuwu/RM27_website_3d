@@ -25,6 +25,7 @@ export function createLookAroundController({ camera, pivot, config }) {
   let transitionDuration = 0;
   let orbitDistance = null;
   let holdRemaining = 0;
+  let overviewPinned = false;
 
   function captureTransition(nextMode) {
     transitionStartPosition.copy(camera.position);
@@ -110,6 +111,11 @@ export function createLookAroundController({ camera, pivot, config }) {
   }
 
   function beginHoldOrExit() {
+    if (overviewPinned) {
+      holdRemaining = Number.POSITIVE_INFINITY;
+      mode = "holding";
+      return;
+    }
     armHold();
     if (holdRemaining > 0) mode = "holding";
     else captureTransition("exiting");
@@ -130,8 +136,17 @@ export function createLookAroundController({ camera, pivot, config }) {
     get holdRemaining() {
       return holdRemaining;
     },
+    enterOverview() {
+      dragging = false;
+      yaw = 0;
+      orbitDistance = null;
+      overviewPinned = true;
+      holdRemaining = Number.POSITIVE_INFINITY;
+      captureTransition("entering");
+    },
     startDrag() {
       dragging = true;
+      overviewPinned = false;
       if (mode === "idle" || mode === "exiting") {
         captureTransition("entering");
       } else if (mode === "holding") {
@@ -175,6 +190,7 @@ export function createLookAroundController({ camera, pivot, config }) {
         distanceMin,
         distanceMax,
       );
+      overviewPinned = false;
       if (mode === "exiting") captureTransition("entering");
       armHold();
       return true;
@@ -188,6 +204,7 @@ export function createLookAroundController({ camera, pivot, config }) {
       transitionDuration = 0;
       orbitDistance = null;
       holdRemaining = 0;
+      overviewPinned = false;
     },
     update(delta, timelinePose) {
       if (mode === "idle") {
@@ -249,6 +266,7 @@ export function createLookAroundController({ camera, pivot, config }) {
         yaw = 0;
         orbitDistance = null;
         holdRemaining = 0;
+        overviewPinned = false;
         return { owner: "handoff", finishedThisFrame: true };
       }
       return { owner: "lookAround" };

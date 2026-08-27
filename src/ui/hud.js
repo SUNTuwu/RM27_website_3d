@@ -14,8 +14,8 @@ const STATE_META = {
   explore: {
     index: "01",
     label: "POINT CLOUD",
-    hint: "<b>CLICK</b> 点按波纹 &nbsp;·&nbsp; <b>DRAG</b> 环绕观察 &nbsp;·&nbsp; <b>SCROLL</b> 开始扫描",
-    touchHint: "<b>TAP</b> 点按波纹 &nbsp;·&nbsp; <b>DRAG</b> 环绕观察 &nbsp;·&nbsp; <b>SWIPE UP</b> 开始扫描",
+    hint: "点按波纹 &nbsp;·&nbsp; 拖拽环视 &nbsp;·&nbsp; 滑动进入",
+    touchHint: "点按波纹 &nbsp;·&nbsp; 拖拽环视 &nbsp;·&nbsp; 滑动进入",
   },
   scan: {
     index: "02",
