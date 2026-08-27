@@ -98,7 +98,7 @@ try {
     "P1 prepares arena, timeline, and robot before SCAN",
   );
   check(
-    requests.some((url) => url.includes("/assets/images/hero/wheel-leg-4-web.jpg")),
+    requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),
     "the first focus image starts loading only when SCAN begins",
   );
   const arenaSymmetry = await page.evaluate(

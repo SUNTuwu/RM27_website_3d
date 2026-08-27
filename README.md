@@ -31,6 +31,15 @@ npm run build:site
 npm run verify:deployment
 ```
 
+`assets/images/` 统一使用 WebP；动画图片保留为 animated WebP。新增图片后运行：
+
+```powershell
+npm run optimize:images
+npm run verify:images
+```
+
+优化器会把静态图最长边限制为 1920 px、动画限制在 960 x 720 px 内，并且只在输出更小时替换源文件。
+
 只有生成的 `site/` 目录用于静态资源部署。预览和生产部署均不设置访问密码。
 
 ## Deployment
