@@ -1,24 +1,37 @@
-# Operating-system and editor files
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-*~
-
-# Local scratch space and generated artifacts
-tmp/
-output/
-tmp_*.py
-.test/
-playwright-report/
-test-results/
-coverage/
-
-# Dependencies and build outputs
+# Dependencies and generated output
 node_modules/
 dist/
-build/
 site/
-
-# Logs
+.vite/
+.tools/
+coverage/
 *.log
+npm-debug.log*
+
+# Local environment and editor state
+.env
+.env.*
+!.env.example
+.agents/
+.codex/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Design sources, research, and local planning material
+ANALYSIS/
+blender/
+REFERENCES/
+REFERENCE/
+REF_PIC/
+
+# Browser test output
+playwright-report/
+test-results/
+
+AGENT.md
+shots/

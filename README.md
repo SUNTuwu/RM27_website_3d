@@ -1,62 +1,52 @@
 # ENTERPRIZE RM2027 Website
 
-香港科技大学 RoboMaster 战队 **ENTERPRIZE** 的 RM2027 网站、设计迭代与调研资料仓库。
+香港科技大学 ENTERPRIZE RoboMaster 战队 RM2027 网站。项目包含 Three.js 3D 交互体验、战队档案页与开源项目档案页。
 
-> 当前仓库以网站内容、视觉方向与研究资料为主；发布前应由战队确认比赛成绩、招新状态、联系方式、赞助信息和图片使用授权。
+## Local development
 
-## Repository layout
+环境要求：Node.js `^20.19.0` 或 `>=22.12.0`。仓库通过 `.node-version` 固定 Cloudflare Pages 使用的版本。
 
-- `index.html` — 当前的单页招新网站入口。
-- `assets/` — 网站运行所需素材、第三方浏览器库，以及可供后续设计迭代使用的视觉素材。
-- `data/metrics.json` — 自动同步的 GitHub Stars 与 RoboMaster 论坛引用指标；由 GitHub Actions 定期刷新。
-- `scripts/` — 生成受限的 Cloudflare Pages 发布目录，以及刷新公开指标的脚本。
-- `functions/_middleware.js` — Cloudflare Pages 全站临时密码门禁；密码通过 Pages 加密 Secret `SITE_PASSWORD` 配置，不进入 Git，访问者不需要用户名。
-- `drafts/homepage/` — 首页的历史设计草稿（`index-v1.html`、`index-v2.html`）。
-- `research/` — 网站策略、战队资料与竞品调研信息，仅供内部内容和设计决策参考。
-- `tests/legacy/` — 历史 Playwright 浏览器检查脚本；尚未整理为 CI 测试套件。
-
-## Local preview
-
-The site is static. For full development preview from the repository root, run:
-
-```bash
-python -m http.server 8377
+```powershell
+npm install
+npm run dev
 ```
 
-Then open <http://127.0.0.1:8377/>.
+本地开发服务器默认监听 `http://127.0.0.1:5173`。主要页面：
 
-For the production-equivalent Cloudflare Pages artifact, build the explicit public allowlist instead:
+- `/`：3D 主体验与战队档案。
+- `/open-source.html`：开源项目档案。
 
-```bash
-node scripts/build-site.mjs
-python -m http.server 8377 --directory site
+## Validation
+
+```powershell
+npm run check
 ```
 
-Only `site/` is intended for public deployment. See [Cloudflare Pages deployment](docs/cloudflare-pages.md) for the dashboard configuration and pre-release requirements. Product priorities and acceptance criteria are tracked in the [website improvement roadmap](docs/website-improvement-roadmap.md).
+该命令依次执行素材结构校验、TypeScript 检查、Cloudflare 密码门禁测试、Vite 构建、`site/` 兼容产物生成和 Cloudflare Pages 限额审计。
 
-## Legacy browser checks
+单独生成 Cloudflare Pages 产物：
 
-The scripts in `tests/legacy/` require Node.js and Playwright. After installing Playwright locally, run a script while the preview server is running:
-
-```bash
-node tests/legacy/homepage-smoke.js
+```powershell
+npm run build:site
+npm run verify:deployment
 ```
 
-These scripts currently create screenshots and log observations. They are retained as migration-era QA references and should be converted to deterministic assertions before CI is introduced.
+只有生成的 `site/` 目录用于静态资源部署；根目录的 `functions/_middleware.js` 由 Cloudflare Pages Functions 单独加载。
 
-## Contribution conventions
+## Deployment
 
-- Make every change through a new Git commit; do not rewrite the initial migration history.
-- Use Conventional Commit-style subjects, for example: `feat: add sponsorship landing page` or `fix: improve mobile navigation`.
-- Keep the production site self-contained under the repository root unless a future refactor introduces a documented build/deployment structure.
-- Do not commit temporary working files, generated screenshots, local credentials, or unapproved personal data.
+目标仓库为 `hkustenterprize/RM2027-webpage`，Cloudflare Pages 生产分支为 `main`。推送或合并到 `main` 后会触发生产构建，其他分支用于预览部署。
 
-## Third-party browser libraries
+完整的 Dashboard 配置、密码 Secret、验证文件、指标刷新和回滚说明见 [Cloudflare Pages deployment](docs/cloudflare-pages.md)。
 
-The current page vendors browser bundles under `assets/vendor/`:
+## Project layout
 
-- Three.js (r128, MIT License)
-- GSAP and ScrollTrigger (v3.12.5; see GreenSock licensing terms)
-- Lenis (v1.0.42; retain its upstream license information when upgrading or repackaging)
+- `src/`：应用逻辑、UI、Three.js 场景与样式。
+- `assets/`：glTF、外部二进制、贴图、字体和开源档案数据。
+- `public/`：需要原样发布到站点根目录的公开文件。
+- `functions/`：Cloudflare Pages Functions 密码门禁及测试。
+- `scripts/`：素材校验、部署构建、产物审计和浏览器验证脚本。
+- `.github/workflows/refresh-metrics.yml`：每周刷新公开项目指标。
+- `.github/workflows/validate-site.yml`：在 Pull Request 和 `main` 推送时执行完整部署检查。
 
-Before public deployment, confirm the applicable licensing terms and keep any required notices.
+不要提交密码、Cloudflare API Token、临时截图、构建产物或未经确认可以公开的素材。

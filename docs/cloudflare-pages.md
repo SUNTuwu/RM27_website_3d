@@ -1,67 +1,94 @@
 # Cloudflare Pages deployment
 
-This repository deliberately deploys only the generated `site/` directory. Do **not** point Cloudflare Pages at the repository root: it also contains internal research, historical drafts, legacy test scripts, and local working areas that are not public website content.
+本项目使用 GitHub 集成自动部署到 Cloudflare Pages。Vite 原生产产物为 `dist/`；为了兼容现有 Pages 项目设置，`scripts/build-site.mjs` 会执行 Vite 构建并将结果复制到 `site/`。
 
-## One-time Cloudflare dashboard setup
+## Dashboard configuration
 
-1. Sign in to Cloudflare and open **Workers & Pages**.
-2. Choose **Create application** → **Pages** → **Connect to Git**.
-3. Authorize Cloudflare to access GitHub, then select `hkustenterprize/RM2027-webpage`.
-4. Use `main` as the production branch.
-5. Select no framework preset.
-6. Configure the build settings exactly as follows:
+Cloudflare Pages 项目应连接 `hkustenterprize/RM2027-webpage`，并使用以下设置：
 
-   | Setting | Value |
-   | --- | --- |
-   | Root directory | `/` (repository root) |
-   | Build command | `node scripts/build-site.mjs` |
-   | Build output directory | `site` |
-   | Node.js version | `20` |
+| Setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Root directory | `/` |
+| Framework preset | None |
+| Build command | `node scripts/build-site.mjs` |
+| Build output directory | `site` |
+| Node.js version | `.node-version` 中的 `22.16.0` |
 
-   Cloudflare detects the root-level `functions/_middleware.js` separately from the `site/` static output, so the Pages password gate is deployed without exposing its source as a static file.
+检查 Dashboard 中是否存在旧的 `NODE_VERSION` 环境变量。如果存在，其值必须与 `.node-version` 一致，或删除该变量以免覆盖仓库配置。
 
-7. Select **Save and Deploy**. Cloudflare will deploy the `site/` directory to a `*.pages.dev` address.
-8. Every future push to `main` triggers a production deploy. Other Git branches become preview deployments.
-
-## Custom domain
-
-Add domains through **Workers & Pages → [project] → Custom domains** first.
-
-- For an apex domain such as `robomaster.hk`, add the zone to Cloudflare and switch its nameservers to Cloudflare. Pages can then create the needed DNS record.
-- For a subdomain such as `www.robomaster.hk`, configure it through the Pages dashboard and point a DNS CNAME to the assigned `<project>.pages.dev` host when Cloudflare instructs you to do so.
-- Do not add only a manual CNAME before associating the domain in Pages; Cloudflare documents that this can cause connection errors.
-- A repository `CNAME` file is not required for Cloudflare Pages.
+每次推送或合并到 `main` 都应触发生产部署；其他 Git 分支产生预览部署。若推送后没有构建记录，请在 **Settings -> Builds & deployments** 中确认 Git 集成和 production deployments 均已启用。
 
 ## Password protection
 
-The current preview deployment includes a Pages Functions middleware at `functions/_middleware.js` that displays a password-only login form for every request. There is no username field. After a successful password check, the middleware issues a short-lived, encrypted, HttpOnly session cookie; the password is never stored in Git and must be configured as an encrypted Pages secret:
+`functions/_middleware.js` 为所有页面提供共享密码门禁。验证文件 `/252478fc73dc3522687c788d2f12f490.txt` 是唯一匿名放行路径。
 
-1. Open **Workers & Pages → [project] → Settings → Variables and Secrets**.
-2. Select **Production** and add an encrypted Secret named `SITE_PASSWORD`.
-3. Repeat for **Preview** if preview deployments should also require the password.
-4. Redeploy the project after saving the secret.
-5. Open the HTTPS site in a private window and verify that the site displays a password-only form.
+在 **Settings -> Variables and Secrets** 中配置加密 Secret：
 
-The middleware returns `401` when the secret is missing or the password is incorrect. Do not put the password in a URL, source file, GitHub Action log, or frontend JavaScript. The session lasts seven days and can be invalidated for everyone by changing `SITE_PASSWORD` and redeploying. This is a shared temporary review password; replace it with Cloudflare Access for individual member identities before long-term public use.
+- Production：`SITE_PASSWORD`
+- Preview：`SITE_PASSWORD`
 
-## Pre-release gate
+缺少 Secret 时中间件会返回 `401`，不会绕过门禁。密码不得写入 Git、URL、前端代码或构建日志。修改 Secret 并重新部署可以使所有现有会话失效。
 
-The build directory prevents research, drafts, legacy tests, and local scratch files from deploying. It does not itself clear public-content issues. Before associating a public production domain, complete the tracked checks for:
+长期对外使用前，应考虑用 Cloudflare Access 替代共享密码，从而获得独立成员身份和访问撤销能力。
 
-- permissions or replacements for watermarked photos and reused diagrams;
-- approved team facts, awards, recruitment contacts, and school affiliations;
-- Star Trek-derived phrasing/branding review;
-- moving private local badge/reference materials outside the project workspace.
+## Public verification file
 
-## Validate the deployment artifact locally
-
-```bash
-node scripts/build-site.mjs
-python -m http.server 8377 --directory site
-```
-
-Open <http://127.0.0.1:8377/> and verify that `research/`, `drafts/`, `tests/`, and `tmp/` cannot be reached from the generated directory.
+`public/252478fc73dc3522687c788d2f12f490.txt` 会由 Vite 复制到部署产物根目录。不要重命名、删除或改变文件内容；中间件也必须继续放行相同路径。
 
 ## Metric refresh
 
-`.github/workflows/refresh-metrics.yml` refreshes `data/metrics.json` each Monday using public GitHub data and the forum's source-page citation field. Its commit to `main` triggers a new Pages deploy automatically. The workflow intentionally does not show forum view counts on the public site, because an automated page read may affect that counter.
+`.github/workflows/refresh-metrics.yml` 每周一刷新 GitHub Stars 和 RoboMaster 论坛引用数据，输出到：
+
+```text
+assets/open-source/data/metrics.json
+```
+
+Action 只在数据发生变化时提交该文件。由机器人写入 `main` 的提交也会触发一次 Pages 生产部署。若之后启用严格分支保护，需要为该工作流保留写入方式，或将刷新改成自动 Pull Request。
+
+## Local validation
+
+在提交部署 PR 前执行：
+
+```powershell
+npm run check
+```
+
+也可以分开执行：
+
+```powershell
+npm run test:middleware
+npm run build:site
+npm run verify:deployment
+```
+
+产物审计会检查关键页面、开源档案数据、公开验证文件、密码门禁放行路径、文件数量、单文件 25 MiB 限制，以及不应进入 `site/` 的源码和本地目录。
+
+## Deployment verification
+
+PR 分支推送后：
+
+1. 在 GitHub PR Checks 中确认 `Validate site` 成功，并在 Cloudflare Dashboard 中确认预览构建成功。
+2. 用预览环境的密码登录，检查 `/` 与 `/open-source.html`。
+3. 在未登录窗口访问 `/252478fc73dc3522687c788d2f12f490.txt`，确认返回验证 token。
+4. 合并到 `main` 后检查生产部署对应的 commit SHA。
+5. 在私密窗口访问 `https://test.hkustenterprize.win`，确认密码门禁和主要页面正常。
+
+## Rollback
+
+迁移前的目标仓库状态保存在远程分支：
+
+```text
+backup/main-before-vite-20260826-023821
+```
+
+不要直接强推回滚。优先在目标仓库创建一个以备份分支内容为基准的回滚 PR，使变更和恢复过程都保留审计记录。
+
+## Pre-release gate
+
+构建产物隔离不能替代内容审核。正式公开前仍需确认：
+
+- 图片、动图、图纸和复用素材的发布授权；
+- 战队成绩、招新状态、联系方式和学校信息；
+- 第三方品牌、字体、项目仓库图片与许可证要求；
+- `assets/` 中所有随运行时一起发布的文件确实允许公开。

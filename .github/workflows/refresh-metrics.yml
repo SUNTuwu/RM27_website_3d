@@ -2,8 +2,12 @@ name: Refresh public project metrics
 
 on:
   schedule:
-    - cron: '17 3 * * 1'
+    - cron: "17 3 * * 1"
   workflow_dispatch:
+
+concurrency:
+  group: refresh-public-project-metrics
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -20,7 +24,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .node-version
 
       - name: Refresh GitHub stars and forum citation metrics
         env:
@@ -29,12 +33,13 @@ jobs:
 
       - name: Commit changed metrics
         run: |
-          if git diff --quiet -- data/metrics.json; then
+          METRICS_PATH="assets/open-source/data/metrics.json"
+          if git diff --quiet -- "$METRICS_PATH"; then
             echo "No metric changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/metrics.json
+          git add "$METRICS_PATH"
           git commit -m "chore: refresh public project metrics"
           git push

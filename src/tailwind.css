@@ -1,0 +1,118 @@
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.115 0.012 255);
+  --foreground: oklch(0.97 0.014 250);
+  --card: oklch(0.16 0.016 255);
+  --card-foreground: oklch(0.97 0.014 250);
+  --popover: oklch(0.16 0.016 255);
+  --popover-foreground: oklch(0.97 0.014 250);
+  --primary: oklch(0.68 0.21 24);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.64 0.16 247);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.22 0.018 255);
+  --muted-foreground: oklch(0.72 0.025 250);
+  --accent: oklch(0.72 0.14 225);
+  --accent-foreground: oklch(0.12 0.012 255);
+  --destructive: oklch(0.63 0.24 26);
+  --border: oklch(0.72 0.035 250 / 0.24);
+  --input: oklch(0.72 0.035 250 / 0.3);
+  --ring: oklch(0.72 0.14 225);
+}
+
+@layer base {
+  #zoom-parallax-root *,
+  #zoom-parallax-root *::before,
+  #zoom-parallax-root *::after,
+  #stagger-testimonials-root *,
+  #stagger-testimonials-root *::before,
+  #stagger-testimonials-root *::after,
+  #glowing-channels-root *,
+  #glowing-channels-root *::before,
+  #glowing-channels-root *::after {
+    box-sizing: border-box;
+  }
+
+  #zoom-parallax-root :where(*),
+  #stagger-testimonials-root :where(*),
+  #glowing-channels-root :where(*) {
+    margin: 0;
+    padding: 0;
+  }
+
+  #zoom-parallax-root :where(h1, h2, h3, h4, h5, h6),
+  #stagger-testimonials-root :where(h1, h2, h3, h4, h5, h6),
+  #glowing-channels-root :where(h1, h2, h3, h4, h5, h6) {
+    font: inherit;
+  }
+
+  #zoom-parallax-root :where(button, input, select, textarea),
+  #stagger-testimonials-root :where(button, input, select, textarea),
+  #glowing-channels-root :where(button, input, select, textarea) {
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  #zoom-parallax-root :where(img, svg),
+  #stagger-testimonials-root :where(img, svg),
+  #glowing-channels-root :where(img, svg) {
+    display: block;
+    vertical-align: middle;
+  }
+}
+
+@layer components {
+  .zoom-parallax-frame {
+    width: var(--zoom-slot-width);
+    height: var(--zoom-slot-height);
+    transform: translate3d(
+      calc(-50% + var(--zoom-slot-x)),
+      calc(-50% + var(--zoom-slot-y)),
+      0
+    );
+  }
+
+  @media (max-width: 767px) {
+    .zoom-parallax-frame {
+      width: var(--zoom-slot-mobile-width, var(--zoom-slot-width));
+      height: var(--zoom-slot-mobile-height, var(--zoom-slot-height));
+      transform: translate3d(
+        calc(-50% + var(--zoom-slot-mobile-x, var(--zoom-slot-x))),
+        calc(-50% + var(--zoom-slot-mobile-y, var(--zoom-slot-y))),
+        0
+      );
+    }
+  }
+}
