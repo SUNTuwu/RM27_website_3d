@@ -137,8 +137,35 @@ html.is-document-mode .pulse-guide {
   display: none;
 }
 
+html.is-document-mode:not(.is-document-transitioning) {
+  --snap-safe-top: clamp(48px, 8svh, 88px);
+  --snap-safe-bottom: clamp(28px, 5svh, 56px);
+  scroll-padding-block: var(--snap-safe-top) var(--snap-safe-bottom);
+  scroll-snap-type: y proximity;
+}
+
 html.is-document-transitioning {
   overscroll-behavior-y: none;
+  scroll-snap-type: none;
+}
+
+[data-snap-scene] {
+  scroll-snap-stop: normal;
+}
+
+[data-snap-align="start"] {
+  scroll-snap-align: start;
+}
+
+[data-snap-align="center"] {
+  scroll-snap-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-document-mode {
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+  }
 }
 
 body {

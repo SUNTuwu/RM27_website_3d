@@ -2,9 +2,13 @@ import * as THREE from "three";
 
 const TRANSITION_EPSILON = 0.002;
 
+function easeInOutCubic(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
 /**
  * SCRUB 环视子状态机:
- * idle -> entering -> active -> holding -> exiting -> idle
+ * idle -> entering -> active -> exiting -> idle
  * 所有过渡都从 freeCamera 的当前姿态开始，便于被 FOCUS 等状态无缝接管。
  */
 export function createLookAroundController({ camera, pivot, config }) {
@@ -15,17 +19,22 @@ export function createLookAroundController({ camera, pivot, config }) {
   const worldUp = new THREE.Vector3(0, 1, 0);
   const transitionStartPosition = new THREE.Vector3();
   const transitionStartQuaternion = new THREE.Quaternion();
+  const transitionTargetPosition = new THREE.Vector3();
+  const transitionTargetQuaternion = new THREE.Quaternion();
 
   let mode = "idle";
   let dragging = false;
   let yaw = 0;
-  let holdRemaining = 0;
   let transitionBlend = 0;
+  let transitionTime = 0;
+  let transitionDuration = 0;
 
   function captureTransition(nextMode) {
     transitionStartPosition.copy(camera.position);
     transitionStartQuaternion.copy(camera.quaternion);
     transitionBlend = 0;
+    transitionTime = 0;
+    transitionDuration = 0;
     mode = nextMode;
   }
 
@@ -40,6 +49,31 @@ export function createLookAroundController({ camera, pivot, config }) {
       transitionBlend = 1;
     }
     return transitionBlend;
+  }
+
+  function prepareReturnTransition(timelinePose) {
+    if (transitionDuration > 0) {
+      return;
+    }
+
+    transitionTargetPosition.copy(timelinePose.position);
+    transitionTargetQuaternion.copy(timelinePose.quaternion);
+
+    const worldSpeed = Math.max(config.returnWorldSpeed ?? 42, 1);
+    const angleSeconds = config.returnAngleSeconds ?? 0.8;
+    const minDuration = config.returnDurationMin ?? 0.55;
+    const maxDuration = config.returnDurationMax ?? 1.25;
+    const distanceSeconds =
+      transitionStartPosition.distanceTo(transitionTargetPosition) / worldSpeed;
+    const rotationSeconds =
+      (transitionStartQuaternion.angleTo(transitionTargetQuaternion) / Math.PI) *
+      angleSeconds;
+
+    transitionDuration = THREE.MathUtils.clamp(
+      Math.max(distanceSeconds, rotationSeconds, minDuration),
+      minDuration,
+      maxDuration,
+    );
   }
 
   function computeOrbitPose(timelinePose) {
@@ -79,11 +113,6 @@ export function createLookAroundController({ camera, pivot, config }) {
     camera.quaternion.copy(orbitQuaternion);
   }
 
-  function beginHolding() {
-    holdRemaining = config.holdSeconds;
-    mode = "holding";
-  }
-
   return {
     get mode() {
       return mode;
@@ -93,11 +122,8 @@ export function createLookAroundController({ camera, pivot, config }) {
     },
     startDrag() {
       dragging = true;
-      holdRemaining = 0;
       if (mode === "idle" || mode === "exiting") {
         captureTransition("entering");
-      } else if (mode === "holding") {
-        mode = "active";
       }
     },
     drag(deltaX) {
@@ -109,8 +135,8 @@ export function createLookAroundController({ camera, pivot, config }) {
     },
     endDrag() {
       dragging = false;
-      if (mode === "active") {
-        beginHolding();
+      if (mode === "active" || mode === "entering") {
+        captureTransition("exiting");
       }
     },
     /** 清理环视状态但保留相机当前姿态，供下一个全局状态接管。 */
@@ -118,14 +144,15 @@ export function createLookAroundController({ camera, pivot, config }) {
       mode = "idle";
       dragging = false;
       yaw = 0;
-      holdRemaining = 0;
       transitionBlend = 0;
+      transitionTime = 0;
+      transitionDuration = 0;
     },
     update(delta, timelinePose) {
       if (mode === "idle") {
         camera.position.copy(timelinePose.position);
         camera.quaternion.copy(timelinePose.quaternion);
-        return;
+        return { owner: "timeline" };
       }
 
       if (mode === "entering") {
@@ -145,43 +172,41 @@ export function createLookAroundController({ camera, pivot, config }) {
           if (dragging) {
             mode = "active";
           } else {
-            beginHolding();
+            captureTransition("exiting");
           }
         }
-        return;
+        return { owner: "lookAround" };
       }
 
       if (mode === "active") {
         computeOrbitPose(timelinePose);
         applyOrbitPose();
-        return;
+        return { owner: "lookAround" };
       }
 
-      if (mode === "holding") {
-        computeOrbitPose(timelinePose);
-        applyOrbitPose();
-        holdRemaining = Math.max(holdRemaining - delta, 0);
-        if (holdRemaining === 0) {
-          captureTransition("exiting");
-        }
-        return;
-      }
-
-      const blend = advanceTransition(delta, config.blendOutSpeed);
+      prepareReturnTransition(timelinePose);
+      transitionTime = Math.min(transitionTime + delta, transitionDuration);
+      const blend = easeInOutCubic(
+        Math.min(transitionTime / Math.max(transitionDuration, 1e-3), 1),
+      );
       camera.position.lerpVectors(
         transitionStartPosition,
-        timelinePose.position,
+        transitionTargetPosition,
         blend,
       );
       camera.quaternion.slerpQuaternions(
         transitionStartQuaternion,
-        timelinePose.quaternion,
+        transitionTargetQuaternion,
         blend,
       );
-      if (blend === 1) {
+      if (transitionTime >= transitionDuration) {
+        camera.position.copy(transitionTargetPosition);
+        camera.quaternion.copy(transitionTargetQuaternion);
         mode = "idle";
         yaw = 0;
+        return { owner: "handoff", finishedThisFrame: true };
       }
+      return { owner: "lookAround" };
     },
   };
 }

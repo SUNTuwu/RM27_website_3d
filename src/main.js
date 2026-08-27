@@ -658,9 +658,16 @@ async function boot() {
           : null,
       );
       focus.setOnModeChange((mode, finished) => {
-        if (mode === "idle" && finished === "exiting" && state === "focus") {
+        if (
+          mode === "idle" &&
+          finished === "exiting" &&
+          (state === "focus" || focusExitPhase === "exiting")
+        ) {
           delete appElement.dataset.focusLeaving;
+          focusExitPhase = "idle";
           setState("scrub");
+          timeline.resumeFromCameraOverride();
+          timelineHandoffThisFrame = true;
         }
       });
 
@@ -887,12 +894,14 @@ async function boot() {
     releasePageScroll();
     updateDocumentParallax();
     revealUnitArchive();
+    stage.pause();
   }
 
   function returnToTimeline() {
     if (state !== "end") {
       return;
     }
+    stage.resume();
     stopDocumentReveal();
     window.scrollTo(0, 0);
     document.documentElement.classList.remove("is-document-mode");
@@ -1161,24 +1170,27 @@ async function boot() {
     focusSlideIndex = 0;
     focusMediaInitialized = false;
     ensureFocusMedia();
+    focusExitPhase = "idle";
+    delete appElement.dataset.focusLeaving;
     setState("focus");
     focus.enter(targetIndex, elapsedNow); // 从环视或 timeline 的当前画面姿态进入
   }
 
   const appElement = document.querySelector("#app");
-  const FOCUS_PANEL_FADE_MS = 500; // 与 CSS 面板淡出时长 (0.45s) 对齐
-  let focusExitTimer = null;
+  let focusExitPhase = "idle"; // idle | exiting
 
   function exitFocus() {
-    if (state !== "focus" || focusExitTimer !== null) {
+    if (state !== "focus" || focusExitPhase !== "idle") {
       return;
     }
-    // 先收起信息栏与图片, 淡出完成后再移动相机
+    // 同一帧锁定退出: UI 淡出与相机回飞并行, 锁持续到 focusController 完成退出。
+    focusExitPhase = "exiting";
     appElement.dataset.focusLeaving = "true";
-    focusExitTimer = window.setTimeout(() => {
-      focusExitTimer = null;
-      focus.exit(timeline.readCameraPose(), elapsedNow); // 回到冻结进度姿态
-    }, FOCUS_PANEL_FADE_MS);
+    const accepted = focus.exit(timeline.readCameraPose(), elapsedNow); // 回到冻结进度姿态
+    if (!accepted) {
+      focusExitPhase = "idle";
+      delete appElement.dataset.focusLeaving;
+    }
   }
 
   // ---------- 输入 ----------
@@ -1299,6 +1311,7 @@ async function boot() {
     } else if (state === "focus") {
       touchGesture.swipeAccum = Math.max(0, touchGesture.swipeAccum + delta);
       if (touchGesture.swipeAccum > 72) {
+        touchGesture.swipeAccum = Number.NEGATIVE_INFINITY; // 同一触屏手势只触发一次退出
         exitFocus();
       }
     }
@@ -1611,11 +1624,16 @@ async function boot() {
     } else if (state === "scrub") {
       if (timelineHandoffThisFrame) {
         timelineHandoffThisFrame = false;
+        hud.setTimeline(timeline.progress);
       } else {
         timeline.update(delta, !lookAround.isIdle);
+        hud.setTimeline(timeline.progress);
+        const lookAroundResult = lookAround.update(delta, timeline.readCameraPose());
+        if (lookAroundResult?.finishedThisFrame) {
+          timeline.resumeFromCameraOverride();
+          timelineHandoffThisFrame = true;
+        }
       }
-      hud.setTimeline(timeline.progress);
-      lookAround.update(delta, timeline.readCameraPose());
     }
 
     stage.render(freeCamera, delta);
@@ -1626,6 +1644,13 @@ async function boot() {
       hud.setFps(Math.round(fpsFrames / fpsTime));
       fpsFrames = 0;
       fpsTime = 0;
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      stage.pause();
+    } else if (state !== "end") {
+      stage.resume();
     }
   });
 
@@ -1706,6 +1731,9 @@ async function boot() {
     },
     get debugScanBlend() {
       return scanBlend;
+    },
+    get renderLoopActive() {
+      return stage.running;
     },
     get deferredAssetsReady() {
       return deferredAssetsReady;

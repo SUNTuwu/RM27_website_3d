@@ -2,8 +2,6 @@
 // 不依赖 Three.js/GSAP; 移动端不启动 3D 时同样完整可用。
 // 队员心声改为 React 岛渲染 (#stagger-testimonials-root, 见 ui/staggerTestimonials.tsx)。
 
-import { VISUAL_CONFIG } from "../config.js";
-
 const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function clamp01(value) {
@@ -62,6 +60,14 @@ function setupReveals(root) {
 
 function setupChapterNav(root, nav) {
   const chapters = [...root.querySelectorAll("[data-chapter]")];
+  const chapterAnchors = new Map(
+    chapters.map((chapter) => [
+      chapter,
+      chapter.matches("[data-snap-scene]")
+        ? chapter
+        : (chapter.querySelector("[data-snap-scene]") ?? chapter),
+    ]),
+  );
   const buttons = chapters.map((chapter) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -75,7 +81,7 @@ function setupChapterNav(root, nav) {
       `<span class="archive-nav__label">${chapter.dataset.name}</span>` +
       `<span class="archive-nav__dot" aria-hidden="true"></span>`;
     button.addEventListener("click", () => {
-      chapter.scrollIntoView({
+      chapterAnchors.get(chapter).scrollIntoView({
         behavior: REDUCED_MOTION.matches ? "auto" : "smooth",
         block: "start",
       });
@@ -136,168 +142,6 @@ function setupArchiveActivation(root) {
   onScrub(update);
 }
 
-/* ---------- 章节滚动: 惯性 + 吸附点吸引力 ----------
-   滚轮/触摸只改变滚动速度, 位置由 rAF 积分推进 (指数摩擦 = 惯性滑行);
-   吸附点在滑行期间持续施加临界阻尼弹簧力, 像"引力"一样把页面拉向区块顶部,
-   向下吸引强/半径大, 向上吸引弱/半径小 (更容易继续向上逃离);
-   走廊例外: 向上逃离 hero 时不被拉回, 保证 scrollY <= 1 返回 3D 的路径可达。
-   全部参数见 src/config.js VISUAL_CONFIG.chapterSnap。 */
-
-function setupChapterSnap(root) {
-  const cfg = VISUAL_CONFIG.chapterSnap;
-  const targets = [...root.querySelectorAll(cfg.targets.join(", "))];
-  if (!targets.length || REDUCED_MOTION.matches) return;
-
-  const isActive = () =>
-    !document.documentElement.classList.contains("is-document-transitioning") &&
-    (root.classList.contains("is-archive-active") ||
-      // 档案模式下的 3D 视差走廊 (hero 上方) 也接管, 保证从上方抵达 hero 时被吸引
-      document.documentElement.classList.contains("is-document-mode"));
-  const maxScroll = () =>
-    Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
-
-  let velocity = 0; // 当前滚动速度 (px/s)
-  let raf = 0;
-  let lastT = 0;
-
-  // 吸引半径内最近的吸附点; 不在半径内返回 null
-  function nearestAttractor(y) {
-    const vh = window.innerHeight;
-    let best = null;
-    for (const el of targets) {
-      const top = el.getBoundingClientRect().top + y;
-      const dist = top - y;
-      const down = dist > 0; // 目标在下方 => 向下吸附
-      const radius =
-        vh * (down ? cfg.attractRadiusDownRatio : cfg.attractRadiusUpRatio);
-      if (Math.abs(dist) > radius) continue;
-      // 走廊例外: 正在向上逃离 hero 时不吸引, 让滚动可以继续冲向 scrollY 0
-      if (el === targets[0] && velocity < 0) continue;
-      if (!best || Math.abs(dist) < Math.abs(best.dist)) {
-        best = { top, dist, down };
-      }
-    }
-    return best;
-  }
-
-  function frame(now) {
-    const dt = Math.min((now - lastT) / 1000, 0.05);
-    lastT = now;
-    const y = window.scrollY;
-    const attractor = nearestAttractor(y);
-
-    if (attractor && Math.abs(attractor.dist) >= 0.5) {
-      // 临界阻尼弹簧: a = k*dist - c*v (c = 2√k), 无振荡地滑向目标
-      const stiffness = attractor.down ? cfg.stiffnessDown : cfg.stiffnessUp;
-      const k = (stiffness * stiffness) / 4;
-      velocity += (k * attractor.dist - stiffness * velocity) * dt;
-    } else {
-      // 自由滑行: 指数摩擦衰减
-      velocity *= Math.exp(-cfg.dampingPerSecond * dt);
-    }
-
-    // 锁定: 足够近且足够慢 => 钉在目标顶部, 结束惯性
-    if (
-      attractor &&
-      Math.abs(attractor.dist) < cfg.lockRadiusPx &&
-      Math.abs(velocity) < cfg.lockSpeedPx
-    ) {
-      window.scrollTo(0, attractor.top);
-      velocity = 0;
-      raf = 0;
-      return;
-    }
-
-    // 既无惯性也不在吸引半径内 => 停在原地
-    if (Math.abs(velocity) < 1) {
-      velocity = 0;
-      raf = 0;
-      return;
-    }
-
-    const next = Math.min(Math.max(y + velocity * dt, 0), maxScroll());
-    window.scrollTo(0, next);
-
-    // 顶到走廊尽头: 交回 main.js 的 scrollY <= 1 返回 3D 逻辑
-    if (next <= 1 && velocity < 0) {
-      velocity = 0;
-      raf = 0;
-      return;
-    }
-    raf = requestAnimationFrame(frame);
-  }
-
-  function kick(impulse) {
-    velocity = Math.min(
-      Math.max(velocity + impulse, -cfg.maxSpeedPx),
-      cfg.maxSpeedPx,
-    );
-    if (!raf) {
-      lastT = performance.now();
-      raf = requestAnimationFrame(frame);
-    }
-  }
-
-  window.addEventListener(
-    "wheel",
-    (event) => {
-      if (event.ctrlKey || !isActive()) return; // ctrl+滚轮是缩放, 放行
-      const unit =
-        event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? window.innerHeight : 1;
-      const impulse = event.deltaY * unit * cfg.impulseGain;
-      // 边界放行: 顶部继续向上 => 交给返回 3D; 底部继续向下 => 无内容可滚
-      if (impulse < 0 && window.scrollY <= 1) return;
-      if (impulse > 0 && window.scrollY >= maxScroll() - 1) return;
-      event.preventDefault();
-      kick(impulse);
-    },
-    { passive: false },
-  );
-
-  // 触摸: 拖动期间直接跟手, 松手时把拖动速度交给惯性 + 吸引力
-  let touchY = null;
-  let touchVelocity = 0;
-  let touchT = 0;
-  window.addEventListener(
-    "touchstart",
-    (event) => {
-      if (!isActive()) return;
-      velocity = 0; // 手指按下即抓住页面
-      touchVelocity = 0;
-      touchY = event.touches[0].clientY;
-      touchT = performance.now();
-    },
-    { passive: true },
-  );
-  window.addEventListener(
-    "touchmove",
-    (event) => {
-      if (touchY === null || !isActive()) return;
-      event.preventDefault();
-      const now = performance.now();
-      const clientY = event.touches[0].clientY;
-      const dy = touchY - clientY; // 上滑为正 (页面向下滚)
-      const dt = Math.max(now - touchT, 1);
-      touchVelocity = touchVelocity * 0.6 + ((dy / dt) * 1000) * 0.4;
-      touchY = clientY;
-      touchT = now;
-      const next = Math.min(Math.max(window.scrollY + dy, 0), maxScroll());
-      window.scrollTo(0, next);
-    },
-    { passive: false },
-  );
-  window.addEventListener(
-    "touchend",
-    () => {
-      if (touchY === null) return;
-      touchY = null;
-      if (!isActive()) return;
-      kick(touchVelocity * cfg.touchImpulseGain - velocity);
-    },
-    { passive: true },
-  );
-}
-
 /* ---------- 滚动 scrub 公用: rAF 节流的 scroll/resize 驱动 ---------- */
 
 function onScrub(update) {
@@ -313,6 +157,64 @@ function onScrub(update) {
   window.addEventListener("scroll", request, { passive: true });
   window.addEventListener("resize", request);
   update();
+}
+
+/* ---------- 视频 facade: iframe 真正需要时再创建 ---------- */
+
+function setupVideoFacades(root) {
+  const frames = [...root.querySelectorAll("iframe[data-src]")];
+  if (!frames.length) {
+    return;
+  }
+
+  const hydrate = (frame) => {
+    if (frame.src || !frame.dataset.src) {
+      return;
+    }
+    frame.src = frame.dataset.src;
+    frame.dataset.videoHydrated = "true";
+    const facade = frame.parentElement?.querySelector("[data-video-facade]");
+    if (facade) {
+      facade.hidden = true;
+    }
+  };
+
+  frames.forEach((frame) => {
+    const facade = frame.parentElement?.querySelector("[data-video-facade]");
+    facade?.addEventListener("click", () => hydrate(frame));
+  });
+
+  const autoFrames = frames.filter((frame) =>
+    frame.hasAttribute("data-video-autoload"),
+  );
+  if (!autoFrames.length || !("IntersectionObserver" in window)) {
+    return;
+  }
+
+  const targetToFrame = new WeakMap();
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        const frame = targetToFrame.get(entry.target);
+        if (frame) {
+          hydrate(frame);
+        }
+        observer.unobserve(entry.target);
+      });
+    },
+    { rootMargin: "150% 0px 80% 0px", threshold: 0.01 },
+  );
+
+  autoFrames.forEach((frame) => {
+    const target =
+      frame.closest(".archive-media__player, .archive-media-row__visual") ??
+      frame;
+    targetToFrame.set(target, frame);
+    observer.observe(target);
+  });
 }
 
 /* ---------- 兵种图文揭示: GIF 裁切展开 (scrub) + 悬停跟随大图 ---------- */
@@ -502,7 +404,7 @@ export function createUnitSite({ onReturnToArena } = {}) {
   setupChapterNav(root, root.querySelector("#archive-nav"));
   setupProgress(root, root.querySelector("#archive-progress-fill"));
   setupArchiveActivation(root);
-  setupChapterSnap(root);
+  setupVideoFacades(root);
   setupUnitReveal(root);
   setupUnitStack(root);
   setupReturnGhosts(root);

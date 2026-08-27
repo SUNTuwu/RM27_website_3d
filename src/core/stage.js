@@ -127,6 +127,12 @@ export function createStage(
   const clock = new THREE.Clock();
   let loopCallback = null;
   let disposed = false;
+  let running = false;
+
+  function tick() {
+    const delta = Math.min(clock.getDelta(), 0.1);
+    loopCallback?.({ delta, elapsed: clock.elapsedTime });
+  }
 
   function resize() {
     const width = Math.max(canvas.clientWidth, 1);
@@ -166,10 +172,26 @@ export function createStage(
   function start(callback) {
     loopCallback = callback;
     clock.start();
-    renderer.setAnimationLoop(() => {
-      const delta = Math.min(clock.getDelta(), 0.1);
-      loopCallback?.({ delta, elapsed: clock.elapsedTime });
-    });
+    running = true;
+    renderer.setAnimationLoop(tick);
+  }
+
+  function pause() {
+    if (!running || disposed) {
+      return;
+    }
+    renderer.setAnimationLoop(null);
+    clock.stop();
+    running = false;
+  }
+
+  function resume() {
+    if (running || disposed || !loopCallback) {
+      return;
+    }
+    clock.start();
+    running = true;
+    renderer.setAnimationLoop(tick);
   }
 
   function dispose() {
@@ -180,6 +202,7 @@ export function createStage(
     disposed = true;
     window.removeEventListener("resize", resize);
     renderer.setAnimationLoop(null);
+    running = false;
     environmentMap.dispose();
     roomEnvironment.clear();
     composer.dispose();
@@ -198,6 +221,11 @@ export function createStage(
     render,
     resize,
     start,
+    pause,
+    resume,
+    get running() {
+      return running;
+    },
     dispose,
   };
 }

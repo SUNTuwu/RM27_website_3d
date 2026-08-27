@@ -75,6 +75,12 @@ export function createTimelineController({
         velocity = autoRate;
       }
     },
+    /** 子相机控制器交还控制权后, 保留 progress, 丢弃旧滚轮速度/hold, 从正常自动播放速度恢复。 */
+    resumeFromCameraOverride() {
+      autoHold = 0;
+      velocity = autoDrive ? autoRate : 0;
+      applyTime();
+    },
     /** paused = 环视中: 速度与进度都冻结, 回中后从冻结处继续 */
     update(delta, paused = false) {
       if (paused) {

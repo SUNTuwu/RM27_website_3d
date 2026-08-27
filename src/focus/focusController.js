@@ -169,6 +169,9 @@ export function createFocusController({
     },
     /** 退出聚焦: targetPose = timeline_0 冻结进度的相机姿态 */
     exit(targetPose, startedAt) {
+      if (mode === "idle" || mode === "exiting") {
+        return false;
+      }
       startPos.copy(camera.position);
       startQuat.copy(camera.quaternion);
       endPos.copy(targetPose.position);
@@ -177,6 +180,7 @@ export function createFocusController({
       mode = "exiting";
       modeTime = 0;
       modeStartedAt = Number.isFinite(startedAt) ? startedAt : null;
+      return true;
     },
     startDrag() {
       if (mode === "active") {

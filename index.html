@@ -185,6 +185,8 @@
         data-num="00"
         data-name="ENTERPRIZE"
         data-cn="我们是谁"
+        data-snap-scene="archive-hero"
+        data-snap-align="start"
         aria-label="我们是谁"
       >
         <div class="archive-wrap">
@@ -231,7 +233,13 @@
       </section>
 
       <!-- 影像 MEDIA：居中主视频 + 三列高光回放 -->
-      <section class="archive-media" id="archive-media" aria-label="影像记录">
+      <section
+        class="archive-media"
+        id="archive-media"
+        data-snap-scene="media-record"
+        data-snap-align="start"
+        aria-label="影像记录"
+      >
         <div class="archive-wrap">
           <header class="archive-head reveal">
             <div class="archive-head__meta">
@@ -251,7 +259,8 @@
           <div class="archive-media__feature">
             <div class="archive-media__player reveal">
               <iframe
-                src="https://player.bilibili.com/player.html?isOutside=true&aid=117127650547916&bvid=BV1yU8c6WErJ&cid=41099529159&p=1"
+                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=117127650547916&bvid=BV1yU8c6WErJ&cid=41099529159&p=1"
+                data-video-autoload
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -259,6 +268,13 @@
                 referrerpolicy="strict-origin-when-cross-origin"
                 title="ENTERPRIZE 招新影像"
               ></iframe>
+              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 招新影像">
+                <span class="video-facade__inner">
+                  <span class="video-facade__play" aria-hidden="true"></span>
+                  <span class="video-facade__text">PLAY FILM</span>
+                  <span class="video-facade__hint">BILIBILI PLAYER</span>
+                </span>
+              </button>
             </div>
             <p class="archive-media__note">
               视频经 Bilibili 官方播放器流式嵌入；内容与版权说明以
@@ -272,7 +288,7 @@
           <div class="archive-media__grid" aria-label="高光回放视频">
             <div class="archive-media__player reveal">
               <iframe
-                src="https://player.bilibili.com/player.html?isOutside=true&aid=116702650109820&bvid=BV19j7D6LEsU&cid=38907086848&p=1"
+                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=116702650109820&bvid=BV19j7D6LEsU&cid=38907086848&p=1"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -280,10 +296,17 @@
                 referrerpolicy="strict-origin-when-cross-origin"
                 title="ENTERPRIZE 高光回放 1"
               ></iframe>
+              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 1">
+                <span class="video-facade__inner">
+                  <span class="video-facade__play" aria-hidden="true"></span>
+                  <span class="video-facade__text">PLAY HIGHLIGHT</span>
+                  <span class="video-facade__hint">BILIBILI PLAYER</span>
+                </span>
+              </button>
             </div>
             <div class="archive-media__player reveal" style="--rd: 90ms">
               <iframe
-                src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1"
+                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -291,10 +314,17 @@
                 referrerpolicy="strict-origin-when-cross-origin"
                 title="ENTERPRIZE 高光回放 2"
               ></iframe>
+              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 2">
+                <span class="video-facade__inner">
+                  <span class="video-facade__play" aria-hidden="true"></span>
+                  <span class="video-facade__text">PLAY HIGHLIGHT</span>
+                  <span class="video-facade__hint">BILIBILI PLAYER</span>
+                </span>
+              </button>
             </div>
             <div class="archive-media__player reveal" style="--rd: 180ms">
               <iframe
-                src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1"
+                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1"
                 scrolling="no"
                 frameborder="0"
                 allowfullscreen="true"
@@ -302,6 +332,13 @@
                 referrerpolicy="strict-origin-when-cross-origin"
                 title="ENTERPRIZE 高光回放 3"
               ></iframe>
+              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 3">
+                <span class="video-facade__inner">
+                  <span class="video-facade__play" aria-hidden="true"></span>
+                  <span class="video-facade__text">PLAY HIGHLIGHT</span>
+                  <span class="video-facade__hint">BILIBILI PLAYER</span>
+                </span>
+              </button>
             </div>
           </div>
           <p class="archive-media__note">
@@ -321,6 +358,8 @@
         data-num="01"
         data-name="TEAM"
         data-cn="队伍信息"
+        data-snap-scene="team-history"
+        data-snap-align="start"
         aria-label="队伍信息"
       >
         <div class="archive-wrap">
@@ -388,7 +427,13 @@
       </section>
 
       <!-- 横幅 BANNER -->
-      <section class="archive-banner" id="archive-banner" aria-label="战队宣言">
+      <section
+        class="archive-banner"
+        id="archive-banner"
+        data-snap-scene="team-manifesto"
+        data-snap-align="center"
+        aria-label="战队宣言"
+      >
         <img class="archive-banner__bg" src="/assets/images/archive/wheel-leg-4-web.webp" alt="轮腿机器人在赛场" />
         <span class="archive-banner__overlay" aria-hidden="true"></span>
         <div class="archive-banner__content">
@@ -405,6 +450,8 @@
         data-num="02"
         data-name="UNITS"
         data-cn="兵种体系"
+        data-snap-scene="unit-archive"
+        data-snap-align="start"
         aria-label="兵种体系"
       >
         <div class="archive-wrap">
@@ -419,14 +466,29 @@
             <p class="archive-head__cn">兵种体系 — 钢铁图鉴</p>
           </header>
 
-                    <!-- What is RoboMaster: 重装同款横向媒体框; 视频链接与嵌入方式和参考站完全一致 -->
+          <!-- What is RoboMaster: 重装同款横向媒体框; 视频链接与嵌入方式和参考站完全一致 -->
           <div class="archive-sub reveal">
             <span class="archive-sub__chip">THE GAME // 赛事速览</span>
             <h3 class="archive-sub__title">什么是 RoboMaster 机甲大师赛</h3>
           </div>
           <div class="archive-media-row archive-media-row--intro reveal" style="margin-top: 26px">
             <div class="archive-media-row__visual archive-media-row__visual--video">
-              <iframe src="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1" scrolling="no" frameborder="0" allowfullscreen="true" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="什么是 RoboMaster"></iframe>
+              <iframe
+                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=837903821&bvid=BV14g4y1z7QC&cid=184409391&p=1"
+                scrolling="no"
+                frameborder="0"
+                allowfullscreen="true"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                title="什么是 RoboMaster"
+              ></iframe>
+              <button class="video-facade video-facade--intro" type="button" data-video-facade aria-label="播放 RoboMaster 赛事介绍">
+                <span class="video-facade__inner">
+                  <span class="video-facade__play" aria-hidden="true"></span>
+                  <span class="video-facade__text">WATCH INTRO</span>
+                  <span class="video-facade__hint">BILIBILI PLAYER</span>
+                </span>
+              </button>
             </div>
             <div class="archive-media-row__body">
               <span class="archive-media-row__index">WHAT IS ROBOMASTER // 赛事介绍</span>
@@ -443,7 +505,14 @@
           </div>
 
           <!-- 兵种图文揭示: GIF 嵌入大字, 滚动展开, 表达缺一不可 -->
-          <div class="unit-reveal" id="unit-reveal" data-unit-reveal aria-label="各兵种缺一不可">
+          <div
+            class="unit-reveal"
+            id="unit-reveal"
+            data-unit-reveal
+            data-snap-scene="unit-reveal"
+            data-snap-align="center"
+            aria-label="各兵种缺一不可"
+          >
             <p class="unit-reveal__eyebrow reveal">FULL LINEUP // 全员就位</p>
             <div class="unit-reveal__lines">
               <div class="unit-reveal__line">
@@ -574,6 +643,8 @@
         data-num="03"
         data-name="JOIN"
         data-cn="入队招新"
+        data-snap-scene="join-fleet"
+        data-snap-align="start"
         aria-label="入队招新信息"
       >
         <div class="archive-wrap">
@@ -942,6 +1013,8 @@
         data-num="04"
         data-name="RETURN"
         data-cn="重返赛场"
+        data-snap-scene="return-arena"
+        data-snap-align="center"
         aria-label="重返 3D 赛场"
       >
         <img
