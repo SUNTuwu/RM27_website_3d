@@ -484,18 +484,18 @@ body {
   }
 }
 
-/* ---------- Top-right HUD: 招新 CTA + state chip ----------
+/* ---------- Top-right HUD: 开源档案 + 招新 CTA + state chip ----------
    调参位置 (桌面默认):
    --hud-top-right-top     距顶
    --hud-top-right-right   距右 (越大离右缘越远)
-   --hud-top-right-gap     招新按钮与 state-chip 间距
+   --hud-top-right-gap     开源/招新/state-chip 间距
    --recruit-jump-pad-y/x  按钮内边距 (越大按钮越大)
    --recruit-jump-font-size 按钮字号
 */
 :root {
   --hud-top-right-top: 40px;
   --hud-top-right-right: 64px; /* 距右缘 */
-  --hud-top-right-gap: 28px; /* 招新与 state-chip 间距 (原 14×2) */
+  --hud-top-right-gap: 28px; /* 开源/招新/state-chip 间距 (原 14×2) */
   --recruit-jump-pad-y: 11px;
   --recruit-jump-pad-x: 22px;
   --recruit-jump-font-size: 15px;
@@ -511,6 +511,50 @@ body {
   align-items: center;
   gap: var(--hud-top-right-gap);
   pointer-events: none;
+}
+
+/* 开源页 .btn-outline 同款: 深蓝天窗 + 浅蓝描边平行四边形; 仅桌面 EXPLORE HUD */
+.opensource-jump {
+  pointer-events: auto;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: var(--recruit-jump-pad-y) var(--recruit-jump-pad-x);
+  border: 1px solid rgba(46, 155, 255, 0.45);
+  color: var(--cyan);
+  background: rgba(46, 155, 255, 0.06);
+  font-family: var(--font-cn);
+  font-size: var(--recruit-jump-font-size);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: skewX(var(--hud-slant));
+  transform-origin: center;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.opensource-jump > * {
+  display: inline-block;
+  transform: skewX(var(--hud-unslant));
+}
+
+.opensource-jump:hover,
+.opensource-jump:focus-visible {
+  filter: brightness(1.14);
+  transform: translateY(-2px) skewX(var(--hud-slant));
+  outline: none;
+}
+
+.opensource-jump:focus-visible {
+  box-shadow: 0 0 0 2px #05070d, 0 0 0 4px var(--cyan);
+}
+
+.opensource-jump:active {
+  filter: brightness(0.96);
 }
 
 /* 开源页 .navlinks .join 同款: 红底斜切, 悬停变蓝 */
@@ -557,12 +601,20 @@ body {
 #app[data-state="scan"] .recruit-jump,
 #app[data-state="scrub"] .recruit-jump,
 #app[data-state="focus"] .recruit-jump,
-#app[data-state="end"] .recruit-jump {
+#app[data-state="end"] .recruit-jump,
+#app[data-state="assemble"] .opensource-jump,
+#app[data-state="explore"] .opensource-jump,
+#app[data-state="scan"] .opensource-jump,
+#app[data-state="scrub"] .opensource-jump,
+#app[data-state="focus"] .opensource-jump,
+#app[data-state="end"] .opensource-jump {
   display: inline-flex;
 }
 
 html.is-document-mode .recruit-jump,
-#app[data-state="boot"] .recruit-jump {
+html.is-document-mode .opensource-jump,
+#app[data-state="boot"] .recruit-jump,
+#app[data-state="boot"] .opensource-jump {
   display: none;
 }
 
@@ -1675,6 +1727,10 @@ html.is-document-mode #scene-canvas {
     --recruit-jump-pad-y: 9px;
     --recruit-jump-pad-x: 16px;
     --recruit-jump-font-size: 13px;
+  }
+  /* 手机版不显示「开源档案」, 只保留招新 */
+  .opensource-jump {
+    display: none !important;
   }
   .coordinate-readout { display: none; }
   /* 手机端只保留「下滑进入战场」, 钉在底部正中央 */

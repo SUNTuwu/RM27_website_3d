@@ -290,7 +290,6 @@ function mountIntro() {
   handle.control.error = bootstrap.loadError;
   handle.control.retry = () => window.location.reload();
   handle.control.markCompleted = markIntroCompleted;
-  handle.control.openArchive = openDirectArchive;
   return handle;
 }
 

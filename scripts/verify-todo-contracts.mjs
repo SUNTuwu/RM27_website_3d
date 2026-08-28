@@ -67,9 +67,16 @@ check(
 check(
   intro.includes('event.code !== "Space"') &&
     intro.includes('window.addEventListener("wheel"') &&
-    intro.includes('window.addEventListener("touchstart"') &&
-    intro.includes('control?.openArchive?.("#archive-hero")'),
-  "Intro keyboard, wheel, touch, and 2D shortcuts share implemented entry paths",
+    intro.includes('window.addEventListener("touchstart"'),
+  "Intro keyboard, wheel, and touch share implemented entry paths",
+);
+check(
+  source["index.html"].includes('id="opensource-jump"') &&
+    source["index.html"].includes('id="recruit-jump"') &&
+    source["src/styles.css"].includes(".opensource-jump") &&
+    source["src/styles.css"].includes("display: none !important") &&
+    source["src/styles.css"].includes('rgba(46, 155, 255, 0.06)'),
+  "desktop EXPLORE HUD keeps opensource-jump left of recruit-jump and hides it on mobile",
 );
 check(
   entry.includes('enterprize:intro-completed:v1') &&

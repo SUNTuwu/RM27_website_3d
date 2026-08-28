@@ -132,22 +132,13 @@ async function introChecks(browser, errors) {
     (sample) => sample.stage !== "ready",
   );
 
-  const layout = await page.evaluate(() => {
-    const shortcuts = [...document.querySelectorAll(".intro-outline-link")];
-    const shortcutStyle = getComputedStyle(shortcuts[0]);
-    const shortcutRects = shortcuts.map((item) => item.getBoundingClientRect());
-    return {
-      shortcutStyle: {
-        borderColor: shortcutStyle.borderColor,
-        color: shortcutStyle.color,
-        backgroundColor: shortcutStyle.backgroundColor,
-        padding: shortcutStyle.padding,
-        fontSize: shortcutStyle.fontSize,
-      },
-      shortcutsDoNotOverlap:
-        shortcutRects.length === 2 && shortcutRects[0].right <= shortcutRects[1].left,
-    };
-  });
+  const layout = await page.evaluate(() => ({
+    hasShortcutNav: Boolean(
+      document.querySelector(
+        "[data-intro-archive], [data-intro-open-source], .intro-outline-link",
+      ),
+    ),
+  }));
   check(
     first.copyOpacity <= 0.02 &&
       first.ctaOpacity <= 0.02 &&
@@ -185,9 +176,49 @@ async function introChecks(browser, errors) {
     "desktop Intro CTA keeps the tightened 60px copy gap without clipping",
     final,
   );
-  check(layout.shortcutsDoNotOverlap, "desktop Intro shortcuts do not overlap", layout);
+  check(
+    layout.hasShortcutNav === false,
+    "desktop Intro no longer shows the top-right shortcut pair",
+    layout,
+  );
 
   await page.click("[data-intro-cta]");
+  await page.waitForFunction(
+    () => document.querySelector("[data-intro-phase]")?.dataset.introPhase === "accelerate",
+  );
+  await page.waitForTimeout(320);
+  const accelerationVisuals = await page.evaluate(() => {
+    const stage = document.querySelector("[data-intro-completion-stage]");
+    const typed = document.querySelector("[data-intro-typed-copy]");
+    const copy = document.querySelector("[data-intro-origin-copy]");
+    const cta = document.querySelector("[data-intro-cta-wrap]");
+    const decorations = [
+      ...document.querySelectorAll("[data-intro-decorations]"),
+    ];
+    return {
+      phase: document.querySelector("[data-intro-phase]")?.dataset.introPhase,
+      stage: stage?.dataset.introCompletionStage,
+      stageOpacity: stage ? Number(getComputedStyle(stage).opacity) : 0,
+      typedOpacity: typed ? Number(getComputedStyle(typed).opacity) : 0,
+      copyOpacity: copy ? Number(getComputedStyle(copy).opacity) : 0,
+      ctaOpacity: cta ? Number(getComputedStyle(cta).opacity) : 0,
+      decorationOpacities: decorations.map((item) =>
+        Number(getComputedStyle(item).opacity),
+      ),
+    };
+  });
+  check(
+    accelerationVisuals.phase === "accelerate" &&
+      accelerationVisuals.stage === "ready" &&
+      accelerationVisuals.stageOpacity >= 0.98 &&
+      accelerationVisuals.typedOpacity >= 0.98 &&
+      accelerationVisuals.copyOpacity >= 0.98 &&
+      accelerationVisuals.ctaOpacity >= 0.98 &&
+      accelerationVisuals.decorationOpacities.length === 2 &&
+      accelerationVisuals.decorationOpacities.every((opacity) => opacity <= 0.02),
+    "Intro keeps title, copy, and CTA visible during acceleration without red/blue decorations",
+    accelerationVisuals,
+  );
   await page.waitForFunction(
     () =>
       performance.getEntriesByName("enterprize:background-acceleration-complete")
@@ -214,11 +245,56 @@ async function introChecks(browser, errors) {
     { ...transition, accelerationDuration },
   );
 
+  await page.waitForFunction(
+    () => {
+      const openSource = document.querySelector("#opensource-jump");
+      const recruit = document.querySelector("#recruit-jump");
+      if (!openSource || !recruit) return false;
+      const openStyle = getComputedStyle(openSource);
+      const recruitStyle = getComputedStyle(recruit);
+      return (
+        openStyle.display !== "none" &&
+        recruitStyle.display !== "none" &&
+        openSource.getBoundingClientRect().right <=
+          recruit.getBoundingClientRect().left
+      );
+    },
+    null,
+    { timeout: 45_000 },
+  );
+  const exploreHud = await page.evaluate(() => {
+    const openSource = document.querySelector("#opensource-jump");
+    const recruit = document.querySelector("#recruit-jump");
+    const openStyle = getComputedStyle(openSource);
+    const openRect = openSource.getBoundingClientRect();
+    const recruitRect = recruit.getBoundingClientRect();
+    return {
+      href: openSource.getAttribute("href"),
+      label: openSource.textContent?.trim() ?? "",
+      display: openStyle.display,
+      borderColor: openStyle.borderColor,
+      color: openStyle.color,
+      backgroundColor: openStyle.backgroundColor,
+      openRight: openRect.right,
+      recruitLeft: recruitRect.left,
+    };
+  });
+  check(
+    exploreHud.href === "/open-source.html" &&
+      exploreHud.label === "开源档案" &&
+      ["flex", "inline-flex"].includes(exploreHud.display) &&
+      exploreHud.borderColor === "rgba(46, 155, 255, 0.45)" &&
+      exploreHud.color === "rgb(127, 212, 255)" &&
+      exploreHud.backgroundColor === "rgba(46, 155, 255, 0.06)" &&
+      exploreHud.openRight <= exploreHud.recruitLeft,
+    "desktop EXPLORE shows open-source outline button left of recruit CTA",
+    exploreHud,
+  );
+
   await context.close();
-  return layout.shortcutStyle;
 }
 
-async function openSourceChecks(browser, errors, introShortcutStyle) {
+async function openSourceChecks(browser, errors) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   attachErrorChecks(page, errors, "open-source");
@@ -239,8 +315,6 @@ async function openSourceChecks(browser, errors, introShortcutStyle) {
         borderColor: buttonStyle.borderColor,
         color: buttonStyle.color,
         backgroundColor: buttonStyle.backgroundColor,
-        padding: buttonStyle.padding,
-        fontSize: buttonStyle.fontSize,
       },
       sharedChunkCount: performance
         .getEntriesByType("resource")
@@ -254,9 +328,11 @@ async function openSourceChecks(browser, errors, introShortcutStyle) {
     { ...state, paintedPixels },
   );
   check(
-    JSON.stringify(state.buttonStyle) === JSON.stringify(introShortcutStyle),
-    "Intro shortcuts match the 查看论坛汇总 button UI",
-    { intro: introShortcutStyle, openSource: state.buttonStyle },
+    state.buttonStyle.borderColor === "rgba(46, 155, 255, 0.45)" &&
+      state.buttonStyle.color === "rgb(127, 212, 255)" &&
+      state.buttonStyle.backgroundColor === "rgba(46, 155, 255, 0.06)",
+    "open-source outline button keeps the deep-blue skylight treatment",
+    state.buttonStyle,
   );
   check(state.sharedChunkCount === 1, "open-source loads one shared starfield module", state);
 
@@ -326,8 +402,8 @@ const browser = await chromium.launch({ executablePath, headless: true });
 const errors = [];
 
 try {
-  const shortcutStyle = await introChecks(browser, errors);
-  await openSourceChecks(browser, errors, shortcutStyle);
+  await introChecks(browser, errors);
+  await openSourceChecks(browser, errors);
   await archiveCardChecks(
     browser,
     errors,

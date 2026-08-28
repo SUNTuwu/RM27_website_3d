@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Archive, ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import {
   createSpaceStarfield,
@@ -209,7 +209,6 @@ export type IntroControl = {
   setError?: (message: string | null) => void;
   retry?: () => void;
   markCompleted?: () => void;
-  openArchive?: (targetHash?: string) => void | Promise<void>;
   typingDone?: boolean;
   waitForTypingDone?: () => Promise<void>;
 };
@@ -246,7 +245,6 @@ export function IntroScreen({
   const { progress, done, finish } = useTypewriter(phase === "typing");
   const launchedRef = useRef(false);
   const sceneLaunchRef = useRef(false);
-  const navigationRef = useRef(false);
   const doneTimerRef = useRef(0);
   const completionFrameRef = useRef(0);
   const completionCopyTimerRef = useRef(0);
@@ -313,10 +311,12 @@ export function IntroScreen({
     window.clearTimeout(completionCopyTimerRef.current);
     window.clearTimeout(completionCtaTimerRef.current);
 
-    if (!done || phase !== "typing") {
+    if (!done) {
       setCompletionStage("hidden");
       return;
     }
+
+    if (phase !== "typing") return;
 
     // Mount the complete layout invisibly for one paint. Framer can then
     // compensate the centered flex reflow before any newly mounted copy shows.
@@ -405,25 +405,12 @@ export function IntroScreen({
   }, [onDone, onLaunch]);
 
   const requestEntry = useCallback(() => {
-    if (phase !== "typing" || navigationRef.current) return;
+    if (phase !== "typing") return;
     if (!done) {
       finish();
     }
     handleLaunch();
   }, [done, finish, handleLaunch, phase]);
-
-  const handleOpenArchive = useCallback(() => {
-    if (navigationRef.current || launchedRef.current) return;
-    navigationRef.current = true;
-    control?.markCompleted?.();
-    if (!done) {
-      finish();
-      onTypingDone?.();
-    }
-    setPhase("fade");
-    void Promise.resolve(control?.openArchive?.("#archive-hero"));
-    doneTimerRef.current = window.setTimeout(onDone, FADE_MS + 60);
-  }, [control, done, finish, onDone, onTypingDone]);
 
   useEffect(() => {
     if (phase !== "typing") return;
@@ -518,6 +505,7 @@ export function IntroScreen({
 
   return (
     <motion.div
+      data-intro-phase={phase}
       className="fixed inset-0 z-[1000] select-none overflow-hidden"
       style={{ background: "#05070d" }}
       initial={{ opacity: 0 }}
@@ -531,68 +519,48 @@ export function IntroScreen({
         accelerating={phase === "accelerate"}
         onAccelerationComplete={handleBackgroundExitComplete}
       />
-      <div
-        className="absolute inset-x-0 top-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, #ff2d4d 30%, #2e9bff 70%, transparent)",
-        }}
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, #2e9bff 30%, #ff2d4d 70%, transparent)",
-        }}
-      />
+      <motion.div
+        data-intro-decorations="edges"
+        className="pointer-events-none absolute inset-0"
+        animate={{ opacity: phase === "typing" ? 1 : 0 }}
+        transition={{ duration: reducedMotion ? 0.12 : 0.24, ease: "easeOut" }}
+        aria-hidden="true"
+      >
+        <div
+          className="absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, #ff2d4d 30%, #2e9bff 70%, transparent)",
+          }}
+        />
+        <div
+          className="absolute inset-x-0 bottom-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, #2e9bff 30%, #ff2d4d 70%, transparent)",
+          }}
+        />
+      </motion.div>
       <p className="absolute inset-x-0 top-8 text-center text-[11px] tracking-[0.28em] text-white/35 [font-family:var(--archive-font-en)] sm:tracking-[0.5em]">
         HKUST ROBOMASTER · SINCE 2015
       </p>
 
-      <motion.nav
-        aria-label="引导页快速入口"
-        className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[calc(env(safe-area-inset-top)+4.5rem)] z-30 flex items-center gap-3 sm:top-[calc(env(safe-area-inset-top)+1.25rem)]"
-        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
-        animate={{ opacity: phase === "typing" ? 1 : 0, y: 0 }}
-        transition={{ duration: reducedMotion ? 0.2 : 0.55, delay: 0.1 }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <a
-          href="#archive-hero"
-          data-intro-archive
-          onClick={(event) => {
-            event.preventDefault();
-            handleOpenArchive();
-          }}
-          className="intro-outline-link"
-        >
-          <span className="intro-outline-link__inner">
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-            2D 介绍
-          </span>
-        </a>
-        <a
-          href="/open-source.html"
-          data-intro-open-source
-          onClick={() => control?.markCompleted?.()}
-          className="intro-outline-link"
-        >
-          <span className="intro-outline-link__inner">
-            <Archive className="h-4 w-4" aria-hidden="true" />
-            开源档案
-          </span>
-        </a>
-      </motion.nav>
-
       <motion.div
         data-intro-completion-stage={completionStage}
         className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center [font-family:var(--archive-font-en)]"
-        animate={phase === "typing" ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
+        animate={phase === "fade" ? { opacity: 0, scale: 0.94 } : { opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: "easeIn" }}
       >
+        <motion.div
+          data-intro-decorations="frame"
+          className="pointer-events-none absolute inset-0"
+          animate={{ opacity: phase === "typing" ? 1 : 0 }}
+          transition={{ duration: reducedMotion ? 0.12 : 0.24, ease: "easeOut" }}
+          aria-hidden="true"
+        >
         {/* 打字入场: 红线自左缘、蓝线自右缘延伸到屏幕中间, 端点带平行四边形帽 */}
         <motion.div
-          className="pointer-events-none absolute left-0 top-[31%] h-px w-1/2 origin-left"
+          className="pointer-events-none absolute left-0 top-[16%] h-px w-1/2 origin-left"
           style={{
             background:
               "linear-gradient(90deg, transparent, rgba(255,45,77,0.9) 35%, #ff2d4d)",
@@ -602,7 +570,7 @@ export function IntroScreen({
           transition={{ duration: 2.4, ease: "easeInOut", delay: 0.15 }}
         />
         <motion.div
-          className="pointer-events-none absolute right-0 top-[69%] h-px w-1/2 origin-right"
+          className="pointer-events-none absolute right-0 top-[84%] h-px w-1/2 origin-right"
           style={{
             background:
               "linear-gradient(270deg, transparent, rgba(46,155,255,0.9) 35%, #2e9bff)",
@@ -612,14 +580,14 @@ export function IntroScreen({
           transition={{ duration: 2.4, ease: "easeInOut", delay: 0.15 }}
         />
         <motion.div
-          className="pointer-events-none absolute left-1/2 top-[31%] h-[7px] w-[22px] -translate-y-1/2"
+          className="pointer-events-none absolute left-1/2 top-[16%] h-[7px] w-[22px] -translate-y-1/2"
           style={{ background: "#ff2d4d", transform: "skewX(-16deg)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2.5, duration: 0.3 }}
         />
         <motion.div
-          className="pointer-events-none absolute right-1/2 top-[69%] h-[7px] w-[22px] translate-y-1/2"
+          className="pointer-events-none absolute right-1/2 top-[84%] h-[7px] w-[22px] translate-y-1/2"
           style={{ background: "#2e9bff", transform: "skewX(-16deg)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -687,6 +655,7 @@ export function IntroScreen({
           className="pointer-events-none absolute bottom-[13%] right-[6%] h-[10px] w-[34px] opacity-60"
           style={{ background: "#2e9bff", transform: "skewX(-16deg)" }}
         />
+        </motion.div>
 
         <motion.div
           data-intro-typed-copy
@@ -712,7 +681,7 @@ export function IntroScreen({
           />
         </motion.div>
 
-        {done && phase === "typing" && (
+        {done && (
           <>
             {/* 队名由来中文段落 */}
             <motion.p

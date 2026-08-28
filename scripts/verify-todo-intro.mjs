@@ -150,6 +150,58 @@ function checkCompletionSequence(sequence, label, { reduced = false } = {}) {
   return final;
 }
 
+async function checkAccelerationVisuals(page, label) {
+  await page.click("[data-intro-cta]");
+  await page.waitForFunction(
+    () => document.querySelector("[data-intro-phase]")?.dataset.introPhase === "accelerate",
+  );
+  await page.waitForTimeout(320);
+  const state = await page.evaluate(() => {
+    const stage = document.querySelector("[data-intro-completion-stage]");
+    const typed = document.querySelector("[data-intro-typed-copy]");
+    const copy = document.querySelector("[data-intro-origin-copy]");
+    const cta = document.querySelector("[data-intro-cta-wrap]");
+    const button = document.querySelector("[data-intro-cta]");
+    const buttonRect = button?.getBoundingClientRect();
+    const decorations = [
+      ...document.querySelectorAll("[data-intro-decorations]"),
+    ];
+    return {
+      phase: document.querySelector("[data-intro-phase]")?.dataset.introPhase,
+      stage: stage?.dataset.introCompletionStage,
+      stageOpacity: stage ? Number(getComputedStyle(stage).opacity) : 0,
+      typedOpacity: typed ? Number(getComputedStyle(typed).opacity) : 0,
+      copyOpacity: copy ? Number(getComputedStyle(copy).opacity) : 0,
+      ctaOpacity: cta ? Number(getComputedStyle(cta).opacity) : 0,
+      buttonLeft: buttonRect?.left ?? null,
+      buttonRight: buttonRect?.right ?? null,
+      buttonTop: buttonRect?.top ?? null,
+      buttonBottom: buttonRect?.bottom ?? null,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      decorationOpacities: decorations.map((item) =>
+        Number(getComputedStyle(item).opacity),
+      ),
+    };
+  });
+  check(
+    state.phase === "accelerate" &&
+      state.stage === "ready" &&
+      state.stageOpacity >= 0.98 &&
+      state.typedOpacity >= 0.98 &&
+      state.copyOpacity >= 0.98 &&
+      state.ctaOpacity >= 0.98 &&
+      state.buttonLeft >= 0 &&
+      state.buttonRight <= state.viewportWidth &&
+      state.buttonTop >= 0 &&
+      state.buttonBottom <= state.viewportHeight &&
+      state.decorationOpacities.length === 2 &&
+      state.decorationOpacities.every((opacity) => opacity <= 0.02),
+    `${label} keeps content visible and fitted during acceleration without red/blue decorations`,
+    state,
+  );
+}
+
 const browser = await chromium.launch({ executablePath, headless: true });
 const context = await browser.newContext({
   viewport: { width: 320, height: 720 },
@@ -164,21 +216,17 @@ try {
     waitUntil: "domcontentloaded",
     timeout: 30_000,
   });
-  await page.waitForSelector("[data-intro-archive]");
-  const earlyLinks = await page.evaluate(() => ({
-    archive: getComputedStyle(document.querySelector("[data-intro-archive]")).visibility,
-    openSource: getComputedStyle(
-      document.querySelector("[data-intro-open-source]"),
-    ).visibility,
+  await page.waitForSelector("[data-intro-typed-copy]");
+  const earlyState = await page.evaluate(() => ({
+    hasShortcutNav: Boolean(document.querySelector("[data-intro-archive], [data-intro-open-source], .intro-outline-link")),
     runtimeImportStarted:
       window.__ENTERPRIZE_BOOTSTRAP__?.runtimeImportStarted ?? null,
   }));
   check(
-    earlyLinks.archive === "visible" &&
-      earlyLinks.openSource === "visible" &&
-      earlyLinks.runtimeImportStarted === false,
-    "Intro shortcuts are visible before the 3D runtime import",
-    earlyLinks,
+    earlyState.hasShortcutNav === false &&
+      earlyState.runtimeImportStarted === false,
+    "Intro no longer shows corner shortcuts before the 3D runtime import",
+    earlyState,
   );
 
   const sequence320 = await revealIntroCompletion(page);
@@ -188,12 +236,6 @@ try {
     const rect = button?.getBoundingClientRect();
     const style = button ? getComputedStyle(button) : null;
     const copy = document.querySelector("[data-intro-origin-copy]");
-    const shortcutStyle = getComputedStyle(
-      document.querySelector("[data-intro-open-source]"),
-    );
-    const shortcutRects = [
-      ...document.querySelectorAll(".intro-outline-link"),
-    ].map((element) => element.getBoundingClientRect());
     const starfield = document.querySelector("[data-intro-starfield]");
     return {
       viewportWidth: window.innerWidth,
@@ -209,11 +251,7 @@ try {
       paddingLeft: Number.parseFloat(style?.paddingLeft ?? "0"),
       paddingRight: Number.parseFloat(style?.paddingRight ?? "0"),
       copyColor: copy ? getComputedStyle(copy).color : null,
-      shortcutBorderColor: shortcutStyle.borderColor,
-      shortcutColor: shortcutStyle.color,
-      shortcutPadding: shortcutStyle.padding,
-      shortcutsDoNotOverlap:
-        shortcutRects.length === 2 && shortcutRects[0].right <= shortcutRects[1].left,
+      hasShortcutNav: Boolean(document.querySelector("[data-intro-archive], [data-intro-open-source], .intro-outline-link")),
       hasNebula: Boolean(document.querySelector("[data-intro-nebula]")),
       starfieldWidth: starfield?.width ?? 0,
       starfieldHeight: starfield?.height ?? 0,
@@ -255,11 +293,8 @@ try {
     { final320, layout },
   );
   check(
-    layout.shortcutBorderColor === "rgba(46, 155, 255, 0.45)" &&
-      layout.shortcutColor === "rgb(127, 212, 255)" &&
-      layout.shortcutPadding === "11px 22px" &&
-      layout.shortcutsDoNotOverlap,
-    "Intro shortcuts match the open-source outline button treatment",
+    layout.hasShortcutNav === false,
+    "Intro keeps the top-right shortcut pair removed after completion",
     layout,
   );
   check(
@@ -293,6 +328,7 @@ try {
     "390px Intro completion layout fits with the tightened copy gap",
     final390,
   );
+  await checkAccelerationVisuals(page, "390px Intro");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(targetUrl.href, {
