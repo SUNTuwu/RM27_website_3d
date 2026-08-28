@@ -60,6 +60,19 @@ body {
   color: var(--ink);
   font-family: var(--font-cn);
   -webkit-font-smoothing: antialiased;
+  /* 禁止双击放大; 仍允许文档区纵向拖动 */
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* 3D 阶段锁滚动: 同时关掉 overscroll / 触控默认平移, 避免 EXPLORE 右侧栏跟着橡皮筋上移 */
+html.is-scroll-locked,
+html.is-scroll-locked body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -ms-touch-action: none;
 }
 
 /* Shared HUD control language: thin slanted frame + right hatch field. */
@@ -117,11 +130,7 @@ body {
   transform: translateY(1px) skewX(var(--hud-slant));
 }
 
-html.is-scroll-locked,
-html.is-scroll-locked body {
-  height: 100%;
-  overflow: hidden;
-}
+/* scroll-lock 规则见上方 html/body 段 (含 overscroll + touch-action) */
 
 /* 文档区保留布局位置供交接计算，但在 3D 模式下完全停止绘制与命中。 */
 html:not(.is-document-mode) #zoom-parallax-root,
@@ -149,17 +158,27 @@ html.is-document-mode .pulse-guide {
   display: none;
 }
 
-html.is-document-mode:not(.is-document-transitioning) {
+/* 2D 分页感: 显式 data-snap-scene 用 mandatory + always,
+   一次下滑自然落到下一页; 交接/程序跳转期间关 snap, 避免互抢 */
+html.is-document-mode:not(.is-document-entering):not(.is-snap-suppressed) {
   scroll-padding-block: 0;
-  scroll-snap-type: y proximity;
+  scroll-snap-type: y mandatory;
 }
 
-html.is-document-transitioning {
-  overscroll-behavior-y: none;
+html.is-document-entering,
+html.is-snap-suppressed {
   scroll-snap-type: none;
+  overscroll-behavior-y: none;
 }
 
 [data-snap-scene] {
+  scroll-snap-stop: always;
+}
+
+/* 前两段(3D 落地 BEYOND / BEYOND→WHO WE ARE) 吸力放软:
+   normal 允许惯性穿过, 不强制每页必停; 后面章节仍 always */
+[data-snap-scene="beyond-arena"],
+[data-snap-scene="who-we-are"] {
   scroll-snap-stop: normal;
 }
 
@@ -171,9 +190,26 @@ html.is-document-transitioning {
   scroll-snap-align: center;
 }
 
+/* 个别 snap 落点微调 (scroll-margin-top 正值 = 落点再往下留空;
+   负值 = 允许多滚一点, 把上方折线顶出视口)
+   调这里即可, 不用改 HTML:
+   --snap-who-we-are-offset : WHO WE ARE 折线不要露在顶边 (负值) */
+html.is-document-mode {
+  --snap-who-we-are-offset: -56px; /* ≈ -(fold 46px + 余量), 把折线顶出视口 */
+}
+
+[data-snap-scene="who-we-are"] {
+  scroll-margin-top: var(--snap-who-we-are-offset);
+}
+
+@media (max-width: 767px) {
+  html.is-document-mode {
+    --snap-who-we-are-offset: -48px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html.is-document-mode {
-    scroll-behavior: auto;
     scroll-snap-type: none;
   }
 }
@@ -270,20 +306,27 @@ body {
     var(--explore-brand-color-middle, #d54488) 48%,
     var(--explore-brand-color-end, #2e9bff) 94%
   );
-  -webkit-mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
-  mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  /* logo mask 仅桌面加载, 见下方 min-width:901px, 手机端不拉图 */
   transform: translate3d(0, -10px, 0);
   will-change: transform;
 }
 
-#app[data-state="assemble"] .explore-brand-mark,
-#app[data-state="explore"] .explore-brand-mark {
-  opacity: var(--explore-brand-opacity, 0.16);
-  transform: translate3d(0, -50%, 0);
-}
+/* 桌面: 显示品牌水印 + 加载 logo mask */
+@media (min-width: 901px) {
+  .explore-brand-mark::before {
+    -webkit-mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+    mask: url("/assets/icon/ENTERPRIZE_white_logo.png") center / contain no-repeat;
+  }
 
-#app[data-state="explore"] .explore-brand-mark::before {
-  animation: explore-brand-float var(--explore-brand-rhythm-duration, 3.2s) ease-in-out infinite alternate;
+  #app[data-state="assemble"] .explore-brand-mark,
+  #app[data-state="explore"] .explore-brand-mark {
+    opacity: var(--explore-brand-opacity, 0.16);
+    transform: translate3d(0, -50%, 0);
+  }
+
+  #app[data-state="explore"] .explore-brand-mark::before {
+    animation: explore-brand-float var(--explore-brand-rhythm-duration, 3.2s) ease-in-out infinite alternate;
+  }
 }
 
 @keyframes explore-brand-float {
@@ -441,12 +484,92 @@ body {
   }
 }
 
-/* ---------- State chip ---------- */
+/* ---------- Top-right HUD: 招新 CTA + state chip ----------
+   调参位置 (桌面默认):
+   --hud-top-right-top     距顶
+   --hud-top-right-right   距右 (越大离右缘越远)
+   --hud-top-right-gap     招新按钮与 state-chip 间距
+   --recruit-jump-pad-y/x  按钮内边距 (越大按钮越大)
+   --recruit-jump-font-size 按钮字号
+*/
+:root {
+  --hud-top-right-top: 40px;
+  --hud-top-right-right: 64px; /* 距右缘 */
+  --hud-top-right-gap: 28px; /* 招新与 state-chip 间距 (原 14×2) */
+  --recruit-jump-pad-y: 11px;
+  --recruit-jump-pad-x: 22px;
+  --recruit-jump-font-size: 15px;
+  --recruit-jump-arrow-gap: 10px;
+}
+
+.hud-top-right {
+  position: absolute;
+  top: var(--hud-top-right-top);
+  right: var(--hud-top-right-right);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: var(--hud-top-right-gap);
+  pointer-events: none;
+}
+
+/* 开源页 .navlinks .join 同款: 红底斜切, 悬停变蓝 */
+.recruit-jump {
+  pointer-events: auto;
+  display: none;
+  align-items: center;
+  gap: var(--recruit-jump-arrow-gap);
+  margin: 0;
+  padding: var(--recruit-jump-pad-y) var(--recruit-jump-pad-x);
+  border: 0;
+  color: #05070d;
+  background: var(--red);
+  font-family: var(--font-cn);
+  font-size: var(--recruit-jump-font-size);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: skewX(var(--hud-slant));
+  transform-origin: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.recruit-jump > * {
+  display: inline-block;
+  transform: skewX(var(--hud-unslant));
+}
+
+.recruit-jump:hover,
+.recruit-jump:focus-visible {
+  background: var(--blue);
+  color: #05070d;
+  outline: none;
+}
+
+.recruit-jump:active {
+  filter: brightness(0.92);
+}
+
+/* EXPLORE + 全局交互(scrub/focus/scan/end) 都显示; boot / 2D 文档态隐藏 */
+#app[data-state="assemble"] .recruit-jump,
+#app[data-state="explore"] .recruit-jump,
+#app[data-state="scan"] .recruit-jump,
+#app[data-state="scrub"] .recruit-jump,
+#app[data-state="focus"] .recruit-jump,
+#app[data-state="end"] .recruit-jump {
+  display: inline-flex;
+}
+
+html.is-document-mode .recruit-jump,
+#app[data-state="boot"] .recruit-jump {
+  display: none;
+}
 
 .state-chip {
-  position: absolute;
-  top: 40px;
-  right: 44px;
+  position: relative;
+  top: auto;
+  right: auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -515,6 +638,12 @@ body {
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
+}
+
+/* EXPLORE 正下方提示框无用, 直接隐藏; 其它阶段仍用 hint-bar */
+#app[data-state="assemble"] .hint-bar,
+#app[data-state="explore"] .hint-bar {
+  display: none;
 }
 
 .hud-bilingual {
@@ -939,9 +1068,11 @@ body {
 /* ---------- Explore panel (点云模型切换) ---------- */
 
 .explore-panel {
-  position: absolute;
+  /* fixed: 不随 #app/body 任何 overscroll 橡皮筋位移, 右侧栏钉死视口 */
+  position: fixed;
   right: 64px;
   top: 50%;
+  z-index: 40;
   width: 380px;
   text-align: right;
   opacity: 0;
@@ -950,6 +1081,7 @@ body {
   transition: opacity 0.6s ease, transform 0.6s ease, visibility 0.6s ease;
   pointer-events: none;
   user-select: none;
+  touch-action: manipulation;
 }
 
 .explore-panel::before {
@@ -975,6 +1107,18 @@ body {
   visibility: visible;
   transform: translateY(-50%);
   pointer-events: auto;
+}
+
+/* fixed 脱离 #app 后, 文档态务必彻底关掉, 避免叠在 2D 上 */
+html.is-document-mode .explore-panel,
+#app[data-state="scan"] .explore-panel,
+#app[data-state="scrub"] .explore-panel,
+#app[data-state="focus"] .explore-panel,
+#app[data-state="end"] .explore-panel,
+#app[data-state="boot"] .explore-panel {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .explore-panel__name {
@@ -1454,12 +1598,39 @@ body {
   background: #f7f9fb;
   color: #0b0f17;
   isolation: isolate;
-  box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.72);
+  box-shadow: none;
 }
 
 html.is-document-mode .unit-site {
   /* 负 margin 只属于 2D 交接: 档案提前 100svh 进入，与图集缩放末段同时进行 */
   margin-top: -100svh;
+}
+
+/* 3D→2D 交接: 文档层从透明+下方升起, 进入期间关 snap。
+   from 必须 opacity:0, 且 JS 先挂 entering 再露 document-mode, 否则会先闪静止 2D */
+html.is-document-mode.is-document-entering #zoom-parallax-root,
+html.is-document-mode.is-document-entering #unit-site {
+  animation: document-sheet-rise 2100ms cubic-bezier(0.16, 0.84, 0.18, 1) both;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+@keyframes document-sheet-rise {
+  from {
+    transform: translate3d(0, 36vh, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-document-mode.is-document-entering #zoom-parallax-root,
+  html.is-document-mode.is-document-entering #unit-site {
+    animation: none;
+  }
 }
 
 html.is-document-mode #app {
@@ -1474,6 +1645,14 @@ html.is-document-mode #scene-canvas {
 }
 
 @media (max-width: 900px) {
+  /* 手机端 EXPLORE 不显示、不加载背景品牌 logo */
+  .explore-brand-mark {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
   .masthead {
     top: 86px;
     left: 28px;
@@ -1489,21 +1668,37 @@ html.is-document-mode #scene-canvas {
     font-size: 13px;
   }
 
-  .state-chip { top: 26px; right: 28px; }
+  :root {
+    --hud-top-right-top: 26px;
+    --hud-top-right-right: 36px;
+    --hud-top-right-gap: 20px;
+    --recruit-jump-pad-y: 9px;
+    --recruit-jump-pad-x: 16px;
+    --recruit-jump-font-size: 13px;
+  }
   .coordinate-readout { display: none; }
+  /* 手机端只保留「下滑进入战场」, 钉在底部正中央 */
   .key-hints {
-    left: 28px;
-    bottom: calc(env(safe-area-inset-bottom) + 134px);
+    left: 50%;
+    right: auto;
+    bottom: calc(env(safe-area-inset-bottom) + 28px);
+    transform: translateX(-50%);
     display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 0;
+    width: max-content;
+    max-width: calc(100vw - 48px);
+    text-align: center;
   }
   .key-hints__lead {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 2px;
     margin: 0;
     font-size: 12px;
     line-height: 1.4;
+    text-align: center;
   }
   .key-hint { display: none; }
   .scroll-cue { display: none; }

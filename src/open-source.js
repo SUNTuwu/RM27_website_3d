@@ -2,6 +2,33 @@ import { createSpaceStarfield } from "./space-starfield";
 
 /* 开源档案页: 共享恒速星场 + 跃迁 + 项目档案渲染 */
 (function () {
+  // 与主站一致: 禁 pinch / ctrl-wheel / ctrl± 页面缩放
+  function blockZoomWheel(event) {
+    if (event.ctrlKey || event.metaKey) event.preventDefault();
+  }
+  function blockZoomKeys(event) {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    if (
+      event.key === "+" ||
+      event.key === "=" ||
+      event.key === "-" ||
+      event.key === "_" ||
+      event.code === "NumpadAdd" ||
+      event.code === "NumpadSubtract" ||
+      event.key === "0"
+    ) {
+      event.preventDefault();
+    }
+  }
+  function blockGesture(event) {
+    event.preventDefault();
+  }
+  window.addEventListener("wheel", blockZoomWheel, { passive: false, capture: true });
+  window.addEventListener("keydown", blockZoomKeys, { capture: true });
+  document.addEventListener("gesturestart", blockGesture, { passive: false });
+  document.addEventListener("gesturechange", blockGesture, { passive: false });
+  document.addEventListener("gestureend", blockGesture, { passive: false });
+
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var navigating = false;
 

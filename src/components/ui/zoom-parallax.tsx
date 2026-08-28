@@ -6,7 +6,6 @@ import {
   type MotionValue,
   useReducedMotion,
   useScroll,
-  useSpring,
   useTransform,
 } from "framer-motion";
 
@@ -33,12 +32,6 @@ export interface ZoomParallaxSlot {
   zIndex?: number;
 }
 
-export interface ZoomParallaxSpring {
-  stiffness?: number;
-  damping?: number;
-  mass?: number;
-}
-
 type ScrollOptions = NonNullable<Parameters<typeof useScroll>[0]>;
 
 export interface ZoomParallaxProps
@@ -54,8 +47,6 @@ export interface ZoomParallaxProps
   overlayClassName?: string;
   scrollContainer?: React.RefObject<HTMLElement | null>;
   scrollOffset?: ScrollOptions["offset"];
-  smooth?: boolean;
-  spring?: ZoomParallaxSpring;
   loadStrategy?: "eager" | "visible" | "manual";
   activationEvent?: string;
   showProgress?: boolean;
@@ -132,12 +123,6 @@ export const DEFAULT_ZOOM_PARALLAX_LAYOUT: readonly ZoomParallaxSlot[] = [
   },
 ] as const;
 
-const DEFAULT_SPRING: Required<ZoomParallaxSpring> = {
-  stiffness: 88,
-  damping: 24,
-  mass: 0.42,
-};
-
 function resolveImage(image: ZoomParallaxImage, index: number) {
   return typeof image === "string"
     ? { src: image, alt: `Parallax image ${index + 1}` }
@@ -166,10 +151,8 @@ interface ParallaxLayerProps {
   total: number;
   progress: MotionValue<number>;
   slot: ZoomParallaxSlot;
-  smooth: boolean;
   compact: boolean;
   shouldLoad: boolean;
-  spring: ZoomParallaxSpring;
   reducedMotion: boolean;
   layerClassName?: string;
   frameClassName?: string;
@@ -183,10 +166,8 @@ function ParallaxLayer({
   total,
   progress,
   slot,
-  smooth,
   compact,
   shouldLoad,
-  spring,
   reducedMotion,
   layerClassName,
   frameClassName,
@@ -199,12 +180,7 @@ function ParallaxLayer({
   const mobileTarget = slot.mobile?.scale ?? slot.scale;
   const targetScale = compact ? mobileTarget : slot.scale;
   const rawScale = useTransform(progress, [0, 1], [1, targetScale]);
-  const smoothedScale = useSpring(rawScale, spring);
-  const scale = reducedMotion
-    ? 1
-    : smooth
-      ? smoothedScale
-      : rawScale;
+  const scale = reducedMotion ? 1 : rawScale;
 
   const requestedSource = React.useMemo(() => {
     if (!shouldLoad) return undefined;
@@ -317,8 +293,6 @@ export const ZoomParallax = React.forwardRef<HTMLElement, ZoomParallaxProps>(
       overlayClassName,
       scrollContainer,
       scrollOffset = ["start start", "end end"],
-      smooth = true,
-      spring = DEFAULT_SPRING,
       loadStrategy = "visible",
       activationEvent,
       showProgress = true,
@@ -440,8 +414,6 @@ export const ZoomParallax = React.forwardRef<HTMLElement, ZoomParallaxProps>(
                 loadStrategy === "eager" || (active && index <= requestedMaxIndex)
               }
               slot={resolveSlot(layout, index)}
-              smooth={smooth}
-              spring={{ ...DEFAULT_SPRING, ...spring }}
               total={images.length}
             />
           ))}

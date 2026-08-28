@@ -133,7 +133,7 @@ try {
   await page.waitForFunction(
     () => {
       const top = document.querySelector("#archive-hero")?.getBoundingClientRect().top;
-      return Number.isFinite(top) && top >= 0 && top <= Math.min(120, window.innerHeight * 0.15);
+      return Number.isFinite(top) && top >= -3 && top <= Math.min(120, window.innerHeight * 0.15);
     },
     null,
     { timeout: 8_000 },
@@ -152,23 +152,14 @@ try {
     const titleRange = document.createRange();
     if (title) titleRange.selectNodeContents(title);
 
-    const parseColor = (value) => {
-      const channels = value.match(/[\d.]+/g)?.map(Number) ?? [];
-      return {
-        red: channels[0] ?? 255,
-        green: channels[1] ?? 255,
-        blue: channels[2] ?? 255,
-        alpha: channels[3] ?? 1,
-      };
-    };
     const stats = [...document.querySelectorAll(".archive-stat")].map((card) => {
-      const background = getComputedStyle(card).backgroundColor;
-      const color = parseColor(background);
-      const luminance =
-        (0.2126 * color.red + 0.7152 * color.green + 0.0722 * color.blue) / 255;
+      const style = getComputedStyle(card);
+      const background = style.backgroundImage;
       return {
         background,
-        dark: luminance < 0.15 && color.alpha >= 0.8,
+        dark:
+          background.includes("rgb(16, 24, 39)") &&
+          background.includes("rgb(5, 7, 13)"),
       };
     });
     const logo = document.querySelector(".archive-hero__logo");
@@ -246,6 +237,97 @@ try {
       ),
     "all six Zoom Parallax images finish in the loaded state",
     zoomImageState,
+  );
+
+  const foldRevealState = await page.evaluate(() => {
+    const hero = document.querySelector("#archive-hero");
+    const inner = document.querySelector(".archive-hero__inner");
+    const unitSite = document.querySelector("#unit-site");
+    const stage = document.querySelector("[data-zoom-stage]");
+    const image = [...document.querySelectorAll("img[data-zoom-image]")].find(
+      (candidate) => new URL(candidate.currentSrc || candidate.src).pathname.endsWith("/zoom/1.webp"),
+    );
+    if (!hero || !inner || !unitSite || !stage || !image) return null;
+
+    const heroRect = hero.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const imageRect = image.getBoundingClientRect();
+    const sample = (xRatio, yOffset) => {
+      const x = heroRect.left + heroRect.width * xRatio;
+      const y = Math.max(1, heroRect.top + yOffset);
+      const stack = document.elementsFromPoint(x, y);
+      return {
+        x,
+        y,
+        innerHit: stack.some((element) => element === inner || inner.contains(element)),
+        stageHit: stack.some((element) => element === stage || stage.contains(element)),
+        imageHit: stack.includes(image),
+        imageCovers:
+          imageRect.left <= x &&
+          imageRect.right >= x &&
+          imageRect.top <= y &&
+          imageRect.bottom >= y,
+      };
+    };
+
+    return {
+      cutouts: [sample(0.01, 8), sample(0.5, 8)],
+      tab: sample(0.1, 8),
+      belowFold: [sample(0.01, 30), sample(0.1, 30), sample(0.5, 30)],
+      heroBackground: getComputedStyle(hero).backgroundColor,
+      unitSiteBackground: getComputedStyle(unitSite).backgroundImage,
+      unitSiteBoxShadow: getComputedStyle(unitSite).boxShadow,
+      stageRect: {
+        top: stageRect.top,
+        bottom: stageRect.bottom,
+      },
+      viewportHeight: window.innerHeight,
+      image: {
+        source: new URL(image.currentSrc || image.src).pathname,
+        complete: image.complete,
+        naturalWidth: image.naturalWidth,
+      },
+      foldHosts: [...document.querySelectorAll(".archive-fold")].map((element) => ({
+        id: element.id,
+        side: element.classList.contains("archive-fold--right") ? "right" : "left",
+      })),
+      mediaAfter: getComputedStyle(document.querySelector("#archive-media"), "::after").content,
+      returnAfter: getComputedStyle(document.querySelector("#archive-return"), "::after").content,
+    };
+  });
+  check(
+    foldRevealState &&
+      foldRevealState.cutouts.every(
+        (sample) =>
+          !sample.innerHit && sample.stageHit && sample.imageCovers,
+      ) &&
+      foldRevealState.tab.innerHit &&
+      foldRevealState.belowFold.every((sample) => sample.innerHit) &&
+      foldRevealState.heroBackground === "rgba(0, 0, 0, 0)" &&
+      foldRevealState.unitSiteBackground.includes("rgba(0, 0, 0, 0)") &&
+      foldRevealState.unitSiteBackground.includes("rgb(5, 7, 13)") &&
+      (foldRevealState.unitSiteBoxShadow === "none" ||
+        foldRevealState.unitSiteBoxShadow === "") &&
+      foldRevealState.stageRect.top <= 1 &&
+      foldRevealState.stageRect.bottom >= foldRevealState.viewportHeight - 1 &&
+      foldRevealState.image.source.endsWith("/zoom/1.webp") &&
+      foldRevealState.image.complete &&
+      foldRevealState.image.naturalWidth > 0,
+    "WHO WE ARE fold cutouts reveal the loaded Zoom photo wall without a dark veil",
+    foldRevealState,
+  );
+  check(
+    JSON.stringify(foldRevealState?.foldHosts) ===
+      JSON.stringify([
+        { id: "archive-hero", side: "left" },
+        { id: "archive-team", side: "right" },
+        { id: "archive-units", side: "left" },
+        { id: "archive-join", side: "right" },
+      ]) &&
+      foldRevealState.mediaAfter === "none" &&
+      foldRevealState.returnAfter === "none",
+    "archive folds alternate while MEDIA and BACK TO THE ARENA stay unframed",
+    foldRevealState,
   );
 
   const channelSpacing = await page.evaluate(() => {

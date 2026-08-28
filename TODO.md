@@ -53,273 +53,44 @@
 
 - [x] 3d全局交互时,点击运动的车辆, 摄像机会focus到点击时的位置, 但是由于车在移动, 镜头下一秒会直接跳转到车的位置再跟随移动, 修复使其丝滑
 
-- [x] 自动吸附修复, 我将指定好几个元素,其他的吸附全部删除:
-    <header class="relative flex min-h-[44svh] items-end bg-[linear-gradient(180deg,transparent_0%,rgb(5_8_15/0.55)_42%,rgb(5_8_15/0.35)_72%,transparent_100%)] px-5 pb-8 pt-20 sm:px-8 md:px-12 md:pb-12 xl:px-16"><div class="mx-auto grid w-full max-w-[1500px] items-end gap-8 lg:grid-cols-[minmax(0,1fr)_auto]"><div class="max-w-5xl"><p class="mb-5 font-mono text-xs font-semibold uppercase text-muted-foreground md:text-sm">FIELD LOG // 06 FRAMES</p><h2 class="font-[Audiowide] text-5xl leading-[0.98] text-foreground md:text-7xl xl:text-8xl">BEYOND THE ARENA</h2><p class="mt-5 text-xl font-bold text-foreground md:text-2xl">赛场之外，仍是赛场</p><p class="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">出发、调试、呐喊、拥抱。一支战队真正被记住的，不只有比分。</p></div><div class="flex items-center gap-3"><button aria-label="进入赛事影像" class="grid size-11 place-items-center rounded-sm border border-border bg-card text-foreground transition-colors hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title="进入赛事影像" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-down" aria-hidden="true"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></button><button class="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-archive" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"></rect><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><path d="M10 12h4"></path></svg>读取战队档案</button></div></div></header>顶部贴顶
+- [x] 把2d页面的自动吸附和滑动阻尼全清理干净删了, 现在有怪bug, 直接删
 
-    <img src="/assets/images/archive/arena-fleet-web.webp" alt="ENTERPRIZE 战队机器人列阵">图片上下居中
+- [x] 当前who we are界面, 由于改了折线但是没做遮罩, 现在折线外部也有照片,修复.
+- [x] 上述问题未完全修复, 现在折线外部是空的了, 但是没有露出下面的照片墙
+- [x] 上述问题未完全修复, 现在照片墙露出来了, 但是照片墙上方还有一层阴影, 遮罩没有考虑, 导致现在遮罩部分和上面的照片墙颜色不一致
 
-    <header class="archive-head reveal is-in">
-            <div class="archive-head__meta">
-              <span class="archive-head__chip">MEDIA</span>
-              <span class="archive-head__rule" aria-hidden="true"></span>
-              <span class="archive-head__tag">// FOOTAGE</span>
-            </div>
-            <h2 class="archive-head__title">ON THE RECORD</h2>
-            <p class="archive-head__cn">影像记录 — 招新影像与高光回放</p>
-          </header>顶部贴顶
+- [x] 去掉who we are界面下方的折线, 去掉back to ARENA上方的折线
 
-    <div class="archive-wrap">
-          <header class="archive-head reveal is-in">
-            <div class="archive-head__meta">
-              <span class="archive-head__chip">CH.01</span>
-              <span class="archive-head__rule" aria-hidden="true"></span>
-              <span class="archive-head__tag">// TEAM</span>
-            </div>
-            <h2 class="archive-head__title">WHERE DO WE COME FROM</h2>
-            <p class="archive-head__cn">队伍信息 — 十年磨一剑，一舰越重洋</p>
-          </header>
+- [x] 告诉我怎么改造自动吸附和滑动阻尼, 使2d页面的手感丝滑
+  方案备忘(当前保持原生滚动, 未回滚吸附/阻尼代码):
+  1. 不要全页 `scroll-snap-type` + 大量 `data-snap-scene`: 会和 wheel/touch 惯性、章节按钮 `scrollIntoView`、3D handoff 抢控制权, 容易出现"滑一下被拽回去"。
+  2. 若只想要关键落点, 用 **少量** proximity snap(≤5 个稳定画面), `scroll-snap-stop: normal`, 并在程序滚动期间临时 `scroll-snap-type: none`。
+  3. 阻尼优先交给浏览器原生惯性; 需要跟手视差时用 `useScroll` 直接映射, 不要再叠 `useSpring` 拖尾(手机端会拖影/卡帧)。
+  4. 章节跳转用一次 `scrollIntoView({ behavior: "auto", block: "start" })`, 或自写短 rAF ease; 不要同时开 CSS smooth + JS smooth。
+  5. 3D→2D 交接与 2D 自由滚动解耦: 交接用一次 `scrollTo` + CSS transform 上移, 结束后立刻还权给原生滚动。
+- [x] 现在3D到2D的切换速度太快,有闪现感, 修复成2D丝滑上移, 并加入3D结束自动滚动到2D
+- [x] 3D→2D 不是速度问题而是先整页闪现再上滑: 先挂 entering(opacity0) 再露 document-mode
+- [x] 2D 有限自动吸附: archive-wrap 顶部贴顶, archive-banner 上下居中, "你的选择是什么" 上沿贴顶, archive-return__inner 上下居中
+- [x] 吸附手感改成下滑自然翻到下一页: mandatory + always, 程序跳转短暂关 snap
+- [x] beyond / who-we-are 吸力过强: 这两点改为 scroll-snap-stop:normal, 其余 always 不变
+- [x] BACK TO THE ARENA: archive-wrap 整块上下居中吸附 (return-arena center + 100svh)
+- [x] return-arena 吸不上: snap 改挂整段 100svh section + 去 overflow:hidden + 文末留 center 余量
+- [x] SCRUB→EXPLORE 脚底引导圈残留: exploreReloading 期间禁止 robotGuides 再 show
+- [x] SCRUB→EXPLORE 3D 脚底环残留: rings 进 deferred layer + setHighlightTarget(0) 立刻掐灭
+- [x] 3D 全局交互脚底圈提前出现: scanK≥0.45 即点亮 + 淡入加快
+- [x] 手机端 EXPLORE 不显示背景品牌 logo (display:none + mask 仅桌面加载)
+- [x] 手机端「下滑进入战场」改到底部正中央
+- [x] 前往招新按钮加大、离右缘远一点 (CSS 变量可调)
+- [x] 前往招新: right 回退 64/36; gap 加倍 14→28 / 手机 10→20
+- [x] EXPLORE 去掉正下方 hint-bar; 右上角 state-chip 左侧加「前往招新」(开源 join 风格) 跳转留下你的坐标
+- [x] 「前往招新」在全局交互(scrub/focus/scan/end)也显示, 不只 EXPLORE
+- [x] BEYOND THE ARENA 右侧无用按钮删除
 
-          <div class="archive-circuit">
-            <div class="archive-circuit__row archive-circuit__row--left reveal is-in">
-              <article class="archive-flag" style="--flag-img: url('/assets/images/dept/mechanics-blueprint.webp')">
-                <span class="archive-flag__index">2015 // SET SAIL</span>
-                <h3>舰队启航</h3>
-                <span class="archive-flag__en">SINCE 2015</span>
-                <p>HKUST RoboMaster Team 成立，全球最早踏上 RoboMaster 赛场的队伍之一，代表香港科技大学征战至今。</p>
-              </article>
-            </div>
-            <div class="archive-circuit__row archive-circuit__row--right reveal is-in" style="--rd: 80ms">
-              <article class="archive-flag" style="--flag-img: url('/assets/images/dept/embedded-control-blueprint.webp')">
-                <span class="archive-flag__index">2018 // FIRST CROWN</span>
-                <h3>国际赛区冠军</h3>
-                <span class="archive-flag__en">SUPERCAPACITOR OPEN-SOURCED</span>
-                <p>国际赛区冠军 · 超级电容方案首次开源，改变全圈供电设计。</p>
-              </article>
-            </div>
-            <div class="archive-circuit__row archive-circuit__row--left reveal" style="--rd: 160ms">
-              <article class="archive-flag" style="--flag-img: url('/assets/images/dept/hardware-blueprint.webp')">
-                <span class="archive-flag__index">2019 // GLOBAL TOP 12</span>
-                <h3>全球十二强</h3>
-                <span class="archive-flag__en">BEST IN TEAM HISTORY</span>
-                <p>国际赛区冠军 · 全球总决赛 <b>12 强</b>（173 支队伍，队史最佳）。</p>
-              </article>
-            </div>
-            <div class="archive-circuit__row archive-circuit__row--right reveal" style="--rd: 240ms">
-              <article class="archive-flag" style="--flag-img: url('/assets/images/dept/algorithm-blueprint.webp')">
-                <span class="archive-flag__index">2021 // OVERSEAS NO.1</span>
-                <h3>中期评估第一</h3>
-                <span class="archive-flag__en">RMUC MIDTERM 203 PTS</span>
-                <p>RMUC 中期评估 203 分 · <b>港澳台及海外队伍第 1 名</b>。</p>
-              </article>
-            </div>
-            <div class="archive-circuit__row archive-circuit__row--left reveal" style="--rd: 320ms">
-              <article class="archive-flag" style="--flag-img: url('/assets/images/dept/mechanics-blueprint.webp')">
-                <span class="archive-flag__index">2024 // GUANGDONG 3V3</span>
-                <h3>3V3 一等奖</h3>
-                <span class="archive-flag__en">OPEN-SOURCE AWARD</span>
-                <p>联盟赛广东站 3V3 一等奖 · 超级电容控制器获赛季开源奖三等奖。</p>
-              </article>
-            </div>
-            <div class="archive-circuit__row archive-circuit__row--right reveal" style="--rd: 400ms">
-              <article class="archive-flag" style="--flag-img: url('/assets/images/dept/embedded-control-blueprint.webp')">
-                <span class="archive-flag__index">2025—2026 // PEAK FORM</span>
-                <h3>巅峰赛季</h3>
-                <span class="archive-flag__en">CHAMPIONS &amp; NATIONAL AWARDS</span>
-                <p>浙江站 3V3 <b>冠军</b> · 超级对抗赛全国 <b>二等奖</b> · 雷达局均易伤 1618.3s <b>全国第一</b> · 2026 安徽站 <b>甲级二等奖（十六强）</b>，持续进化中。</p>
-              </article>
-            </div>
-          </div>
-        </div>顶部贴顶
+- [x] 新增以下信息到留下你的坐标方便新生检索（报名问卷 / 招新视频 / Lab 指路 / 公众号 / B站）
+- [x] 留下你的坐标下面新增文件下载按钮（面试题及学习资料 / C++ Tutorial / 在线报名问卷）
+- [x] who we are 界面也需要吸附（顶部贴顶）
+- [x] who we are snap offset 方向修正为负值(折线顶出视口); 「你的选择是什么」吸附删除
+- [x] BEYOND THE ARENA 也要加吸附
+- [x] EXPLORE 上滑时右侧选项卡跟着上移: panel 改 fixed + scroll-lock touch/overscroll 锁死
+- [x] 全站禁用网页缩放(viewport + pinch/ctrl-wheel), 避免和 3D 冲突
 
-
-        <div class="archive-wrap">
-
-          <header class="archive-head reveal is-in">
-            <div class="archive-head__meta">
-              <span class="archive-head__chip">CH.02</span>
-              <span class="archive-head__rule" aria-hidden="true"></span>
-              <span class="archive-head__tag">// UNITS</span>
-            </div>
-            <h2 class="archive-head__title">ROBOT ARCHIVE</h2>
-            <p class="archive-head__cn">兵种体系 — 钢铁图鉴</p>
-          </header>
-
-          <!-- What is RoboMaster: 重装同款横向媒体框; 视频链接与嵌入方式和参考站完全一致 -->
-          <div class="archive-sub reveal is-in">
-            <span class="archive-sub__chip">THE GAME // 赛事速览</span>
-            <h3 class="archive-sub__title">什么是 RoboMaster 机甲大师赛</h3>
-          </div>
-          <div class="archive-media-row archive-media-row--intro reveal is-in" style="margin-top: 26px">
-            <div class="archive-media-row__visual archive-media-row__visual--video">
-              <iframe data-src="https://player.bilibili.com/player.html?isOutside=true&amp;aid=837903821&amp;bvid=BV14g4y1z7QC&amp;cid=184409391&amp;p=1" data-video-autoload="" allow="autoplay; fullscreen; picture-in-picture" scrolling="no" frameborder="0" allowfullscreen="true" loading="eager" referrerpolicy="strict-origin-when-cross-origin" title="什么是 RoboMaster" src="https://player.bilibili.com/player.html?isOutside=true&amp;aid=837903821&amp;bvid=BV14g4y1z7QC&amp;cid=184409391&amp;p=1&amp;autoplay=1&amp;muted=1" data-video-hydrated="playing" data-video-playing="true"></iframe>
-              <button class="video-facade video-facade--intro" type="button" data-video-facade="" aria-label="播放 RoboMaster 赛事介绍" hidden="">
-                <span class="video-facade__inner">
-                  <span class="video-facade__play" aria-hidden="true"></span>
-                  <span class="video-facade__text">WATCH INTRO</span>
-                  <span class="video-facade__hint">BILIBILI PLAYER</span>
-                </span>
-              </button>
-            </div>
-            <div class="archive-media-row__body">
-              <span class="archive-media-row__index">WHAT IS ROBOMASTER // 赛事介绍</span>
-              <h3 class="archive-media-row__title">什么是 RoboMaster</h3>
-              <span class="archive-media-row__en">机甲大师赛 · 全球大学生机器人对抗赛</span>
-              <p class="archive-media-row__desc">
-                RoboMaster 机甲大师赛是面向大学生的机器人对抗赛事。参赛队伍需要跨机械、硬件、电控与算法协作，自主完成多类机器人的设计、制造、调试与赛场部署。
-              </p>
-              <p class="archive-media-row__desc">
-                ENTERPRIZE 自 2015 年起代表香港科技大学参赛。具体兵种、赛制与胜利条件会随赛季调整，请以当季官方规则为准。
-              </p>
-              <p class="archive-media-row__note">视频通过 Bilibili 官方播放器嵌入，内容与版权说明以原视频页面为准。</p>
-            </div>
-          </div>
-
-          <!-- 兵种图文揭示: GIF 嵌入大字, 滚动展开, 表达缺一不可 -->
-          <div class="unit-reveal" id="unit-reveal" data-unit-reveal="" data-snap-scene="unit-reveal" data-snap-align="center" aria-label="各兵种缺一不可">
-            <p class="unit-reveal__eyebrow reveal is-in">FULL LINEUP // 全员就位</p>
-            <div class="unit-reveal__lines">
-              <div class="unit-reveal__line">
-                <span class="unit-reveal__text">英雄</span>
-                <span class="unit-reveal__media" data-follow-src="/assets/images/hero/英雄1.webp" style="--p: 0.000;">
-                  <img src="/assets/images/hero/英雄1.webp" alt="英雄机器人发射 42mm 弹丸" loading="lazy" decoding="async">
-                </span>
-                <span class="unit-reveal__text">重炮破阵</span>
-              </div>
-              <div class="unit-reveal__line">
-                <span class="unit-reveal__text">经济命脉</span>
-                <span class="unit-reveal__media" data-follow-src="/assets/images/engineer/工程1.webp" style="--p: 0.000;">
-                  <img src="/assets/images/engineer/工程1.webp" alt="工程机器人作业演示" loading="lazy" decoding="async">
-                </span>
-                <span class="unit-reveal__text">工程</span>
-              </div>
-              <div class="unit-reveal__line">
-                <span class="unit-reveal__text">步兵</span>
-                <span class="unit-reveal__media" data-follow-src="/assets/images/infantry/步兵.webp" style="--p: 0.000;">
-                  <img src="/assets/images/infantry/步兵.webp" alt="步兵机器人弹雨巡弋" loading="lazy" decoding="async">
-                </span>
-                <span class="unit-reveal__text">弹雨巡弋</span>
-              </div>
-              <div class="unit-reveal__line unit-reveal__line--plain">
-                <span class="unit-reveal__text">你的选择是什么？</span>
-              </div>
-              <div class="unit-reveal__line unit-reveal__line--plain">
-                <span class="unit-reveal__text unit-reveal__text--en">CHOOSE YOUR HERO</span>
-              </div>
-            </div>
-            <div class="unit-reveal__follower" id="unit-reveal-follower" aria-hidden="true">
-              <img src="/assets/images/hero/英雄1.webp" alt="" decoding="async">
-            </div>
-          </div>
-
-          <!-- 兵种堆叠图集: 横屏左右贴边, 斜线分割, 悬停聚焦展开 -->
-          <div class="unit-stack reveal is-in" role="list" aria-label="兵种图鉴, 悬停展开详情">
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/hero.webp" alt="英雄机器人" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-01</span>
-                <h3 class="unit-slot__name">英雄</h3>
-                <span class="unit-slot__en">HERO // 攻城之王</span>
-                <p class="unit-slot__desc">地面主力输出，发射 42mm 大弹丸，可对前哨站与基地造成高额伤害，是推进战线的核心火力单位。</p>
-              </div>
-            </article>
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/engineer.webp" alt="工程机器人" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-02</span>
-                <h3 class="unit-slot__name">工程</h3>
-                <span class="unit-slot__en">ENGINEER // 经济命脉</span>
-                <p class="unit-slot__desc">唯一可获取经济的单位：开采、存储、兑换能量单元，甚至瞬间复活阵亡队友。每一环都是胜负手。</p>
-              </div>
-            </article>
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/infantry.webp" alt="步兵机器人" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-03</span>
-                <h3 class="unit-slot__name">步兵</h3>
-                <span class="unit-slot__en">INFANTRY // 巡弋骑士</span>
-                <p class="unit-slot__desc">机动与火力均衡的地面中坚：游走、牵制、收割——战线的每一寸推进，都由步兵的弹雨写就。</p>
-              </div>
-            </article>
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/sentry.webp" alt="哨兵机器人" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-04</span>
-                <h3 class="unit-slot__name">哨兵</h3>
-                <span class="unit-slot__en">SENTRY // 钢铁哨卫</span>
-                <p class="unit-slot__desc">部署于基地前沿的全自动防御单位：自主索敌、自主开火，用算法守住基地的最后一道防线。</p>
-              </div>
-            </article>
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/drone.webp" alt="空中机器人" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-05</span>
-                <h3 class="unit-slot__name">空中</h3>
-                <span class="unit-slot__en">DRONE // 制空之眼</span>
-                <p class="unit-slot__desc">赛场唯一的空中单位：越过地形实施高空打击与视野支援，是打破地面僵局的立体变量。</p>
-              </div>
-            </article>
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/dart.webp" alt="飞镖系统" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-06</span>
-                <h3 class="unit-slot__name">飞镖</h3>
-                <span class="unit-slot__en">DART // 超视距狙击</span>
-                <p class="unit-slot__desc">从己方半场发射的精确制导弹体，跨越整个赛场直击前哨站与基地，一击改写战局。</p>
-              </div>
-            </article>
-            <article class="unit-slot" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/web/radar.webp" alt="雷达站" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-07</span>
-                <h3 class="unit-slot__name">雷达</h3>
-                <span class="unit-slot__en">RADAR // 全局之眼</span>
-                <p class="unit-slot__desc">固定式感知中枢：解算全场目标位置并与全队共享，让所有机器人看见同一张战场。</p>
-              </div>
-            </article>
-            <article class="unit-slot unit-slot--unknown" role="listitem" tabindex="0">
-              <span class="unit-slot__media"><img src="/assets/images/robot_list/问号.webp" alt="未知兵种" loading="lazy" decoding="async"></span>
-              <span class="unit-slot__scrim" aria-hidden="true"></span>
-              <div class="unit-slot__info">
-                <span class="unit-slot__index">UNIT-??</span>
-                <h3 class="unit-slot__name">???</h3>
-                <span class="unit-slot__en">NEXT UNIT // 情报解密中</span>
-                <p class="unit-slot__desc">RM2027 赛季新兵种档案尚未解密——下一台机器，也许由你亲手造出来。</p>
-              </div>
-            </article>
-          </div>
-
-        </div>顶部贴顶
-
-
-    "十年磨一剑....."上下居中
-
-
-    <span class="unit-reveal__text">你的选择是什么？</span>顶部贴顶
-
-    join the fleet 同理, 顶部贴边
-
-
-    <div class="archive-wrap archive-return__inner">
-          <p class="archive-eyebrow reveal is-in">FINAL TRANSMISSION // 最后通话</p>
-          <h2 class="archive-return__title reveal is-in" style="--rd: 90ms">BACK TO<br>THE ARENA</h2>
-          <p class="archive-return__cn reveal is-in" style="--rd: 180ms">
-            文字的尽头，是钢铁的轰鸣。<br>
-            赛场仍在运转，机器人仍在待命——回去，<b>点击任意一台机器人</b>，读取它的完整战场档案。
-          </p>
-          <button class="archive-return__btn reveal is-in" style="--rd: 260ms" type="button" data-action="return-arena">
-            <span class="archive-return__btn-cn">重返 3D 赛场</span>
-            <span class="archive-return__btn-en">ENTER THE ARENA</span>
-          </button>
-          <p class="archive-return__hint reveal is-in" style="--rd: 340ms">SCROLL UP TO RETURN · 向上滚动同样返回</p>
-          <a class="archive-return__os reveal is-in" style="--rd: 420ms" href="/open-source.html">
-            <span class="archive-return__os-cn">开源档案库</span>
-            <span class="archive-return__os-en">OPEN SOURCE ARCHIVE ⟶</span>
-          </a>
-        </div>上下居中

@@ -8,6 +8,30 @@ function clamp01(value) {
   return Math.min(Math.max(value, 0), 1);
 }
 
+/* 程序跳转时短暂关 snap, 避免 mandatory 把 scrollIntoView 拽偏。
+   多等几帧 + 短超时, 等布局/字体稳定后再开 snap。 */
+function withSnapSuppressed(run) {
+  const root = document.documentElement;
+  root.classList.add("is-snap-suppressed");
+  try {
+    run();
+  } finally {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          root.classList.remove("is-snap-suppressed");
+        }, 120);
+      });
+    });
+  }
+}
+
+function chapterScrollTarget(chapter) {
+  if (!(chapter instanceof Element)) return null;
+  if (chapter.hasAttribute("data-snap-scene")) return chapter;
+  return chapter.querySelector("[data-snap-scene]") ?? chapter;
+}
+
 /* ---------- 滚动 reveal + 数字滚动 ---------- */
 
 function setupReveals(root) {
@@ -60,14 +84,6 @@ function setupReveals(root) {
 
 function setupChapterNav(root, nav) {
   const chapters = [...root.querySelectorAll("[data-chapter]")];
-  const chapterAnchors = new Map(
-    chapters.map((chapter) => [
-      chapter,
-      chapter.matches("[data-snap-scene]")
-        ? chapter
-        : (chapter.querySelector("[data-snap-scene]") ?? chapter),
-    ]),
-  );
   const buttons = chapters.map((chapter) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -81,10 +97,11 @@ function setupChapterNav(root, nav) {
       `<span class="archive-nav__label">${chapter.dataset.name}</span>` +
       `<span class="archive-nav__dot" aria-hidden="true"></span>`;
     button.addEventListener("click", () => {
-      const anchor = chapterAnchors.get(chapter);
-      anchor.scrollIntoView({
-        behavior: REDUCED_MOTION.matches ? "auto" : "smooth",
-        block: anchor.dataset.snapAlign === "center" ? "center" : "start",
+      withSnapSuppressed(() => {
+        chapterScrollTarget(chapter)?.scrollIntoView({
+          behavior: "auto",
+          block: "start",
+        });
       });
     });
     nav.appendChild(button);
@@ -532,7 +549,7 @@ export function createUnitSite({ onReturnToArena } = {}) {
   let returnHandler =
     typeof onReturnToArena === "function"
       ? onReturnToArena
-      : () => window.scrollTo({ top: 0, behavior: "smooth" });
+      : () => window.scrollTo({ top: 0, behavior: "auto" });
 
   setupReveals(root);
   setupChapterNav(root, root.querySelector("#archive-nav"));

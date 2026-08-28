@@ -406,22 +406,15 @@ try {
   );
 
   await page.evaluate(() => {
-    const probe = { startedAt: null, endedAt: null, samples: [] };
-    window.__ENTERPRIZE_REVEAL_PROBE__ = probe;
-    const sample = (now) => {
-      const active = document.documentElement.classList.contains(
-        "is-document-transitioning",
-      );
-      if (active) {
-        probe.startedAt ??= now;
-        probe.samples.push(window.scrollY);
-      } else if (probe.startedAt !== null) {
-        probe.endedAt = now;
-        return;
-      }
-      requestAnimationFrame(sample);
+    const nativeScrollTo = window.scrollTo.bind(window);
+    window.__ENTERPRIZE_HANDOFF_PROBE__ = { calls: [] };
+    window.scrollTo = (...args) => {
+      window.__ENTERPRIZE_HANDOFF_PROBE__.calls.push({
+        at: performance.now(),
+        args,
+      });
+      return nativeScrollTo(...args);
     };
-    requestAnimationFrame(sample);
   });
 
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -433,13 +426,18 @@ try {
     await page.waitForTimeout(160);
   }
   await waitState(page, "end", 15_000);
-  const documentRevealStartedAt = Date.now();
   await page.waitForFunction(
-    () => !document.documentElement.classList.contains("is-document-transitioning"),
+    () => {
+      const target = document.querySelector("#zoom-parallax-root");
+      return (
+        document.documentElement.classList.contains("is-document-mode") &&
+        target &&
+        Math.abs(target.getBoundingClientRect().top) < 2
+      );
+    },
     null,
     { timeout: 5_000 },
   );
-  const documentRevealMs = Date.now() - documentRevealStartedAt;
   const documentModeState = await page.evaluate(() => ({
     renderLoopActive: window.__ENTERPRIZE_DEMO__?.renderLoopActive,
     state: window.__ENTERPRIZE_DEMO__?.state,
@@ -452,21 +450,29 @@ try {
     unitSiteVisibility: getComputedStyle(
       document.querySelector("#unit-site"),
     ).visibility,
-    revealProbe: window.__ENTERPRIZE_REVEAL_PROBE__,
+    enteringClass: document.documentElement.classList.contains(
+      "is-document-entering",
+    ),
+    transitioningClass: document.documentElement.classList.contains(
+      "is-document-transitioning",
+    ),
+    handoffProbe: window.__ENTERPRIZE_HANDOFF_PROBE__,
   }));
-  const probedRevealMs =
-    documentModeState.revealProbe.endedAt -
-    documentModeState.revealProbe.startedAt;
   failIf(
     documentModeState.renderLoopActive !== false ||
       !documentModeState.documentMode ||
       documentModeState.zoomVisibility !== "visible" ||
       documentModeState.unitSiteVisibility !== "visible" ||
       Math.abs(documentModeState.scrollY - documentModeState.targetY) > 3 ||
-      probedRevealMs < 500 ||
-      documentModeState.revealProbe.samples.length < 4,
-    "timeline_0 completion smoothly reveals BEYOND THE ARENA and pauses Three",
-    { documentRevealMs, probedRevealMs, documentModeState },
+      documentModeState.transitioningClass ||
+      documentModeState.handoffProbe.calls.length !== 1,
+    "timeline_0 completion uses one native scroll, CSS rise, and pauses Three",
+    { documentModeState },
+  );
+  await page.waitForFunction(
+    () => !document.documentElement.classList.contains("is-document-entering"),
+    null,
+    { timeout: 5_000 },
   );
 
   await page.waitForFunction(
@@ -661,7 +667,7 @@ try {
       bilibiliPlayerRequests: bilibiliPlayerRequests.length,
       introPreReadyState,
       bootOrderState,
-      documentRevealMs,
+      documentHandoffScrollCalls: documentModeState.handoffProbe.calls.length,
       mediaVideoState,
       whatIsRmVideoState,
     }),

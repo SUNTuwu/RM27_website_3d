@@ -2,7 +2,10 @@
 <html lang="zh-CN" class="is-scroll-locked">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <meta name="description" content="ENTERPRIZE RoboMaster 招新 3D 交互演示" />
     <meta name="theme-color" content="#05070d" />
     <link rel="icon" type="image/png" href="/assets/icon/blue_logo.png" />
@@ -34,10 +37,21 @@
         <span class="masthead__rule" aria-hidden="true"></span>
       </header>
 
-      <div class="state-chip" aria-label="当前阶段">
-        <span class="state-chip__dot" aria-hidden="true"></span>
-        <span class="state-chip__index" id="state-index">00</span>
-        <span class="state-chip__label" id="state-label">BOOT SEQUENCE</span>
+      <div class="hud-top-right">
+        <button
+          class="recruit-jump"
+          id="recruit-jump"
+          type="button"
+          aria-label="前往招新，跳转到留下你的坐标"
+        >
+          <span class="recruit-jump__label">前往招新</span>
+          <span class="recruit-jump__arrow" aria-hidden="true">⟶</span>
+        </button>
+        <div class="state-chip" aria-label="当前阶段">
+          <span class="state-chip__dot" aria-hidden="true"></span>
+          <span class="state-chip__index" id="state-index">00</span>
+          <span class="state-chip__label" id="state-label">BOOT SEQUENCE</span>
+        </div>
       </div>
 
       <div class="hint-bar" id="hint-bar" aria-live="polite">
@@ -193,6 +207,8 @@
         data-num="00"
         data-name="ENTERPRIZE"
         data-cn="我们是谁"
+        data-snap-scene="who-we-are"
+        data-snap-align="start"
         aria-label="我们是谁"
       >
         <div class="archive-wrap">
@@ -228,8 +244,6 @@
               <img
                 src="/assets/images/archive/arena-fleet-web.webp"
                 alt="ENTERPRIZE 战队机器人列阵"
-                data-snap-scene="archive-hero-image"
-                data-snap-align="center"
               />
               <img
                 class="archive-hero__logo"
@@ -244,13 +258,9 @@
       </section>
 
       <!-- 影像 MEDIA：居中主视频 + 三列高光回放 -->
-      <section
-        class="archive-media archive-fold archive-fold--right"
-        id="archive-media"
-        aria-label="影像记录"
-      >
-        <div class="archive-wrap">
-          <header class="archive-head reveal" data-snap-scene="media-record" data-snap-align="start">
+      <section class="archive-media" id="archive-media" aria-label="影像记录">
+        <div class="archive-wrap" data-snap-scene="media-record" data-snap-align="start">
+          <header class="archive-head reveal">
             <div class="archive-head__meta">
               <span class="archive-head__chip">MEDIA</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -368,7 +378,7 @@
 
       <!-- 01 TEAM 队伍信息（电路末端介绍） -->
       <section
-        class="archive-chapter archive-fold archive-fold--left"
+        class="archive-chapter archive-fold archive-fold--right"
         id="archive-team"
         data-chapter
         data-num="01"
@@ -458,7 +468,7 @@
 
       <!-- 02 UNITS 兵种体系 -->
       <section
-        class="archive-chapter archive-fold archive-fold--right"
+        class="archive-chapter archive-fold archive-fold--left"
         id="archive-units"
         data-chapter
         data-num="02"
@@ -549,11 +559,7 @@
                 <span class="unit-reveal__text">弹雨巡弋</span>
               </div>
               <div class="unit-reveal__line unit-reveal__line--plain">
-                <span
-                  class="unit-reveal__text"
-                  data-snap-scene="unit-choice"
-                  data-snap-align="start"
-                >你的选择是什么？</span>
+                <span class="unit-reveal__text">你的选择是什么？</span>
               </div>
               <div class="unit-reveal__line unit-reveal__line--plain">
                 <span class="unit-reveal__text unit-reveal__text--en">CHOOSE YOUR HERO</span>
@@ -653,7 +659,7 @@
 
       <!-- 03 JOIN 入队招新 -->
       <section
-        class="archive-chapter archive-fold archive-fold--left"
+        class="archive-chapter archive-fold archive-fold--right"
         id="archive-join"
         data-chapter
         data-num="03"
@@ -661,8 +667,8 @@
         data-cn="入队招新"
         aria-label="入队招新信息"
       >
-        <div class="archive-wrap">
-          <header class="archive-head reveal" data-snap-scene="join-fleet" data-snap-align="start">
+        <div class="archive-wrap" data-snap-scene="join-fleet" data-snap-align="start">
+          <header class="archive-head reveal">
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.03</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -902,9 +908,9 @@
                 <span class="archive-steps__pole"></span>
                 <span class="archive-steps__node"></span>
               </span>
-              <span class="archive-steps__time">现在</span>
-              <h4>获取开招提醒</h4>
-              <p>关注公众号、加入 QQ 招新群或发送邮件；正式安排发布后，从任一官方渠道获取报名入口。</p>
+              <span class="archive-steps__time">现已开启</span>
+              <h4>填写报名问卷</h4>
+              <p>打开下方招新报名问卷提交意向，并加入 QQ 招新群 581184202；也可关注公众号「HKUST ENTERPRIZE」获取最新安排。</p>
             </li>
             <li class="reveal" style="--rd: 90ms">
               <span class="archive-steps__mast" aria-hidden="true">
@@ -912,9 +918,9 @@
                 <span class="archive-steps__pole"></span>
                 <span class="archive-steps__node"></span>
               </span>
-              <span class="archive-steps__time">约 9—10 月</span>
-              <h4>报名与选择方向</h4>
-              <p>填写基本信息和可投入时间，结合兴趣选择机械、硬件、电控或算法方向；零基础同样可以报名。</p>
+              <span class="archive-steps__time">报名后</span>
+              <h4>选择方向并自学</h4>
+              <p>结合兴趣选择机械、硬件、电控或算法方向；零基础同样欢迎。可先下载面试题 / C++ Tutorial 提前准备。</p>
             </li>
             <li class="reveal" style="--rd: 180ms">
               <span class="archive-steps__mast" aria-hidden="true">
@@ -957,7 +963,7 @@
               <p>参与需求评审、研发、整机联调、开源整理与赛场保障，逐步承担稳定的项目角色。</p>
             </li>
           </ol>
-          <p class="archive-note reveal">时间线参考往年节奏（招新约 9—10 月，RDC 约 11 月）；RM2027 具体安排以公众号通知为准。</p>
+          <p class="archive-note reveal">RM2027 招新现已开启。后续培训 / RDC 节奏仍参考往年（RDC 约 11 月），具体节点以公众号与招新群通知为准。</p>
 
           <div class="archive-sub reveal">
             <span class="archive-sub__chip">LOG // Q&amp;A</span>
@@ -997,7 +1003,11 @@
                 <span class="archive-faq__icon">+</span>
               </div>
               <div class="archive-faq__answer">
-                <p>RM2027 正式报名尚未开放。关注公众号「HKUST ENTERPRIZE」、加入 QQ 招新群 581184202，或邮件 robomasterhkust@gmail.com 获取开招提醒。</p>
+                <p>
+                  RM2027 赛季招新已开启。填写
+                  <a href="https://ust.az1.qualtrics.com/jfe/form/SV_eRj53G2OmZsl0Qm" target="_blank" rel="noopener">招新报名问卷</a>，
+                  并加入 QQ 招新群 581184202；也可关注公众号「HKUST ENTERPRIZE」获取最新安排。
+                </p>
               </div>
             </div>
             <div class="archive-faq__item reveal" style="--rd: 240ms">
@@ -1006,27 +1016,131 @@
                 <span class="archive-faq__icon">+</span>
               </div>
               <div class="archive-faq__answer">
-                <p>报名时附上 GitHub、作品集、机器人项目或比赛经历即可；机械、嵌入式、硬件、算法与工程协作经验都会帮你更快找到合适的项目入口。</p>
+                <p>报名时附上 GitHub、作品集、机器人项目或比赛经历即可；机械、嵌入式、硬件、算法与工程协作经验都会帮你更快找到合适的项目入口。面试题与学习资料可在下方「资料下载」获取。</p>
               </div>
             </div>
           </div>
 
-          <div class="archive-sub reveal">
+          <div class="archive-sub reveal" id="archive-coords">
             <span class="archive-sub__chip">CHANNELS // 联系渠道</span>
             <h3 class="archive-sub__title">留下你的坐标</h3>
           </div>
+
+          <article class="archive-recruit reveal" aria-label="RM2027 赛季招新信息">
+            <p class="archive-recruit__eyebrow">HKUST ENTERPRIZE · SEASON 2027</p>
+            <h4 class="archive-recruit__title">2027 赛季招新已正式开启</h4>
+            <p class="archive-recruit__lead">
+              成为工程师，从这里开始。请根据感兴趣的部门提前自学与准备；我们准备了招新介绍视频与实验室指路视频，欢迎来 Lab 参观交流——来之前在群里问一句就好。
+            </p>
+            <p class="archive-recruit__note">
+              我们并不看重你原有的基础知识或相关经历。只要你保持热情与好奇心，欢迎下载面试题提前熟悉并积极准备。想了解更多细节，请关注官方微信公众号，或直接来 Lab。
+            </p>
+            <ul class="archive-recruit__links">
+              <li>
+                <a
+                  class="archive-recruit__link archive-recruit__link--primary"
+                  href="https://ust.az1.qualtrics.com/jfe/form/SV_eRj53G2OmZsl0Qm"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span class="archive-recruit__link-en">APPLY NOW</span>
+                  <span class="archive-recruit__link-cn">招新报名问卷</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  class="archive-recruit__link"
+                  href="https://www.bilibili.com/video/BV1yU8c6WErJ/"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span class="archive-recruit__link-en">RECRUIT FILM</span>
+                  <span class="archive-recruit__link-cn">招新介绍视频</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  class="archive-recruit__link"
+                  href="https://www.bilibili.com/video/BV1mk4y1F7pm/"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span class="archive-recruit__link-en">FIND THE LAB</span>
+                  <span class="archive-recruit__link-cn">实验室指路视频</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  class="archive-recruit__link"
+                  href="https://space.bilibili.com/634988052/"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span class="archive-recruit__link-en">BILIBILI</span>
+                  <span class="archive-recruit__link-cn">战队账号</span>
+                </a>
+              </li>
+            </ul>
+            <p class="archive-recruit__wechat">
+              微信公众号：<b>HKUST ENTERPRIZE</b>
+              <span aria-hidden="true"> · </span>
+              ENTERPRIZE 期待与你在清水湾畔相遇
+            </p>
+          </article>
+
           <div id="glowing-channels-root"></div>
+
+          <div class="archive-sub reveal">
+            <span class="archive-sub__chip">FILES // 资料下载</span>
+            <h3 class="archive-sub__title">下载准备材料</h3>
+          </div>
+          <div class="archive-downloads" aria-label="招新资料下载">
+            <a
+              class="archive-download reveal"
+              href="https://drive.google.com/drive/folders/1jZb8eknex1ZLE4zyuT_WDQhhBzCtSMuP?usp=sharing"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="archive-download__en">INTERVIEW PACK</span>
+              <span class="archive-download__cn">面试题及学习资料</span>
+              <span class="archive-download__hint">Google Drive · 若打不开请联系招新群获取 PDF</span>
+            </a>
+            <a
+              class="archive-download reveal"
+              style="--rd: 80ms"
+              href="https://drive.google.com/drive/folders/1hbmdChpYoPN75QKTG9d-vQLtOlBAbcfT?usp=drive_link"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="archive-download__en">C++ TUTORIAL</span>
+              <span class="archive-download__cn">C++ 入门教程</span>
+              <span class="archive-download__hint">Google Drive · 电控方向建议提前学习</span>
+            </a>
+            <a
+              class="archive-download reveal"
+              style="--rd: 160ms"
+              href="https://ust.az1.qualtrics.com/jfe/form/SV_eRj53G2OmZsl0Qm"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="archive-download__en">APPLICATION</span>
+              <span class="archive-download__cn">在线报名问卷</span>
+              <span class="archive-download__hint">Qualtrics · 提交后请加入 QQ 招新群</span>
+            </a>
+          </div>
         </div>
       </section>
 
-      <!-- 04 RETURN 重返赛场 -->
+      <!-- 04 RETURN 重返赛场: snap 钉在整段 section(含 archive-wrap 视觉中心), 避免末页嵌套 center 吸不到 -->
       <section
-        class="archive-chapter archive-return archive-fold archive-fold--right"
+        class="archive-chapter archive-return"
         id="archive-return"
         data-chapter
         data-num="04"
         data-name="RETURN"
         data-cn="重返赛场"
+        data-snap-scene="return-arena"
+        data-snap-align="center"
         aria-label="重返 3D 赛场"
       >
         <img
@@ -1040,11 +1154,7 @@
         <span class="archive-return__fade" aria-hidden="true"></span>
         <span class="archive-return__ghost archive-return__ghost--left" data-ghost="left" aria-hidden="true">重返</span>
         <span class="archive-return__ghost archive-return__ghost--right" data-ghost="right" aria-hidden="true">战场</span>
-        <div
-          class="archive-wrap archive-return__inner"
-          data-snap-scene="return-arena"
-          data-snap-align="center"
-        >
+        <div class="archive-wrap archive-return__inner">
           <p class="archive-eyebrow reveal">FINAL TRANSMISSION // 最后通话</p>
           <h2 class="archive-return__title reveal" style="--rd: 90ms">BACK TO<br />THE ARENA</h2>
           <p class="archive-return__cn reveal" style="--rd: 180ms">

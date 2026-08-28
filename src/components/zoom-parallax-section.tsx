@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Archive, ArrowDown, Images } from "lucide-react";
+import { Images } from "lucide-react";
 
 import {
   ZoomParallax,
@@ -79,33 +79,19 @@ const ENTERPRIZE_LAYOUT: readonly ZoomParallaxSlot[] = [
 ] as const;
 
 export function ZoomParallaxSection() {
-  const scrollTo = React.useCallback((selector: string) => {
-    const requested = document.querySelector(selector);
-    const target = requested?.matches("[data-snap-scene]")
-      ? requested
-      : (requested?.querySelector("[data-snap-scene]") ?? requested);
-    target?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: target instanceof HTMLElement && target.dataset.snapAlign === "center"
-        ? "center"
-        : "start",
-    });
-  }, []);
-
   return (
     <section
       aria-label="ENTERPRIZE 赛事影像回顾"
       className="relative z-[60] w-full text-foreground"
       id="zoom-parallax-section"
     >
+      {/* snap 只钉标题页, 不要包住 320svh 照片墙, 否则 mandatory 会把画廊拖回顶 */}
       <header
         className="relative flex min-h-[44svh] items-end bg-[linear-gradient(180deg,transparent_0%,rgb(5_8_15/0.55)_42%,rgb(5_8_15/0.35)_72%,transparent_100%)] px-5 pb-8 pt-20 sm:px-8 md:px-12 md:pb-12 xl:px-16"
         data-snap-align="start"
         data-snap-scene="beyond-arena"
       >
-        <div className="mx-auto grid w-full max-w-[1500px] items-end gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="mx-auto w-full max-w-[1500px]">
           <div className="max-w-5xl">
             <p className="mb-5 font-mono text-xs font-semibold uppercase text-muted-foreground md:text-sm">
               FIELD LOG // 06 FRAMES
@@ -120,26 +106,6 @@ export function ZoomParallaxSection() {
               出发、调试、呐喊、拥抱。一支战队真正被记住的，不只有比分。
             </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              aria-label="进入赛事影像"
-              className="grid size-11 place-items-center rounded-sm border border-border bg-card text-foreground transition-colors hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => scrollTo("#zoom-parallax-gallery")}
-              title="进入赛事影像"
-              type="button"
-            >
-              <ArrowDown aria-hidden="true" size={18} strokeWidth={1.7} />
-            </button>
-            <button
-              className="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => scrollTo("#archive-hero")}
-              type="button"
-            >
-              <Archive aria-hidden="true" size={17} strokeWidth={1.8} />
-              读取战队档案
-            </button>
-          </div>
         </div>
       </header>
 
@@ -152,7 +118,6 @@ export function ZoomParallaxSection() {
         images={ENTERPRIZE_IMAGES}
         layout={ENTERPRIZE_LAYOUT}
         loadStrategy="eager"
-        spring={{ stiffness: 84, damping: 23, mass: 0.46 }}
         stageClassName="bg-transparent"
         trackHeight="320svh"
       >

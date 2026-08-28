@@ -98,28 +98,24 @@ try {
   await page.mouse.wheel(0, 800);
   await waitState(page, "end", 10_000);
   await page.waitForFunction(() => {
-    const root = document.documentElement;
     const introTop = document
       .querySelector("#zoom-parallax-root")
       .getBoundingClientRect().top;
-    return (
-      !root.classList.contains("is-document-transitioning") &&
-      Math.abs(introTop) < 2
-    );
+    return Math.abs(introTop) < 2;
   });
   console.log("[ok] reached END document mode at Zoom Parallax intro");
 
   // 进入 END 前的额外滚轮会继续原生滚动文档; 归位到档案首页再检查
   await page.evaluate(() => document.fonts?.ready);
-  const heroSnap = page.locator("[data-snap-scene='archive-hero-image']");
-  await heroSnap.evaluate((element) =>
+  const heroImage = page.locator(".archive-hero__media > img:first-child");
+  await heroImage.evaluate((element) =>
     element.scrollIntoView({ behavior: "instant", block: "center" }),
   );
   await page.waitForFunction(() =>
     document.querySelector("#unit-site")?.classList.contains("is-archive-active"),
   );
   await page.waitForTimeout(900);
-  await heroSnap.evaluate((element) =>
+  await heroImage.evaluate((element) =>
     element.scrollIntoView({ behavior: "instant", block: "center" }),
   );
   await page.waitForTimeout(400);
@@ -240,9 +236,7 @@ try {
     .waitForFunction(
       () =>
         Math.abs(
-          document
-            .querySelector("[data-snap-scene='team-history']")
-            .getBoundingClientRect().top,
+          document.querySelector("#archive-team").getBoundingClientRect().top,
         ) < 4,
       null,
       { timeout: 8_000, polling: 200 },

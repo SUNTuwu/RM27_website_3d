@@ -29,7 +29,7 @@ import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
 const SCAN_DURATION = 3.2;
-const DOCUMENT_REVEAL_DURATION_MS = 560;
+const DOCUMENT_ENTER_DURATION_MS = 2100;
 const DOCUMENT_CANVAS_PARALLAX_RATIO = 0.14;
 const EXPLORE_P1_DELAY_MS = 550;
 const EXPLORE_CLOUD_BOOT_BUDGET_MS = 1_200;
@@ -126,7 +126,7 @@ function requestArchiveIslands() {
 // 桌面端 boot 完成后会把返回按钮接到 returnToTimeline 上。
 const unitSiteUi = createUnitSite({
   onReturnToArena: () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "auto" });
   },
 });
 
@@ -1103,6 +1103,8 @@ async function boot({
         camera: freeCamera,
         targets: focusTargets,
         scene: stage.scene,
+        // 脚底圈跟 deferred 场景同层, 回 EXPLORE 关层即不可见
+        layer: DEFERRED_SCENE_LAYER,
         distanceRatio: isCoarsePointer
           ? focusConfig.mobileDistanceRatio
           : focusConfig.distanceRatio,
@@ -1272,8 +1274,8 @@ async function boot({
 
   // ---------- 全局状态机 ----------
   let state = "boot";
-  let documentRevealFrame = 0;
-  let documentRevealInProgress = false;
+  let documentEnterTimer = 0;
+  let documentEnterInProgress = false;
 
   function updateDocumentParallax(scrollY = window.scrollY) {
     const revealDistance = Math.max(documentIntro.offsetTop, 1);
@@ -1286,57 +1288,57 @@ async function boot({
     );
   }
 
-  function stopDocumentReveal() {
-    if (documentRevealFrame) {
-      cancelAnimationFrame(documentRevealFrame);
-      documentRevealFrame = 0;
+  function stopDocumentEnter() {
+    if (documentEnterTimer) {
+      window.clearTimeout(documentEnterTimer);
+      documentEnterTimer = 0;
     }
-    documentRevealInProgress = false;
-    document.documentElement.classList.remove("is-document-transitioning");
+    documentEnterInProgress = false;
+    document.documentElement.classList.remove("is-document-entering");
   }
 
-  function revealUnitArchive() {
-    stopDocumentReveal();
+  // 一次原生 scrollTo 定位到 2D 起点, 再用 CSS 上移动画消掉瞬切闪现。
+  // 关键: 先挂 is-document-entering (opacity 0 起点), 再露 2D / scrollTo,
+  // 避免「整页先闪一下再上滑」。
+  function positionUnitArchive({ animate = true } = {}) {
+    if (documentEnterTimer) {
+      window.clearTimeout(documentEnterTimer);
+      documentEnterTimer = 0;
+    }
+
     const root = document.documentElement;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const shouldAnimate = animate && !reduceMotion;
+
+    if (shouldAnimate) {
+      documentEnterInProgress = true;
+      // 先卸再挂, 保证每次交接都能重启动画
+      root.classList.remove("is-document-entering");
+      void root.offsetWidth;
+      root.classList.add("is-document-entering");
+    } else {
+      documentEnterInProgress = false;
+      root.classList.remove("is-document-entering");
+    }
+
+    // 强制把 entering 的 from 关键帧提交后再 scroll, 同一帧内不会先画出静止 2D
+    void root.offsetWidth;
+
     const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
     const targetY = Math.min(documentIntro.offsetTop, maxScrollY);
-    const startY = window.scrollY;
-    const distance = targetY - startY;
+    window.scrollTo(0, targetY);
+    updateDocumentParallax(targetY);
 
-    documentRevealInProgress = true;
-    root.classList.add("is-document-transitioning");
-
-    if (
-      Math.abs(distance) < 1 ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      updateDocumentParallax(targetY);
-      window.scrollTo(0, targetY);
-      stopDocumentReveal();
+    if (!shouldAnimate) {
       return;
     }
 
-    const startedAt = performance.now();
-    const step = (now) => {
-      const progress = Math.min(
-        (now - startedAt) / DOCUMENT_REVEAL_DURATION_MS,
-        1,
-      );
-      const eased = 1 - Math.pow(1 - progress, 4);
-      const nextScrollY = startY + distance * eased;
-      updateDocumentParallax(nextScrollY);
-      window.scrollTo(0, nextScrollY);
-
-      if (progress < 1) {
-        documentRevealFrame = requestAnimationFrame(step);
-        return;
-      }
-
-      window.scrollTo(0, targetY);
-      stopDocumentReveal();
-    };
-
-    documentRevealFrame = requestAnimationFrame(step);
+    documentEnterTimer = window.setTimeout(() => {
+      documentEnterTimer = 0;
+      stopDocumentEnter();
+    }, DOCUMENT_ENTER_DURATION_MS + 40);
   }
 
   let exploreCloudScheduleToken = 0;
@@ -1413,8 +1415,17 @@ async function boot({
   let archiveEntryPending = false;
   let archiveAutoEntryArmed = true;
   let archiveAutoEntryRequiresInput = false;
-  function enterUnitArchive() {
-    if (state !== "scrub" || !lookAround.isIdle || archiveEntryPending) {
+  function enterUnitArchive({
+    animate = true,
+    targetSelector = null,
+  } = {}) {
+    // scrub 自动进档仍要求 idle; EXPLORE 招新按钮可主动打断进 2D
+    const fromExplore = state === "explore" || state === "assemble";
+    if (
+      archiveEntryPending ||
+      (state !== "scrub" && !fromExplore) ||
+      (state === "scrub" && !lookAround.isIdle)
+    ) {
       return;
     }
     archiveAutoEntryArmed = false;
@@ -1422,12 +1433,45 @@ async function boot({
     timeline.setAutoDrive(false);
     const startArchive = () => {
       archiveEntryPending = false;
+      const root = document.documentElement;
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      const shouldAnimate = animate && !reduceMotion;
+      // 先锁住 entering, 再打开 document-mode 可见性, 杜绝首帧整页闪现
+      if (shouldAnimate) {
+        documentEnterInProgress = true;
+        root.classList.add("is-document-entering");
+      }
       setState("end");
-      document.documentElement.classList.add("is-document-mode");
+      root.classList.add("is-document-mode");
       window.dispatchEvent(new Event("enterprize:zoom-activate"));
       releasePageScroll();
-      updateDocumentParallax();
-      revealUnitArchive();
+      if (targetSelector) {
+        // 直达招新坐标: 关 snap 后跳目标, 不做 sheet rise, 避免先停在 BEYOND
+        stopDocumentEnter();
+        root.classList.add("is-snap-suppressed");
+        const target =
+          document.querySelector(targetSelector) ??
+          document.querySelector("#archive-join") ??
+          documentIntro;
+        const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
+        const top =
+          target instanceof Element
+            ? target.getBoundingClientRect().top + window.scrollY
+            : documentIntro.offsetTop;
+        window.scrollTo(0, Math.min(Math.max(top, 0), maxScrollY));
+        updateDocumentParallax(window.scrollY);
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            window.setTimeout(() => {
+              root.classList.remove("is-snap-suppressed");
+            }, 120);
+          });
+        });
+      } else {
+        positionUnitArchive({ animate: shouldAnimate });
+      }
       stage.pause();
     };
     if (archiveIslandsMounted) {
@@ -1443,12 +1487,24 @@ async function boot({
       });
   }
 
+  function jumpToRecruitCoords() {
+    enterUnitArchive({
+      animate: false,
+      targetSelector: "#archive-coords",
+    });
+  }
+
+  document.querySelector("#recruit-jump")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    jumpToRecruitCoords();
+  });
+
   function returnToTimeline() {
     if (state !== "end") {
       return;
     }
+    stopDocumentEnter();
     stage.resume();
-    stopDocumentReveal();
     window.scrollTo(0, 0);
     document.documentElement.classList.remove("is-document-mode");
     document.documentElement.style.removeProperty("--document-canvas-shift");
@@ -1522,8 +1578,8 @@ async function boot({
     try {
       await setArchiveReturnFade(true);
       root.dataset.arenaReturnPhase = "preparing";
+      stopDocumentEnter();
       stage.resume();
-      stopDocumentReveal();
       window.scrollTo(0, 0);
       root.classList.remove("is-document-mode");
       root.style.removeProperty("--document-canvas-shift");
@@ -1558,7 +1614,10 @@ async function boot({
     archiveAutoEntryRequiresInput = false;
     timeline.setAutoDrive(false);
     lookAround.reset();
+    // 立刻掐灭 SCRUB 脚底 3D 环 + DOM 引导圈, 避免黑场/回 EXPLORE 仍残留
+    focus?.setHighlightTarget(0);
     robotGuides.forEach((guide) => guide?.hide());
+    clickGuide.hide();
     const reloadConfig = VISUAL_CONFIG.explore.reloadFromStart;
     stateFade.style.transitionDuration = `${reloadConfig.fadeOutSeconds}s`;
     stateFade.classList.add("is-visible");
@@ -1765,6 +1824,10 @@ async function boot({
           const scanX = THREE.MathUtils.lerp(contentMinX - 1, contentMaxX + 1.5, scanK);
           scanPlane.constant = scanX;
           cloud.setScanX(scanX);
+        }
+        // 扫描过半、机器人已陆续现身时就开始脚底环, 不必等 scrub 交接
+        if (scanK >= 0.45) {
+          focus?.setHighlightTarget(1);
         }
         // 播放头使用线性真实时间, 不跟随相机缓动减速或等待相机到位。
         const playhead = Math.max(
@@ -2213,6 +2276,11 @@ async function boot({
   window.addEventListener(
     "wheel",
     (event) => {
+      // ctrl/cmd + wheel 是浏览器缩放, 直接吞掉, 避免和 3D 缩放冲突
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        return;
+      }
       if (state === "explore") {
         event.preventDefault();
         if (event.deltaY > 4) {
@@ -2243,16 +2311,13 @@ async function boot({
         event.preventDefault();
         if (Math.abs(event.deltaY) > 4) exitFocus();
       } else if (state === "end") {
-        if (documentRevealInProgress) {
+        // 交接动画期间锁住滚轮, 结束后交还给原生滚动
+        if (documentEnterInProgress) {
           event.preventDefault();
-        } else if (event.deltaY < 0 && window.scrollY <= 1) {
-          event.preventDefault();
-          returnToTimeline();
         }
       } else if (state === "assemble" || state === "scan" || state === "boot") {
         event.preventDefault();
       }
-      // end: 释放滚轮, 不再捕获
     },
     { passive: false },
   );
@@ -2265,7 +2330,7 @@ async function boot({
       }
       if (
         state === "end" &&
-        !documentRevealInProgress &&
+        !documentEnterInProgress &&
         window.scrollY <= 1
       ) {
         returnToTimeline();
@@ -2353,7 +2418,13 @@ async function boot({
       clickGuide.hide();
     }
 
-    if (state === "scrub" && focus) {
+    // 机器人脚底引导圈: SCRUB + 扫描后半段 (与 3D 环同步, 需 highlight 已点亮)。
+    // 回滚 EXPLORE 的黑场期间 state 仍是 scrub, 必须用 exploreReloading 拦住, 否则 hide 会被每帧 show 盖掉。
+    if (
+      (state === "scrub" || state === "scan") &&
+      focus?.isHighlightActive &&
+      !exploreReloading
+    ) {
       focus.anchors.forEach((anchor, index) => {
         const guide = robotGuides[index];
         if (!guide) return;
@@ -2437,6 +2508,7 @@ async function boot({
         if (lookAroundResult?.finishedThisFrame) {
           timeline.resumeFromCameraOverride();
           timelineHandoffThisFrame = true;
+          // 从 2D 返场后的环视结束仍要求一次输入, 避免立刻又被弹回档案
           if (timeline.progress >= 0.995) {
             archiveAutoEntryArmed = false;
             archiveAutoEntryRequiresInput = true;

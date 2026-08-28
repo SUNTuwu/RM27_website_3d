@@ -19,6 +19,8 @@
 }
 
 .unit-site {
+  --archive-fold-height: 46px;
+  --archive-fold-depth: 25.3px;
   position: relative;
   z-index: 70;
   min-height: 100vh;
@@ -26,9 +28,18 @@
   background: var(--archive-bg);
   color: var(--archive-ink);
   isolation: isolate;
-  box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.72);
+  /* 折线切口上方必须露出照片墙原色, 不能再叠上抬阴影把切口染暗 */
+  box-shadow: none;
   /* clip 不像 hidden 会把 overflow-y 计算为 auto, 上沿文件夹折线才能露出 */
   overflow-x: clip;
+}
+
+html.is-document-mode .unit-site {
+  background: linear-gradient(
+    to bottom,
+    transparent 0 var(--archive-fold-depth),
+    var(--archive-bg) var(--archive-fold-depth)
+  );
 }
 
 .archive-wrap {
@@ -50,7 +61,7 @@
   background: var(--archive-bg);
 }
 
-/* Six index headings share the open-source 46px single-outline fold.
+/* Folder headings share the open-source 46px single-outline fold.
    Explicit side modifiers keep the alternation independent of DOM adjacency. */
 .archive-fold::after {
   content: "";
@@ -58,7 +69,7 @@
   left: 0;
   top: -1px;
   width: 100%;
-  height: 46px;
+  height: var(--archive-fold-height);
   z-index: 3;
   pointer-events: none;
   background: linear-gradient(90deg, var(--archive-red), var(--archive-blue));
@@ -136,6 +147,7 @@
 .archive-hero {
   padding: 0;
   justify-content: stretch;
+  background: transparent;
 }
 
 .archive-hero .archive-wrap {
@@ -149,6 +161,16 @@
   min-height: 100vh;
   min-height: 100svh;
   background: var(--archive-card);
+  clip-path: polygon(
+    0 var(--archive-fold-depth),
+    6% var(--archive-fold-depth),
+    8% 0,
+    26% 0,
+    29% var(--archive-fold-depth),
+    100% var(--archive-fold-depth),
+    100% 100%,
+    0 100%
+  );
 }
 
 .archive-hero__copy {
@@ -1387,6 +1409,199 @@
   text-underline-offset: 3px;
 }
 
+.archive-faq__answer a {
+  color: var(--archive-red);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ============ 03 JOIN: 招新检索卡 + 资料下载 ============ */
+
+.archive-recruit {
+  position: relative;
+  margin: 8px 0 28px;
+  padding: clamp(28px, 4vw, 42px);
+  border: 1px solid var(--archive-line);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 45, 77, 0.1), transparent 42%),
+    linear-gradient(160deg, rgba(46, 155, 255, 0.08), rgba(5, 7, 13, 0.92) 58%);
+  box-shadow: var(--archive-shadow);
+  overflow: hidden;
+}
+
+.archive-recruit::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--archive-red), var(--archive-blue));
+}
+
+.archive-recruit__eyebrow {
+  font-family: var(--archive-font-en);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: var(--archive-red);
+  margin-bottom: 14px;
+}
+
+.archive-recruit__title {
+  font-size: clamp(28px, 3.6vw, 42px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--archive-ink);
+  margin-bottom: 16px;
+}
+
+.archive-recruit__lead,
+.archive-recruit__note {
+  max-width: 52rem;
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.9;
+  color: var(--archive-ink-dim);
+}
+
+.archive-recruit__note {
+  margin-top: 12px;
+  color: var(--archive-ink-faint);
+}
+
+.archive-recruit__links {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 28px 0 22px;
+  padding: 0;
+}
+
+.archive-recruit__link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 92px;
+  padding: 18px 20px;
+  border: 1px solid rgba(120, 160, 210, 0.28);
+  border-radius: 16px;
+  background: rgba(7, 11, 20, 0.55);
+  color: var(--archive-ink);
+  text-decoration: none;
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    box-shadow 0.28s ease,
+    background 0.28s ease;
+}
+
+.archive-recruit__link:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 45, 77, 0.55);
+  background: rgba(255, 45, 77, 0.1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.archive-recruit__link--primary {
+  border-color: rgba(255, 45, 77, 0.55);
+  background:
+    linear-gradient(135deg, rgba(255, 45, 77, 0.22), rgba(46, 155, 255, 0.08));
+}
+
+.archive-recruit__link-en {
+  font-family: var(--archive-font-en);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--archive-cyan);
+}
+
+.archive-recruit__link-cn {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.archive-recruit__wechat {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--archive-ink-faint);
+}
+
+.archive-recruit__wechat b {
+  color: var(--archive-ink);
+}
+
+.archive-downloads {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 8px 0 72px;
+}
+
+.archive-download {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 168px;
+  padding: 26px 24px 24px;
+  border: 1px solid var(--archive-line);
+  border-radius: 18px;
+  background:
+    linear-gradient(160deg, rgba(46, 155, 255, 0.08), transparent 46%),
+    rgba(10, 14, 24, 0.88);
+  color: var(--archive-ink);
+  text-decoration: none;
+  box-shadow: var(--archive-shadow);
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+  overflow: hidden;
+}
+
+.archive-download::after {
+  content: "↓";
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-size: 18px;
+  color: var(--archive-cyan);
+  opacity: 0.8;
+}
+
+.archive-download:hover {
+  transform: translateY(-5px);
+  border-color: rgba(127, 212, 255, 0.5);
+  box-shadow: var(--archive-shadow-lg);
+}
+
+.archive-download__en {
+  font-family: var(--archive-font-en);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--archive-cyan);
+}
+
+.archive-download__cn {
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.archive-download__hint {
+  margin-top: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--archive-ink-faint);
+}
+
+@media (max-width: 980px) {
+  .archive-recruit__links,
+  .archive-downloads {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ============ 03 JOIN: 新生培训卡片 ============ */
 
 .archive-training {
@@ -1782,12 +1997,24 @@
 
 /* ============ 04 RETURN ============ */
 
-.archive-return {
-  min-height: 90vh;
-  overflow: hidden;
+/* 整页一屏: section 自己做 return-arena center snap。
+   末页嵌套 wrap + overflow:hidden 时, 浏览器常常吸不到 center。 */
+.archive-return.archive-chapter {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100svh;
+  height: 100vh;
+  height: 100svh;
+  max-height: 100svh;
+  padding: 0;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
 }
 
-/* The return photo keeps its soft fade; archive-fold supplies the shared edge. */
+/* The return photo keeps its soft fade without a folder edge above it. */
 
 .archive-return__bg {
   position: absolute;
@@ -1860,7 +2087,16 @@
   }
 }
 
-.archive-return__inner {
+/* archive-wrap 内容组在一屏 section 里垂直居中, 视觉上整块落在屏幕上下中间 */
+.archive-return__inner.archive-wrap {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  width: min(1500px, 94vw);
+  margin: 0 auto;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -1968,14 +2204,26 @@
 }
 
 .archive-footer {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2;
   width: 100%;
-  padding: 56px 0;
+  padding: 28px 0 calc(28px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--archive-line);
   text-align: center;
   color: var(--archive-ink-faint);
   font-size: 15px;
+  background: linear-gradient(180deg, transparent, rgba(5, 7, 13, 0.72) 40%);
+}
+
+/* 末页 center snap 需要额外滚动余量, 否则吸到文档底就停住、对不齐屏幕中线 */
+.unit-site::after {
+  content: "";
+  display: block;
+  height: 45svh;
+  pointer-events: none;
 }
 
 .archive-footer b {
@@ -2341,18 +2589,6 @@
 
 /* ============ 导航与进度 ============ */
 
-/* ============ 档案模式滚动吸附: 由 styles.css 的原生 CSS proximity snap 实现 ============
-   只吸附显式 data-snap-scene 的稳定画面, 不再由 JS 按 DOM 顺序推断目标。 */
-
-.snap-marker {
-  display: block;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  padding: 0;
-  pointer-events: none;
-}
-
 .archive-nav {
   position: fixed;
   right: 26px;
@@ -2448,11 +2684,6 @@ html.is-document-mode .unit-site.is-archive-active .archive-progress {
 .reveal.is-in {
   opacity: 1;
   transform: translateY(0);
-}
-
-/* Snap geometry must stay fixed while the one-time opacity reveal runs. */
-[data-snap-scene].reveal {
-  transform: none;
 }
 
 .archive-note {

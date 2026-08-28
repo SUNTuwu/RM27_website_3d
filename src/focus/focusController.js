@@ -17,6 +17,8 @@ export function createFocusController({
   distanceRatio = 1.2,
   hitRadiusScale = 1.25,
   hitHeightScale = 2,
+  // 与 deferred 场景同层: EXPLORE/assemble 关这层时, 脚底圈绝不会残留在画面上
+  layer = 0,
 }) {
   const targetStates = targets.map((target, index) => {
     target.root.updateWorldMatrix(true, true);
@@ -41,6 +43,8 @@ export function createFocusController({
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(anchor.x, 0.035, anchor.z);
     ring.renderOrder = 5;
+    ring.layers.set(layer);
+    ring.visible = false;
     scene.add(ring);
 
     const proxy = new THREE.Mesh(
@@ -56,6 +60,7 @@ export function createFocusController({
     proxy.userData.focusTargetIndex = index;
     proxy.position.copy(anchor);
     proxy.frustumCulled = false;
+    proxy.layers.set(layer);
     scene.add(proxy);
 
     const materials = new Set();
@@ -138,6 +143,10 @@ export function createFocusController({
     get mode() {
       return mode;
     },
+    // 脚底环是否已点亮/在淡入 (含 target>0 尚未插值完)
+    get isHighlightActive() {
+      return highlightTarget > 0 || highlight > 0.01;
+    },
     setOnModeChange(callback) {
       modeChangeCallback = callback;
     },
@@ -183,10 +192,26 @@ export function createFocusController({
     },
     setHighlightTarget(value) {
       highlightTarget = value;
+      // 离开 SCRUB/FOCUS 时立刻掐灭, 不要等 update 插值
+      // (explore 阶段 focus.update 可能因 deferred layer 关闭而不再跑)
+      if (value <= 0) {
+        highlight = 0;
+        targetStates.forEach((state) => {
+          state.ring.visible = false;
+          state.ring.material.opacity = 0;
+          if (state.highlightMaterials) {
+            state.materials.forEach((material) => {
+              material.emissiveIntensity = 0;
+            });
+          }
+        });
+      }
     },
     update(delta, elapsed) {
-      highlight += (highlightTarget - highlight) * (1 - Math.exp(-delta * 4));
+      // 略加快淡入 (原 4), 扫描后半段就能看清脚底环
+      highlight += (highlightTarget - highlight) * (1 - Math.exp(-delta * 7));
       const pulse = 0.5 + 0.5 * Math.sin(elapsed * 3.2);
+      const ringsLit = highlight > 0.01 || highlightTarget > 0;
       targetStates.forEach((state) => {
         if (state.target.trackNode) {
           state.target.trackNode.getWorldPosition(trackWorldPos);
@@ -194,7 +219,10 @@ export function createFocusController({
           state.ring.position.set(trackWorldPos.x, 0.035, trackWorldPos.z);
           state.proxy.position.copy(state.anchor);
         }
-        state.ring.material.opacity = highlight * (0.15 + 0.15 * pulse);
+        state.ring.visible = ringsLit;
+        state.ring.material.opacity = ringsLit
+          ? highlight * (0.15 + 0.15 * pulse)
+          : 0;
         state.ring.scale.setScalar(1 + 0.08 * pulse);
         if (state.highlightMaterials) {
           state.materials.forEach((material) => {

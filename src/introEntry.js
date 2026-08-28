@@ -5,6 +5,64 @@ import { assetUrl } from "./core/assetUrl.js";
 import { fetchPointCloudBuffer } from "./pointcloud/pointCloudData.js";
 import { mountIntroScreen } from "./ui/introScreen";
 
+// 全站禁浏览器缩放: pinch / ctrl-wheel / ctrl± 都会和 3D 手势抢控制权
+function installViewportZoomLock() {
+  const blockZoomWheel = (event) => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+    }
+  };
+  const blockZoomKeys = (event) => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    if (
+      event.key === "+" ||
+      event.key === "=" ||
+      event.key === "-" ||
+      event.key === "_" ||
+      event.code === "NumpadAdd" ||
+      event.code === "NumpadSubtract" ||
+      event.key === "0"
+    ) {
+      event.preventDefault();
+    }
+  };
+  const blockGesture = (event) => {
+    event.preventDefault();
+  };
+  // 3D 锁滚阶段吞掉非交互 touchmove, 防止 body 橡皮筋把 absolute HUD 一起拽走
+  const blockLockedTouchMove = (event) => {
+    if (!document.documentElement.classList.contains("is-scroll-locked")) {
+      return;
+    }
+    if (event.touches?.length > 1) {
+      event.preventDefault();
+      return;
+    }
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest(
+        "input, textarea, select, button, a, [role='button'], [data-allow-touch-scroll]",
+      )
+    ) {
+      return;
+    }
+    event.preventDefault();
+  };
+
+  window.addEventListener("wheel", blockZoomWheel, { passive: false, capture: true });
+  window.addEventListener("keydown", blockZoomKeys, { capture: true });
+  document.addEventListener("gesturestart", blockGesture, { passive: false });
+  document.addEventListener("gesturechange", blockGesture, { passive: false });
+  document.addEventListener("gestureend", blockGesture, { passive: false });
+  window.addEventListener("touchmove", blockLockedTouchMove, {
+    passive: false,
+    capture: true,
+  });
+}
+
+installViewportZoomLock();
+
 const INTRO_SESSION_KEY = "enterprize:intro-completed:v1";
 const FORCE_INTRO_PARAM = "intro";
 const ARCHIVE_VIEW_PARAM = "view";
@@ -16,6 +74,7 @@ const DIRECT_ARCHIVE_HASHES = new Set([
   "#archive-team",
   "#archive-units",
   "#archive-join",
+  "#archive-coords",
   "#archive-return",
 ]);
 
@@ -59,13 +118,6 @@ function directArchiveTarget() {
     ARCHIVE_VIEW_PARAM,
   );
   return requestedView === ARCHIVE_VIEW_VALUE ? "#archive-hero" : null;
-}
-
-function resolveSnapAnchor(element) {
-  if (!element) return null;
-  return element.matches("[data-snap-scene]")
-    ? element
-    : (element.querySelector("[data-snap-scene]") ?? element);
 }
 
 const pointCloudUrl = assetUrl("pointcloud/arena_points.bin");
@@ -158,7 +210,6 @@ function openDirectArchive(targetHash = "#archive-hero") {
   document.documentElement.classList.add("is-document-mode");
   document.documentElement.classList.remove(
     "is-scroll-locked",
-    "is-document-transitioning",
   );
   document.documentElement.dataset.directArchive = "true";
   const app = document.querySelector("#app");
@@ -196,10 +247,23 @@ function openDirectArchive(targetHash = "#archive-hero") {
           document.querySelector(targetHash) ??
           document.querySelector("#archive-team") ??
           document.querySelector("#unit-site");
-        const target = resolveSnapAnchor(section);
-        target?.scrollIntoView({
+        // 章节壳本身不一定是 snap 点; 跳到内部 data-snap-scene, 避免 mandatory 再拽一次
+        const scrollTarget =
+          section?.matches?.("[data-snap-scene]")
+            ? section
+            : (section?.querySelector?.("[data-snap-scene]") ?? section);
+        const root = document.documentElement;
+        root.classList.add("is-snap-suppressed");
+        scrollTarget?.scrollIntoView({
           behavior: "auto",
-          block: target.dataset.snapAlign === "center" ? "center" : "start",
+          block: "start",
+        });
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            window.setTimeout(() => {
+              root.classList.remove("is-snap-suppressed");
+            }, 120);
+          });
         });
         bootstrap.directArchiveReady = true;
         performance.mark?.("enterprize:direct-archive-ready");

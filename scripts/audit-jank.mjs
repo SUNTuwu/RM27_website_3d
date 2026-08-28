@@ -319,7 +319,7 @@ const zoomFrames = await page.evaluate(
 );
 const zoomScrollSnapshot = await auditSnapshot();
 
-const snapTarget = await page.evaluate(() => {
+const nativeScrollTarget = await page.evaluate(() => {
   const target = document.querySelector("#archive-team");
   const top = target.getBoundingClientRect().top + window.scrollY;
   window.scrollTo(0, Math.max(top - 260, 0));
@@ -329,31 +329,39 @@ await page.waitForTimeout(300);
 await page.evaluate(() => {
   const samples = [];
   const startedAt = performance.now();
-  window.__ENTERPRIZE_SNAP_AUDIT__ = { samples, startedAt, endedAt: null };
+  window.__ENTERPRIZE_NATIVE_SCROLL_AUDIT__ = { samples, startedAt, endedAt: null };
   const tick = (now) => {
     samples.push({ at: now, y: window.scrollY });
-    if (now - startedAt < 6_000) {
+    if (now - startedAt < 1_200) {
       requestAnimationFrame(tick);
     } else {
-      window.__ENTERPRIZE_SNAP_AUDIT__.endedAt = now;
+      window.__ENTERPRIZE_NATIVE_SCROLL_AUDIT__.endedAt = now;
     }
   };
   requestAnimationFrame(tick);
 });
 await page.mouse.move(720, 450);
 await page.mouse.wheel(0, 120);
-await page.waitForTimeout(6_200);
-const snapProbe = await page.evaluate(() => window.__ENTERPRIZE_SNAP_AUDIT__);
+await page.waitForTimeout(1_400);
+const nativeScrollProbe = await page.evaluate(
+  () => window.__ENTERPRIZE_NATIVE_SCROLL_AUDIT__,
+);
 const finalSnapshot = await auditSnapshot();
 
 const typingChangeTimes = typingProbe.changes.map((change) => change.at);
-const snapFrameTimes = snapProbe.samples.map((sample) => sample.at);
-const snapMovingSamples = snapProbe.samples.filter(
+const nativeScrollFrameTimes = nativeScrollProbe.samples.map((sample) => sample.at);
+const nativeScrollMovingSamples = nativeScrollProbe.samples.filter(
   (sample, index, samples) => index > 0 && Math.abs(sample.y - samples[index - 1].y) > 0.1,
 );
-const lastMovementAt = snapMovingSamples.at(-1)?.at ?? snapProbe.startedAt;
-const lastMovementIndex = snapProbe.samples.findIndex((sample) => sample.at >= lastMovementAt);
-const snapTail = snapProbe.samples.slice(Math.max(lastMovementIndex - 20, 0), lastMovementIndex + 2);
+const lastMovementAt =
+  nativeScrollMovingSamples.at(-1)?.at ?? nativeScrollProbe.startedAt;
+const lastMovementIndex = nativeScrollProbe.samples.findIndex(
+  (sample) => sample.at >= lastMovementAt,
+);
+const nativeScrollTail = nativeScrollProbe.samples.slice(
+  Math.max(lastMovementIndex - 20, 0),
+  lastMovementIndex + 2,
+);
 
 const report = {
   generatedAt: new Date().toISOString(),
@@ -408,14 +416,14 @@ const report = {
       (task) => task.startTime >= zoomBeforeActivation.at && task.startTime <= zoomScrollSnapshot.at,
     ),
   },
-  chapterSnap: {
-    targetTop: snapTarget.top,
-    initialY: snapTarget.initialY,
-    finalY: snapProbe.samples.at(-1)?.y ?? null,
-    settleDurationMs: Number((lastMovementAt - snapProbe.startedAt).toFixed(2)),
-    movingFrames: snapMovingSamples.length,
-    frameCadence: summarizeIntervals(snapFrameTimes),
-    tailSamples: snapTail,
+  nativeScroll: {
+    referenceTop: nativeScrollTarget.top,
+    initialY: nativeScrollTarget.initialY,
+    finalY: nativeScrollProbe.samples.at(-1)?.y ?? null,
+    settleDurationMs: Number((lastMovementAt - nativeScrollProbe.startedAt).toFixed(2)),
+    movingFrames: nativeScrollMovingSamples.length,
+    frameCadence: summarizeIntervals(nativeScrollFrameTimes),
+    tailSamples: nativeScrollTail,
   },
   longTasks: finalSnapshot.longTasks,
   layoutShifts: finalSnapshot.layoutShifts,
@@ -434,6 +442,6 @@ console.log(JSON.stringify({ outputPath, summary: {
   typing: report.typing,
   mediaTiming: report.mediaTiming,
   zoomGallery: report.zoomGallery,
-  chapterSnap: report.chapterSnap,
+  nativeScroll: report.nativeScroll,
   failedRequests: report.failedRequests,
 }}, null, 2));

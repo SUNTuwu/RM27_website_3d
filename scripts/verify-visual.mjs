@@ -339,12 +339,7 @@ try {
     failIf(false, "FOCUS drag and single wheel exit return to SCRUB");
   }
 
-  // timeline_0 到达终点后无需额外滚轮，自动平滑进入 BEYOND THE ARENA。
-  const revealWindow = page.waitForFunction(() => {
-    const documentIntro = document.querySelector("#zoom-parallax-root");
-    const top = documentIntro.getBoundingClientRect().top;
-    return top > window.innerHeight * 0.08 && top < window.innerHeight * 0.92;
-  });
+  // timeline_0 reaches END and hands scrolling back at the 2D entry point.
   for (let attempt = 0; attempt < 60; attempt += 1) {
     if ((await getState(page)) === "end") {
       break;
@@ -353,14 +348,18 @@ try {
     await page.waitForTimeout(400);
   }
   await waitState(page, "end", 10_000);
-  await revealWindow;
+  await page.waitForFunction(
+    () =>
+      Math.abs(
+        document.querySelector("#zoom-parallax-root").getBoundingClientRect().top,
+      ) < 2,
+  );
   const fullProgress = await getProgress(page);
   failIf(fullProgress < 0.999, "timeline reaches full progress before automatic handoff");
-  const revealLayout = await page.evaluate(() => ({
+  const handoffLayout = await page.evaluate(() => ({
     appTop: document.querySelector("#app").getBoundingClientRect().top,
     canvasTop: document.querySelector("#scene-canvas").getBoundingClientRect().top,
     documentTop: document.querySelector("#zoom-parallax-root").getBoundingClientRect().top,
-    viewportHeight: window.innerHeight,
     introBackground: getComputedStyle(
       document.querySelector("#zoom-parallax-section"),
     ).backgroundColor,
@@ -371,31 +370,17 @@ try {
     path: path.join(outputDirectory, "08-document-reveal.png"),
   });
   failIf(
-    Math.abs(revealLayout.appTop) > 1 ||
-      revealLayout.canvasTop >= -1 ||
-      Math.abs(revealLayout.canvasTop) >=
-        (revealLayout.viewportHeight - revealLayout.documentTop) * 0.4 ||
-      revealLayout.documentTop <= 0 ||
-      revealLayout.documentTop >= revealLayout.viewportHeight,
-    "automatic END reveal moves the 3D canvas upward more slowly than the 2D layer",
+    Math.abs(handoffLayout.appTop) > 1 ||
+      handoffLayout.canvasTop >= -1 ||
+      Math.abs(handoffLayout.documentTop) >= 2,
+    "END handoff immediately positions the 2D entry over the parallax canvas",
   );
   failIf(
-    !revealLayout.zoomActive ||
-      revealLayout.introBackground !== "rgba(0, 0, 0, 0)",
-    "automatic END reveal activates BEYOND THE ARENA over a transparent backdrop",
+    !handoffLayout.zoomActive ||
+      handoffLayout.introBackground !== "rgba(0, 0, 0, 0)",
+    "END handoff activates BEYOND THE ARENA over a transparent backdrop",
   );
 
-
-  await page.waitForFunction(() => {
-    const root = document.documentElement;
-    const documentTop = document
-      .querySelector("#zoom-parallax-root")
-      .getBoundingClientRect().top;
-    return (
-      !root.classList.contains("is-document-transitioning") &&
-      Math.abs(documentTop) < 2
-    );
-  });
   const documentMode = await page.evaluate(() => ({
     active: document.documentElement.classList.contains("is-document-mode"),
     scrollbarWidth: getComputedStyle(document.documentElement).scrollbarWidth,
@@ -425,8 +410,6 @@ try {
   );
   failIf(false, "END document mode still accepts wheel scrolling");
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForFunction(() => window.scrollY <= 1);
-  await page.mouse.wheel(0, -240);
   await waitState(page, "scrub", 10_000);
   failIf(
     await page.evaluate(() =>
