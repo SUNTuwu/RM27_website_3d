@@ -23,6 +23,7 @@
     "verify:visual": "node scripts/verify-visual.mjs",
     "verify:explore-polish": "node scripts/verify-explore-polish.mjs",
     "verify:native-scroll": "node scripts/verify-native-scroll.mjs",
+    "verify:transition": "node scripts/verify-transition.mjs",
     "verify:zoom": "node scripts/verify-zoom-parallax.mjs",
     "typecheck": "tsc --noEmit",
     "check": "npm run validate:assets && npm run verify:images && npm run typecheck && npm run build:site && npm run verify:deployment"

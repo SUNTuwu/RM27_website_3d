@@ -247,23 +247,15 @@ function openDirectArchive(targetHash = "#archive-hero") {
           document.querySelector(targetHash) ??
           document.querySelector("#archive-team") ??
           document.querySelector("#unit-site");
-        // 章节壳本身不一定是 snap 点; 跳到内部 data-snap-scene, 避免 mandatory 再拽一次
+        // 章节壳本身不一定是导航锚点; 跳到内部 data-snap-scene 锚点
         const scrollTarget =
           section?.matches?.("[data-snap-scene]")
             ? section
             : (section?.querySelector?.("[data-snap-scene]") ?? section);
-        const root = document.documentElement;
-        root.classList.add("is-snap-suppressed");
+        // 纯原生滚动: 无 snap, scrollIntoView 即最终落点
         scrollTarget?.scrollIntoView({
           behavior: "auto",
           block: "start",
-        });
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            window.setTimeout(() => {
-              root.classList.remove("is-snap-suppressed");
-            }, 120);
-          });
         });
         bootstrap.directArchiveReady = true;
         performance.mark?.("enterprize:direct-archive-ready");

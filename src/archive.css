@@ -374,6 +374,11 @@ html.is-document-mode .unit-site {
   pointer-events: none;
 }
 
+/* picture 仅作条件加载壳, 定位仍落在 img.archive-hero__logo 上 */
+.archive-hero__media .archive-hero__logo-picture {
+  display: contents;
+}
+
 /* 悬浮在右侧照片中央的队徽 */
 .archive-hero__media .archive-hero__logo {
   position: absolute;
@@ -599,6 +604,7 @@ html.is-document-mode .unit-site {
 
 .archive-media {
   position: relative;
+  /* 底部留白: 视频区与下一章拉开视觉间距 */
   padding: 0 0 16vh;
   background: var(--archive-bg);
   color: #eef3fb;
@@ -617,6 +623,11 @@ html.is-document-mode .unit-site {
   margin: 0 auto;
 }
 
+/* 两段 reel 之间的间距 */
+.archive-media__reel + .archive-media__reel {
+  margin-top: clamp(28px, 4vh, 56px);
+}
+
 /* 暗色媒体区里的章节标题: 保留与原子标题相同的上间距 */
 .archive-media .archive-head {
   margin-top: 12px;
@@ -627,7 +638,7 @@ html.is-document-mode .unit-site {
   padding-bottom: 0;
 }
 
-.archive-media__content > .archive-media__label:first-child {
+.archive-media__content > .archive-media__reel:first-child .archive-media__label {
   margin-top: 24px;
 }
 
@@ -1537,6 +1548,11 @@ html.is-document-mode .unit-site {
   margin: 8px 0 72px;
 }
 
+/* 资料下载离 RETURN 太近会被下一页 always 吸走; 加一屏余量, 小标题可以停住看完 */
+#archive-join .archive-wrap {
+  padding-bottom: 28vh;
+}
+
 .archive-download {
   position: relative;
   display: flex;
@@ -1997,8 +2013,7 @@ html.is-document-mode .unit-site {
 
 /* ============ 04 RETURN ============ */
 
-/* 整页一屏: section 自己做 return-arena center snap。
-   末页嵌套 wrap + overflow:hidden 时, 浏览器常常吸不到 center。 */
+/* 整页一屏: section 自己撑满视口高度 */
 .archive-return.archive-chapter {
   box-sizing: border-box;
   min-height: 100vh;
@@ -2216,14 +2231,6 @@ html.is-document-mode .unit-site {
   color: var(--archive-ink-faint);
   font-size: 15px;
   background: linear-gradient(180deg, transparent, rgba(5, 7, 13, 0.72) 40%);
-}
-
-/* 末页 center snap 需要额外滚动余量, 否则吸到文档底就停住、对不齐屏幕中线 */
-.unit-site::after {
-  content: "";
-  display: block;
-  height: 45svh;
-  pointer-events: none;
 }
 
 .archive-footer b {

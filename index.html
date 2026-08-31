@@ -38,23 +38,32 @@
       </header>
 
       <div class="hud-top-right">
-        <a
-          class="opensource-jump"
-          id="opensource-jump"
-          href="/open-source.html"
-          aria-label="前往开源档案"
-        >
-          <span class="opensource-jump__label">开源档案</span>
-        </a>
-        <button
-          class="recruit-jump"
-          id="recruit-jump"
-          type="button"
-          aria-label="前往招新，跳转到留下你的坐标"
-        >
-          <span class="recruit-jump__label">前往招新</span>
-          <span class="recruit-jump__arrow" aria-hidden="true">⟶</span>
-        </button>
+        <!-- 开源/招新同级一行; 流星 cue 挂在开源下方; state-chip 单独一列 -->
+        <div class="hud-top-right__actions">
+          <div class="hud-top-right__open-col">
+            <a
+              class="opensource-jump"
+              id="opensource-jump"
+              href="/open-source.html"
+              aria-label="前往开源档案"
+            >
+              <span class="opensource-jump__label">开源档案</span>
+            </a>
+            <div class="scroll-cue" id="scroll-cue" aria-hidden="true">
+              <span class="scroll-cue__text" id="scroll-cue-text">SCROLL TO INITIATE SCAN</span>
+              <div class="scroll-cue__lines" id="scroll-cue-lines"></div>
+            </div>
+          </div>
+          <button
+            class="recruit-jump"
+            id="recruit-jump"
+            type="button"
+            aria-label="前往招新，跳转到留下你的坐标"
+          >
+            <span class="recruit-jump__label">前往招新</span>
+            <span class="recruit-jump__arrow" aria-hidden="true">⟶</span>
+          </button>
+        </div>
         <div class="state-chip" aria-label="当前阶段">
           <span class="state-chip__dot" aria-hidden="true"></span>
           <span class="state-chip__index" id="state-index">00</span>
@@ -102,11 +111,6 @@
         <div class="explore-panel__segments" id="explore-segments"></div>
         <p class="explore-panel__desc" id="explore-desc"></p>
       </section>
-
-      <div class="scroll-cue" id="scroll-cue" aria-hidden="true">
-        <span class="scroll-cue__text" id="scroll-cue-text">SCROLL TO INITIATE SCAN</span>
-        <div class="scroll-cue__lines" id="scroll-cue-lines"></div>
-      </div>
 
       <section class="focus-panel" id="focus-panel" aria-label="兵种聚焦信息">
         <button class="focus-panel__close hud-slant-button" id="focus-close" type="button" aria-label="退出兵种聚焦">
@@ -253,13 +257,19 @@
                 src="/assets/images/archive/arena-fleet-web.webp"
                 alt="ENTERPRIZE 战队机器人列阵"
               />
-              <img
-                class="archive-hero__logo"
-                src="/assets/icon/blue_logo.png"
-                alt="ENTERPRIZE 队徽"
-                loading="lazy"
-                decoding="async"
-              />
+              <!-- 手机端不加载队标: source 仅在 ≥601px 匹配, 否则 img 无 src 不发请求 -->
+              <picture class="archive-hero__logo-picture">
+                <source
+                  media="(min-width: 601px)"
+                  srcset="/assets/icon/blue_logo.png"
+                />
+                <img
+                  class="archive-hero__logo"
+                  alt="ENTERPRIZE 队徽"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
             </figure>
           </div>
         </div>
@@ -280,107 +290,112 @@
         </div>
 
         <div class="archive-media__content">
-          <p class="archive-media__label reveal">
-            <b>REEL 01</b><span>招新影像 // RECRUITMENT FILM</span>
-          </p>
-          <div class="archive-media__feature">
-            <div class="archive-media__player reveal">
-              <iframe
-                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=117127650547916&bvid=BV1yU8c6WErJ&cid=41099529159&p=1"
-                data-video-autoload
-                allow="autoplay; fullscreen; picture-in-picture"
-                scrolling="no"
-                frameborder="0"
-                allowfullscreen="true"
-                loading="lazy"
-                referrerpolicy="strict-origin-when-cross-origin"
-                title="ENTERPRIZE 招新影像"
-              ></iframe>
-              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 招新影像">
-                <span class="video-facade__inner">
-                  <span class="video-facade__play" aria-hidden="true"></span>
-                  <span class="video-facade__text">PLAY FILM</span>
-                  <span class="video-facade__hint">BILIBILI PLAYER</span>
-                </span>
-              </button>
+          <!-- 视频区不设定位锚点, 全程原生滚动 -->
+          <div class="archive-media__reel">
+            <p class="archive-media__label reveal">
+              <b>REEL 01</b><span>招新影像 // RECRUITMENT FILM</span>
+            </p>
+            <div class="archive-media__feature">
+              <div class="archive-media__player reveal">
+                <iframe
+                  data-src="https://player.bilibili.com/player.html?isOutside=true&aid=117127650547916&bvid=BV1yU8c6WErJ&cid=41099529159&p=1"
+                  data-video-autoload
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  scrolling="no"
+                  frameborder="0"
+                  allowfullscreen="true"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  title="ENTERPRIZE 招新影像"
+                ></iframe>
+                <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 招新影像">
+                  <span class="video-facade__inner">
+                    <span class="video-facade__play" aria-hidden="true"></span>
+                    <span class="video-facade__text">PLAY FILM</span>
+                    <span class="video-facade__hint">BILIBILI PLAYER</span>
+                  </span>
+                </button>
+              </div>
+              <p class="archive-media__note">
+                视频经 Bilibili 官方播放器流式嵌入；内容与版权说明以
+                <a href="https://www.bilibili.com/video/BV1yU8c6WErJ/" target="_blank" rel="noopener">原视频页面</a>为准。
+              </p>
+            </div>
+          </div>
+
+          <div class="archive-media__reel">
+            <p class="archive-media__label reveal">
+              <b>REEL 02</b><span>高光回放 // MATCH HIGHLIGHTS</span>
+            </p>
+            <div class="archive-media__grid" aria-label="高光回放视频">
+              <div class="archive-media__player reveal">
+                <iframe
+                  data-src="https://player.bilibili.com/player.html?isOutside=true&aid=116702650109820&bvid=BV19j7D6LEsU&cid=38907086848&p=1"
+                  data-video-autoload
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  scrolling="no"
+                  frameborder="0"
+                  allowfullscreen="true"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  title="ENTERPRIZE 高光回放 1"
+                ></iframe>
+                <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 1">
+                  <span class="video-facade__inner">
+                    <span class="video-facade__play" aria-hidden="true"></span>
+                    <span class="video-facade__text">PLAY HIGHLIGHT</span>
+                    <span class="video-facade__hint">BILIBILI PLAYER</span>
+                  </span>
+                </button>
+              </div>
+              <div class="archive-media__player reveal" style="--rd: 90ms">
+                <iframe
+                  data-src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1"
+                  data-video-autoload
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  scrolling="no"
+                  frameborder="0"
+                  allowfullscreen="true"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  title="ENTERPRIZE 高光回放 2"
+                ></iframe>
+                <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 2">
+                  <span class="video-facade__inner">
+                    <span class="video-facade__play" aria-hidden="true"></span>
+                    <span class="video-facade__text">PLAY HIGHLIGHT</span>
+                    <span class="video-facade__hint">BILIBILI PLAYER</span>
+                  </span>
+                </button>
+              </div>
+              <div class="archive-media__player reveal" style="--rd: 180ms">
+                <iframe
+                  data-src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1"
+                  data-video-autoload
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  scrolling="no"
+                  frameborder="0"
+                  allowfullscreen="true"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  title="ENTERPRIZE 高光回放 3"
+                ></iframe>
+                <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 3">
+                  <span class="video-facade__inner">
+                    <span class="video-facade__play" aria-hidden="true"></span>
+                    <span class="video-facade__text">PLAY HIGHLIGHT</span>
+                    <span class="video-facade__hint">BILIBILI PLAYER</span>
+                  </span>
+                </button>
+              </div>
             </div>
             <p class="archive-media__note">
               视频经 Bilibili 官方播放器流式嵌入；内容与版权说明以
-              <a href="https://www.bilibili.com/video/BV1yU8c6WErJ/" target="_blank" rel="noopener">原视频页面</a>为准。
+              <a href="https://www.bilibili.com/video/BV19j7D6LEsU/" target="_blank" rel="noopener">视频 1</a>、
+              <a href="https://www.bilibili.com/video/BV1HBHyeGEQT/" target="_blank" rel="noopener">视频 2</a>、
+              <a href="https://www.bilibili.com/video/BV1TP8jzSEVA/" target="_blank" rel="noopener">视频 3</a>的原页面为准。
             </p>
           </div>
-
-          <p class="archive-media__label reveal">
-            <b>REEL 02</b><span>高光回放 // MATCH HIGHLIGHTS</span>
-          </p>
-          <div class="archive-media__grid" aria-label="高光回放视频">
-            <div class="archive-media__player reveal">
-              <iframe
-                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=116702650109820&bvid=BV19j7D6LEsU&cid=38907086848&p=1"
-                data-video-autoload
-                allow="autoplay; fullscreen; picture-in-picture"
-                scrolling="no"
-                frameborder="0"
-                allowfullscreen="true"
-                loading="lazy"
-                referrerpolicy="strict-origin-when-cross-origin"
-                title="ENTERPRIZE 高光回放 1"
-              ></iframe>
-              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 1">
-                <span class="video-facade__inner">
-                  <span class="video-facade__play" aria-hidden="true"></span>
-                  <span class="video-facade__text">PLAY HIGHLIGHT</span>
-                  <span class="video-facade__hint">BILIBILI PLAYER</span>
-                </span>
-              </button>
-            </div>
-            <div class="archive-media__player reveal" style="--rd: 90ms">
-              <iframe
-                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=113068789072580&bvid=BV1HBHyeGEQT&cid=25710628590&p=1"
-                data-video-autoload
-                allow="autoplay; fullscreen; picture-in-picture"
-                scrolling="no"
-                frameborder="0"
-                allowfullscreen="true"
-                loading="lazy"
-                referrerpolicy="strict-origin-when-cross-origin"
-                title="ENTERPRIZE 高光回放 2"
-              ></iframe>
-              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 2">
-                <span class="video-facade__inner">
-                  <span class="video-facade__play" aria-hidden="true"></span>
-                  <span class="video-facade__text">PLAY HIGHLIGHT</span>
-                  <span class="video-facade__hint">BILIBILI PLAYER</span>
-                </span>
-              </button>
-            </div>
-            <div class="archive-media__player reveal" style="--rd: 180ms">
-              <iframe
-                data-src="https://player.bilibili.com/player.html?isOutside=true&aid=114927956133418&bvid=BV1TP8jzSEVA&cid=31324243669&p=1"
-                data-video-autoload
-                allow="autoplay; fullscreen; picture-in-picture"
-                scrolling="no"
-                frameborder="0"
-                allowfullscreen="true"
-                loading="lazy"
-                referrerpolicy="strict-origin-when-cross-origin"
-                title="ENTERPRIZE 高光回放 3"
-              ></iframe>
-              <button class="video-facade" type="button" data-video-facade aria-label="播放 ENTERPRIZE 高光回放 3">
-                <span class="video-facade__inner">
-                  <span class="video-facade__play" aria-hidden="true"></span>
-                  <span class="video-facade__text">PLAY HIGHLIGHT</span>
-                  <span class="video-facade__hint">BILIBILI PLAYER</span>
-                </span>
-              </button>
-            </div>
-          </div>
-          <p class="archive-media__note">
-            视频经 Bilibili 官方播放器流式嵌入；内容与版权说明以
-            <a href="https://www.bilibili.com/video/BV19j7D6LEsU/" target="_blank" rel="noopener">视频 1</a>、
-            <a href="https://www.bilibili.com/video/BV1HBHyeGEQT/" target="_blank" rel="noopener">视频 2</a>、
-            <a href="https://www.bilibili.com/video/BV1TP8jzSEVA/" target="_blank" rel="noopener">视频 3</a>的原页面为准。
-          </p>
         </div>
       </section>
 
@@ -394,8 +409,13 @@
         data-cn="队伍信息"
         aria-label="队伍信息"
       >
-        <div class="archive-wrap" data-snap-scene="team-history" data-snap-align="start">
-          <header class="archive-head reveal">
+        <!-- 导航锚点钉短 header, 不要钉 tall wrap -->
+        <div class="archive-wrap">
+          <header
+            class="archive-head reveal"
+            data-snap-scene="team-history"
+            data-snap-align="start"
+          >
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.01</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -484,9 +504,12 @@
         data-cn="兵种体系"
         aria-label="兵种体系"
       >
-        <div class="archive-wrap" data-snap-scene="unit-archive" data-snap-align="start">
-
-          <header class="archive-head reveal">
+        <div class="archive-wrap">
+          <header
+            class="archive-head reveal"
+            data-snap-scene="unit-archive"
+            data-snap-align="start"
+          >
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.02</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -675,8 +698,12 @@
         data-cn="入队招新"
         aria-label="入队招新信息"
       >
-        <div class="archive-wrap" data-snap-scene="join-fleet" data-snap-align="start">
-          <header class="archive-head reveal">
+        <div class="archive-wrap">
+          <header
+            class="archive-head reveal"
+            data-snap-scene="join-fleet"
+            data-snap-align="start"
+          >
             <div class="archive-head__meta">
               <span class="archive-head__chip">CH.03</span>
               <span class="archive-head__rule" aria-hidden="true"></span>
@@ -1139,7 +1166,7 @@
         </div>
       </section>
 
-      <!-- 04 RETURN 重返赛场: snap 钉在整段 section(含 archive-wrap 视觉中心), 避免末页嵌套 center 吸不到 -->
+      <!-- 04 RETURN 重返赛场: 导航锚点在整段 section -->
       <section
         class="archive-chapter archive-return"
         id="archive-return"

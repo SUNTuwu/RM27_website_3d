@@ -35,11 +35,13 @@ export const VISUAL_CONFIG = {
 
   // EXPLORE 环绕视角与多模型切换
   explore: {
-    // EXPLORE 右侧滚动引导: 数道竖直白线依次流星下落 + 竖排英文 落下淡入/停顿/下落淡出, 共用同一周期循环
+    // EXPLORE 开源按钮下方滚动引导: 数道竖直白线依次流星下落 + 竖排英文
+    // enabled=false 时整块隐藏 (适配成本高, 默认关; 要开改 true 即可)
     scrollCue: {
+      enabled: false, // 总开关: false = 不显示流星与 SCROLL TO ENTER 文字
       cycleSeconds: 8, // 整个周期时长 (秒), 流星与文字动画均以该周期循环
       beginTimeOffsetSeconds: 8, // 进入 EXPLORE 后延迟多久引导才开始出现 (秒), 出现时流星从 0 相位开始下落
-      rightVw: 25.0, // 距视口右侧的位置 (vw), 33.3 ≈ 屏幕右侧 1/3 处, 线条自顶部垂下
+      rightVw: 25.0, // 旧绝对定位残留字段, 现 cue 已挂在开源按钮下, 可忽略
       lineWidthPx: 3, // 竖直白线宽度 (px)
       lineOpacity: 0.0, // 竖直白线透明度 (0~1), 流星拖尾不受影响
       lineCount: 3, // 竖直白线数量
@@ -49,7 +51,7 @@ export const VISUAL_CONFIG = {
       meteorLengthPx: 200, // 流星拖尾长度 (px)
       text: "SCROLL TO ENTER THE ARENA", // 竖排引导文字
       textFontSizePx: 18, // 引导文字字号 (px)
-      textTopOffsetPx: 60, // 文字静止位置相对容器顶部的下移距离 (px)
+      textTopOffsetPx: 100, // 文字静止位置相对容器顶部的下移距离 (px)
       textDelaySeconds: 1.5, // 文字相对周期起点的延迟 (秒), 比流星慢一拍
       textFadeInSeconds: 1.2, // 文字自上方落下并淡入的时长 (秒)
       textHoldSeconds: 3.0, // 淡入结束后的停顿时长 (秒)

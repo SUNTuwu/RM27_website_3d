@@ -74,6 +74,8 @@ try {
     const bootstrap = window.__ENTERPRIZE_BOOTSTRAP__;
     const join = document.querySelector("#archive-join");
     const joinRect = join?.getBoundingClientRect();
+    // join-fleet 导航锚点在章节 header (wrap 上方留白 ~198px), 落点以 header 为准
+    const joinFleet = document.querySelector('[data-snap-scene="join-fleet"]');
     const app = document.querySelector("#app");
     return {
       bootstrapMode: bootstrap?.mode ?? null,
@@ -90,6 +92,7 @@ try {
       joinExists: Boolean(join),
       joinTop: joinRect?.top ?? null,
       joinBottom: joinRect?.bottom ?? null,
+      joinFleetTop: joinFleet?.getBoundingClientRect().top ?? null,
       scrollY: window.scrollY,
       viewportHeight: window.innerHeight,
     };
@@ -117,10 +120,10 @@ try {
       directArchiveState.hash === "#archive-join" &&
       directArchiveState.joinExists &&
       directArchiveState.scrollY > 0 &&
-      directArchiveState.joinTop >= 0 &&
-      directArchiveState.joinTop <= Math.min(120, directArchiveState.viewportHeight * 0.15) &&
+      directArchiveState.joinFleetTop !== null &&
+      Math.abs(directArchiveState.joinFleetTop) <= 48 &&
       directArchiveState.joinBottom > 0,
-    "direct archive navigation lands at #archive-join",
+    "direct archive navigation lands at #archive-join (join-fleet header anchor)",
     directArchiveState,
   );
 
@@ -133,6 +136,7 @@ try {
   await page.waitForFunction(
     () => {
       const top = document.querySelector("#archive-hero")?.getBoundingClientRect().top;
+      // 纯原生滚动: scrollIntoView block:start 落点即章节顶
       return Number.isFinite(top) && top >= -3 && top <= Math.min(120, window.innerHeight * 0.15);
     },
     null,
@@ -164,6 +168,7 @@ try {
     });
     const logo = document.querySelector(".archive-hero__logo");
     const logoStyle = logo ? getComputedStyle(logo) : null;
+    const logoSrc = logo?.currentSrc || logo?.getAttribute("src") || "";
     return {
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
@@ -176,6 +181,9 @@ try {
       stats,
       logoDisplay: logoStyle?.display ?? null,
       logoRectCount: logo?.getClientRects().length ?? -1,
+      // 手机端应不请求队标资源 (picture source 仅 min-width: 601px)
+      logoSrc,
+      logoNaturalWidth: logo?.naturalWidth ?? -1,
     };
   });
 
@@ -197,11 +205,16 @@ try {
     mobileHeroState.stats,
   );
   check(
-    mobileHeroState.logoDisplay === "none" && mobileHeroState.logoRectCount === 0,
-    "390x844 hides the floating archive hero logo",
+    mobileHeroState.logoDisplay === "none" &&
+      mobileHeroState.logoRectCount === 0 &&
+      !mobileHeroState.logoSrc &&
+      mobileHeroState.logoNaturalWidth === 0,
+    "390x844 hides and does not load the floating archive hero logo",
     {
       display: mobileHeroState.logoDisplay,
       rectCount: mobileHeroState.logoRectCount,
+      logoSrc: mobileHeroState.logoSrc,
+      logoNaturalWidth: mobileHeroState.logoNaturalWidth,
     },
   );
 

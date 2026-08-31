@@ -52,18 +52,30 @@ const expectedSnapScenes = [
   "join-fleet",
   "return-arena",
 ];
-const htmlSnapScenes = [
+const liveSnapScenes = [
   ...sources["index.html"].matchAll(/data-snap-scene="([^"]+)"/g),
-].map((match) => match[1]);
-const zoomSnapScenes = [
   ...sources["src/components/zoom-parallax-section.tsx"].matchAll(
-    /data-snap-scene="([^"]+)"/g,
-  ),
+    /data-snap-scene="([^"]+)"/g),
 ].map((match) => match[1]);
-const liveSnapScenes = [...zoomSnapScenes, ...htmlSnapScenes];
+const orderedSnapScenes = (() => {
+  const htmlOnly = [
+    ...sources["index.html"].matchAll(/data-snap-scene="([^"]+)"/g),
+  ].map((match) => match[1]);
+  const zoomOnly = [
+    ...sources["src/components/zoom-parallax-section.tsx"].matchAll(
+      /data-snap-scene="([^"]+)"/g,
+    ),
+  ].map((match) => match[1]);
+  return [...zoomOnly, ...htmlOnly];
+})();
 assert(
-  JSON.stringify(liveSnapScenes) === JSON.stringify(expectedSnapScenes),
-  `unexpected snap scene set: ${JSON.stringify(liveSnapScenes)}`,
+  JSON.stringify(orderedSnapScenes) === JSON.stringify(expectedSnapScenes),
+  `unexpected snap scene set: ${JSON.stringify(orderedSnapScenes)} (raw ${JSON.stringify(liveSnapScenes)})`,
+);
+assert(
+  !/data-snap-scene="arena-3d"/.test(sources["index.html"]) &&
+    !/#app\[data-snap-scene="arena-3d"\]/.test(sources["src/styles.css"]),
+  "arena-3d must not be a snap page (BEYOND→3D corridor freeze)",
 );
 assert(
   /user-scalable=no/.test(sources["index.html"]) &&
@@ -83,40 +95,56 @@ assert(
   "explore panel must be viewport-fixed so scroll-lock rubber-band cannot drag it",
 );
 assert(
-  /--snap-who-we-are-offset:\s*-/.test(sources["src/styles.css"]),
-  "who-we-are snap offset must be negative to hide the fold above the viewport",
-);
-assert(
   !/data-snap-scene="unit-choice"/.test(sources["index.html"]),
   "unit-choice snap scene should be removed",
 );
+// 自动吸附已整体移除: 2D 纯原生滚动, 不得再出现任何 snap CSS / 闸门代码
 assert(
-  /scroll-snap-type:\s*y\s+mandatory/.test(sources["src/styles.css"]),
-  "document-mode mandatory snap is missing",
-);
-assert(
-  /scroll-snap-stop:\s*always/.test(sources["src/styles.css"]),
-  "document-mode snap stop always is missing",
-);
-assert(
-  /is-snap-suppressed/.test(sources["src/styles.css"]) &&
-    /is-snap-suppressed/.test(sources["src/ui/unitSite.js"]),
-  "programmatic snap suppression is missing",
-);
-assert(
-  /html\.is-document-entering[\s\S]*?scroll-snap-type:\s*none/.test(
+  !/scroll-snap-type|scroll-snap-align|scroll-snap-stop/.test(
     sources["src/styles.css"],
-  ),
-  "document enter must disable snap during the rise animation",
+  ) && !/scroll-snap-align|scroll-snap-stop/.test(sources["src/archive.css"]),
+  "all scroll-snap CSS must be removed (native scroll only)",
+);
+assert(
+  !/setupUnitEndSnap|setupSnapProximityGate|setupSettledSnap|nextSnapTargetDelta|SNAP_ARM|WHEEL_VELOCITY_GAIN/.test(
+    sources["src/ui/unitSite.js"],
+  ) &&
+    !/is-snap-armed|is-intra-chapter/.test(sources["src/ui/unitSite.js"]) &&
+    !/is-snap-armed|is-intra-chapter/.test(sources["src/styles.css"]),
+  "snap gate code must stay removed (native scroll only)",
+);
+assert(
+  /function armArenaEnterSnap/.test(sources["src/main.js"]) &&
+    /crossedTimelineEnd/.test(sources["src/main.js"]),
+  "3D→BEYOND snap must arm only on 99→100 crossing or explicit downward wheel",
+);
+assert(
+  !/<[^>]*class="[^"]*archive-sub[^"]*"[^>]*data-snap-scene/.test(
+    sources["index.html"],
+  ) && !/data-snap-scene="[^"]+"[^>]*archive-sub/.test(sources["index.html"]),
+  "small titles (archive-sub) must not be snap scenes",
+);
+assert(
+  !/data-snap-scene="media-reel/.test(sources["index.html"]),
+  "video reels must not be snap scenes (videos never snap)",
+);
+assert(
+  !/is-snap-suppressed/.test(sources["src/styles.css"]) &&
+    !/is-snap-suppressed/.test(sources["src/ui/unitSite.js"]) &&
+    !/is-snap-suppressed/.test(sources["src/introEntry.js"]) &&
+    !/is-snap-suppressed/.test(sources["src/main.js"]),
+  "snap suppression plumbing must stay removed (no snap left to suppress)",
 );
 assert(!/scroll-behavior\s*:\s*smooth/.test(combinedSource), "CSS smooth scrolling remains");
 assert(!/behavior\s*:\s*["']smooth["']/.test(combinedSource), "smooth JS scrolling remains");
 assert(!/useSpring|ZoomParallaxSpring|\bdamping\b/.test(zoomSource), "zoom scroll damping remains");
 assert(!/documentReveal|is-document-transitioning/.test(combinedSource), "document reveal takeover remains");
 assert(
-  /is-document-entering/.test(sources["src/styles.css"]) &&
-    /is-document-entering/.test(sources["src/main.js"]),
-  "document sheet rise entry animation is missing",
+  !/is-document-entering|document-sheet-rise/.test(sources["src/styles.css"]) &&
+    !/is-document-entering|document-sheet-rise|DOCUMENT_ENTER_DURATION_MS/.test(
+      sources["src/main.js"],
+    ),
+  "auto sheet-rise entry animation must stay removed (sheet rises with native scroll)",
 );
 assert(archiveEntrySource, "immediate archive entry function is missing");
 assert(
@@ -128,20 +156,67 @@ assert(
   "archive entry must use exactly one scrollTo call",
 );
 assert(
-  /classList\.add\(\s*["']is-document-entering["']\s*\)/.test(archiveEntrySource),
-  "archive entry no longer arms the CSS rise animation",
+  /window\.scrollTo\(\s*0\s*,\s*0\s*\)/.test(archiveEntrySource),
+  "archive entry must land at document top so the 2D sheet rises with native scroll",
+);
+assert(
+  /if \(autoScroll\) beginArchiveAutoScroll\(\);/.test(runtimeSource) &&
+    /enterUnitArchive\(\{\s*autoScroll:\s*true\s*\}\)/.test(runtimeSource),
+  "99→100 crossing must enter the archive with autoScroll enabled",
+);
+assert(
+  (runtimeSource.match(/beginArchiveAutoScroll\(\)/g) ?? []).length === 2 &&
+    (runtimeSource.match(/enterUnitArchive\(\{\s*autoScroll:\s*true\s*\}\)/g) ?? [])
+      .length === 1,
+  "auto scroll is wired only to the timeline-completion entry (never the 2D→3D return)",
+);
+assert(
+  /prefers-reduced-motion:\s*reduce/.test(runtimeSource) &&
+    /addEventListener\(\s*["']wheel["']\s*,\s*cancelArchiveAutoScrollOnWheel/.test(
+      runtimeSource,
+    ) &&
+    /function cancelArchiveAutoScrollOnWheel[\s\S]*?deltaY[^;]*<\s*0/.test(
+      runtimeSource,
+    ) &&
+    /["']touchstart["'][\s\S]{0,120}?cancelArchiveAutoScroll\(["']touch["']\)/.test(
+      runtimeSource,
+    ),
+  "only opposite-direction wheel, touch, or keys cancel the archive auto scroll",
+);
+assert(
+  /function returnToTimeline[\s\S]{0,320}?cancelArchiveAutoScroll\(\)/.test(
+    runtimeSource,
+  ) &&
+    !/function returnToTimeline[\s\S]*?beginArchiveAutoScroll/.test(
+      runtimeSource.split("function returnToTimeline")[1]?.split("function ")[0] ??
+        "",
+    ),
+  "manual 2D→3D return cancels auto scroll and never restarts it",
+);
+assert(
+  /html\.is-document-mode\s+#scene-canvas\s*\{[^}]*touch-action:\s*pan-y/.test(
+    sources["src/styles.css"],
+  ),
+  "document-mode canvas must allow vertical native scroll on touch",
+);
+assert(
+  /scrollingUp[\s\S]*?canReturnToTimelineByScroll\(\)/.test(runtimeSource) &&
+    /lastDocumentScrollY/.test(runtimeSource),
+  "scroll return must be direction-aware (only upward scroll at top returns to 3D)",
 );
 const runtimeWheelHandler = runtimeSource.match(
   /window\.addEventListener\(\s*["']wheel["'][\s\S]*?\{\s*passive:\s*false\s*\}\s*,?\s*\);/,
 )?.[0];
 assert(runtimeWheelHandler, "runtime wheel handler is missing");
 assert(
-  /state\s*===\s*["']end["'][\s\S]*documentEnterInProgress/.test(runtimeWheelHandler),
-  "END wheel lock during document entry is missing",
+  /state\s*===\s*["']end["'][\s\S]*?deltaY\s*<\s*0[\s\S]*?ARCHIVE_RETURN_SCROLL_Y[\s\S]*?returnToTimeline\(\)/.test(
+    runtimeWheelHandler,
+  ),
+  "END wheel must return to timeline only on guarded upward wheel at document top",
 );
 assert(
-  !/returnToTimeline\(\)/.test(runtimeWheelHandler),
-  "END wheel still owns return-to-timeline",
+  !/documentEnterInProgress/.test(runtimeWheelHandler),
+  "END wheel entry lock must stay removed (native scroll owns the rise)",
 );
 // 允许 viewport zoom-lock / scroll-lock 防护监听; 禁止 2D 自己接管翻页滚动
 const pageScrollOwnerCore = pageScrollOwners
@@ -152,6 +227,15 @@ assert(
     pageScrollOwnerCore,
   ),
   "2D entry or archive code still owns wheel/touch scrolling",
+);
+assert(
+  !/function setupBeyondWhoWeAreSoftSnap/.test(sources["src/ui/unitSite.js"]) &&
+    !/BEYOND_WHO_SNAP_MS/.test(sources["src/ui/unitSite.js"]),
+  "beyond/who special soft snap must stay removed",
+);
+assert(
+  /data-focus-leaving="true"[\s\S]*?\.hint-bar/.test(sources["src/styles.css"]),
+  "focus exit must fade hint-bar with other focus chrome",
 );
 assert(
   /chapterScrollTarget\([\s\S]*?\)\?\.scrollIntoView\(\{[\s\S]*?behavior:\s*["']auto["'][\s\S]*?block:\s*["']start["']/.test(
@@ -193,14 +277,8 @@ try {
       { timeout: 30_000 },
     );
     await page.evaluate(() => document.fonts?.ready);
-    // 程序定位后会短暂 is-snap-suppressed; 等 mandatory 重新生效再量落点
-    await page.waitForFunction(
-      () =>
-        !document.documentElement.classList.contains("is-snap-suppressed") &&
-        /mandatory/.test(getComputedStyle(document.documentElement).scrollSnapType),
-      null,
-      { timeout: 5_000 },
-    );
+    // 纯原生滚动: 程序定位即最终落点, 等两帧布局稳定即可
+    await page.waitForTimeout(220);
 
     const contract = await page.evaluate(() => {
       const scenes = [...document.querySelectorAll("[data-snap-scene]")].map((element) => ({
@@ -231,12 +309,15 @@ try {
       `${viewport.label}: unexpected live snap scenes (${JSON.stringify(contract.scenes)})`,
     );
     assert(
-      /mandatory/.test(contract.scrollSnapType),
-      `${viewport.label}: scroll snap is ${contract.scrollSnapType}`,
+      contract.scrollSnapType === "none",
+      `${viewport.label}: idle document must stay native scroll (snap ${contract.scrollSnapType})`,
     );
-    assert(contract.scrollBehavior === "auto", `${viewport.label}: scroll behavior is ${contract.scrollBehavior}`);
     assert(
-      Math.abs(contract.directTop ?? Number.POSITIVE_INFINITY) <= 3,
+      contract.scrollBehavior === "auto",
+      `${viewport.label}: scroll behavior is ${contract.scrollBehavior}`,
+    );
+    assert(
+      Math.abs(contract.directTop ?? Number.POSITIVE_INFINITY) <= 48,
       `${viewport.label}: direct archive route missed team snap start (${contract.directTop})`,
     );
 
@@ -247,13 +328,11 @@ try {
       navTop = await page.locator('[data-snap-scene="unit-archive"]').evaluate(
         (element) => element.getBoundingClientRect().top,
       );
-      assert(Math.abs(navTop) <= 3, `${viewport.label}: chapter navigation missed unit snap start (${navTop})`);
+      assert(Math.abs(navTop) <= 48, `${viewport.label}: chapter navigation missed unit snap start (${navTop})`);
     }
 
-    // 程序定位时关 snap, 确认 free-scroll 路径仍可用; 再开 snap 验证翻页吸附
+    // 原生滚动: 程序定位后位置不得漂移 (无 snap 拉拽)
     const positionStability = await page.evaluate(async () => {
-      const root = document.documentElement;
-      root.classList.add("is-snap-suppressed");
       const section = document.querySelector("#archive-units");
       const top = section.getBoundingClientRect().top + window.scrollY;
       const value = Math.round(top + 321);
@@ -274,25 +353,17 @@ try {
       const early = window.scrollY;
       await frames(12);
       const late = window.scrollY;
-      root.classList.remove("is-snap-suppressed");
       return { requested: value, early, late };
     });
     assert(
       Math.abs(positionStability.early - positionStability.requested) <= 1 &&
         Math.abs(positionStability.late - positionStability.early) <= 1,
-      `${viewport.label}: snap-suppressed position drifted (${JSON.stringify(positionStability)})`,
+      `${viewport.label}: native position drifted (${JSON.stringify(positionStability)})`,
     );
 
-    // team-history 内容很高: 从后段再向下滚一段, mandatory snap 应落到 banner 居中。
-    // 用 scrollBy (snap 开启) 模拟翻页; Playwright mouse.wheel 在该文档滚动链路上不稳定。
-    const pageTurn = await page.evaluate(async () => {
-      const root = document.documentElement;
-      const banner = document.querySelector("#archive-banner");
-      const mid = () => window.innerHeight / 2;
-      const bannerOffset = () => {
-        const rect = banner?.getBoundingClientRect();
-        return rect ? Math.abs(rect.top + rect.height / 2 - mid()) : null;
-      };
+    // 章内小板块 (英雄重炮破阵) 原地停住, 不被拽到大标题
+    const intraChapter = await page.evaluate(async () => {
+      const reveal = document.querySelector("#unit-reveal");
       const frames = (count) =>
         new Promise((resolve) => {
           const tick = () => {
@@ -305,30 +376,112 @@ try {
           };
           requestAnimationFrame(tick);
         });
+      const target = reveal.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo(0, Math.max(target, 0));
+      await frames(2);
+      const early = { scrollY: window.scrollY };
+      await frames(24);
+      return { early, lateScrollY: window.scrollY };
+    });
+    assert(
+      Math.abs(intraChapter.lateScrollY - intraChapter.early.scrollY) <= 8,
+      `${viewport.label}: mid-chapter block moved without user scroll (${JSON.stringify(intraChapter)})`,
+    );
 
-      root.classList.add("is-snap-suppressed");
+    // 纯原生: 逼近 banner 再向下 nudge 也不吸, 位移恒等于请求值
+    const pageTurn = await page.evaluate(async () => {
+      const banner = document.querySelector("#archive-banner");
+      const frames = (count) =>
+        new Promise((resolve) => {
+          const tick = () => {
+            if (count <= 0) {
+              resolve();
+              return;
+            }
+            count -= 1;
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
       const rect = banner.getBoundingClientRect();
       const bannerCenter = rect.top + window.scrollY + rect.height / 2;
-      window.scrollTo(0, Math.max(bannerCenter - window.innerHeight * 1.05, 0));
-      await frames(2);
-      const preTurn = { scrollY: window.scrollY, bannerCenterOffset: bannerOffset() };
-      root.classList.remove("is-snap-suppressed");
-      await frames(2);
-      window.scrollBy(0, Math.floor(window.innerHeight * 0.4));
+      window.scrollTo(0, Math.max(bannerCenter - window.innerHeight * 1.25, 0));
+      await frames(8);
+      const nudge = Math.floor(window.innerHeight * 0.42);
+      const beforeNudge = window.scrollY;
+      window.scrollBy(0, nudge);
       await frames(24);
+      return { scrollY: window.scrollY, expected: beforeNudge + nudge };
+    });
+    assert(
+      Math.abs(pageTurn.scrollY - pageTurn.expected) <= 8,
+      `${viewport.label}: downward nudge near banner must stay native (${JSON.stringify(pageTurn)})`,
+    );
+
+    // 上滑全程原生: 位移恒等于请求值, scroll-snap-type 恒为 none
+    const upwardNative = await page.evaluate(async () => {
+      const root = document.documentElement;
+      const frames = (count) =>
+        new Promise((resolve) => {
+          const tick = () => {
+            if (count <= 0) {
+              resolve();
+              return;
+            }
+            count -= 1;
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+      const step = Math.floor(window.innerHeight * 0.3);
+      const before = window.scrollY;
+      window.scrollBy(0, -step);
+      await frames(16);
       return {
-        scrollY: window.scrollY,
-        bannerCenterOffset: bannerOffset(),
-        preTurn,
+        before,
+        after: window.scrollY,
+        expected: before - step,
+        snapType: getComputedStyle(root).scrollSnapType,
       };
     });
     assert(
-      pageTurn.bannerCenterOffset !== null && pageTurn.bannerCenterOffset <= 48,
-      `${viewport.label}: page turn did not settle on banner (${JSON.stringify(pageTurn)})`,
+      Math.abs(upwardNative.after - upwardNative.expected) <= 8 &&
+        upwardNative.snapType === "none",
+      `${viewport.label}: upward scroll must be native (${JSON.stringify(upwardNative)})`,
     );
+
+    // 视频区原生滚动: media-record 下方连续小步向下, 每步位移 = 请求位移
+    const reelNative = await page.evaluate(async () => {
+      const frames = (count) =>
+        new Promise((resolve) => {
+          const tick = () => {
+            if (count <= 0) {
+              resolve();
+              return;
+            }
+            count -= 1;
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+      const media = document.querySelector('[data-snap-scene="media-record"]');
+      window.scrollTo(0, media.getBoundingClientRect().top + window.scrollY);
+      await frames(4);
+      const step = Math.floor(window.innerHeight * 0.3);
+      const steps = [];
+      for (let i = 0; i < 4; i += 1) {
+        const beforeStep = window.scrollY;
+        window.scrollBy(0, step);
+        await frames(10);
+        steps.push({ moved: window.scrollY - beforeStep });
+      }
+      return { steps, requested: step };
+    });
     assert(
-      (pageTurn.preTurn?.bannerCenterOffset ?? 0) > 48,
-      `${viewport.label}: page-turn start already on banner (${JSON.stringify(pageTurn.preTurn)})`,
+      reelNative.steps.every(
+        (entry) => Math.abs(entry.moved - reelNative.requested) <= 8,
+      ),
+      `${viewport.label}: reel area must scroll natively (${JSON.stringify(reelNative)})`,
     );
 
     const transformTail = await page.evaluate(async () => {
@@ -363,7 +516,7 @@ try {
     );
 
     console.log(
-      `[${viewport.label}] ${JSON.stringify({ contract, navTop, positionStability, pageTurn, transformTail })}`,
+      `[${viewport.label}] ${JSON.stringify({ contract, navTop, positionStability, intraChapter, pageTurn, upwardNative, reelNative, transformTail })}`,
     );
     await page.close();
   }
@@ -385,4 +538,4 @@ try {
   await browser.close();
 }
 
-console.log("[ok] 2D pages use limited mandatory page snap without damping");
+console.log("[ok] 2D pages use pure native scrolling (no snap logic)");

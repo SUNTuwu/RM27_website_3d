@@ -85,7 +85,7 @@ export function ZoomParallaxSection() {
       className="relative z-[60] w-full text-foreground"
       id="zoom-parallax-section"
     >
-      {/* snap 只钉标题页, 不要包住 320svh 照片墙, 否则 mandatory 会把画廊拖回顶 */}
+      {/* 导航锚点只钉标题页 (纯原生滚动, 无 snap) */}
       <header
         className="relative flex min-h-[44svh] items-end bg-[linear-gradient(180deg,transparent_0%,rgb(5_8_15/0.55)_42%,rgb(5_8_15/0.35)_72%,transparent_100%)] px-5 pb-8 pt-20 sm:px-8 md:px-12 md:pb-12 xl:px-16"
         data-snap-align="start"

@@ -154,14 +154,22 @@ export function createHud() {
     "s",
   );
 
-  // EXPLORE 右侧滚动引导: 白线数量 / 流星依次下落间隔 / 各阶段时长均由 config 驱动,
-  // 关键帧百分比依赖周期时长, 故在此动态生成
+  // EXPLORE 开源按钮下方滚动引导: 白线数量 / 流星间隔 / 时长由 config 驱动。
+  // enabled=false 时直接隐藏, 不挂动画。
   const setupScrollCue = () => {
     const cue = document.querySelector("#scroll-cue");
     const linesBox = document.querySelector("#scroll-cue-lines");
     const textEl = document.querySelector("#scroll-cue-text");
-    if (!cue || !linesBox) return 0;
+    if (!cue || !linesBox) return { beginTimeOffset: 0, enabled: false };
     const cfg = VISUAL_CONFIG.explore.scrollCue ?? {};
+    const enabled = cfg.enabled !== false && cfg.enabled !== 0;
+    if (!enabled) {
+      cue.hidden = true;
+      cue.setAttribute("aria-hidden", "true");
+      cue.classList.remove("is-active");
+      return { beginTimeOffset: 0, enabled: false };
+    }
+    cue.hidden = false;
     const num = (value, fallback) =>
       Number.isFinite(Number(value)) ? Number(value) : fallback;
     const beginTimeOffset = Math.max(num(cfg.beginTimeOffsetSeconds, 3), 0);
@@ -235,10 +243,12 @@ export function createHud() {
       );
       linesBox.appendChild(line);
     }
-    return beginTimeOffset;
+    return { beginTimeOffset, enabled: true };
   };
   const scrollCueEl = document.querySelector("#scroll-cue");
-  const scrollCueBeginOffset = setupScrollCue();
+  const scrollCueSetup = setupScrollCue();
+  const scrollCueBeginOffset = scrollCueSetup.beginTimeOffset;
+  const scrollCueEnabled = scrollCueSetup.enabled;
   let scrollCueTimer = null;
 
   const stateIndex = document.querySelector("#state-index");
@@ -316,14 +326,14 @@ export function createHud() {
       stateLabel.textContent = meta.label;
       renderHint(isCoarsePointer && meta.touchHint ? meta.touchHint : meta.hint);
       timelineHud.hidden = !(state === "scrub" || state === "focus");
-      // 滚动引导: 进入 EXPLORE 后延迟 beginTimeOffsetSeconds 再激活 (出现时动画从 0 相位启动)
+      // 滚动引导: enabled 时进入 EXPLORE 后延迟再激活; 关闭则保持 hidden
       if (scrollCueEl) {
         if (scrollCueTimer) {
           clearTimeout(scrollCueTimer);
           scrollCueTimer = null;
         }
         scrollCueEl.classList.remove("is-active");
-        if (state === "explore") {
+        if (scrollCueEnabled && state === "explore") {
           scrollCueTimer = setTimeout(() => {
             scrollCueTimer = null;
             scrollCueEl.classList.add("is-active");

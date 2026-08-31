@@ -8,24 +8,6 @@ function clamp01(value) {
   return Math.min(Math.max(value, 0), 1);
 }
 
-/* 程序跳转时短暂关 snap, 避免 mandatory 把 scrollIntoView 拽偏。
-   多等几帧 + 短超时, 等布局/字体稳定后再开 snap。 */
-function withSnapSuppressed(run) {
-  const root = document.documentElement;
-  root.classList.add("is-snap-suppressed");
-  try {
-    run();
-  } finally {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        window.setTimeout(() => {
-          root.classList.remove("is-snap-suppressed");
-        }, 120);
-      });
-    });
-  }
-}
-
 function chapterScrollTarget(chapter) {
   if (!(chapter instanceof Element)) return null;
   if (chapter.hasAttribute("data-snap-scene")) return chapter;
@@ -97,11 +79,10 @@ function setupChapterNav(root, nav) {
       `<span class="archive-nav__label">${chapter.dataset.name}</span>` +
       `<span class="archive-nav__dot" aria-hidden="true"></span>`;
     button.addEventListener("click", () => {
-      withSnapSuppressed(() => {
-        chapterScrollTarget(chapter)?.scrollIntoView({
-          behavior: "auto",
-          block: "start",
-        });
+      // 纯原生滚动: 无 snap, scrollIntoView 即最终落点
+      chapterScrollTarget(chapter)?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
       });
     });
     nav.appendChild(button);

@@ -426,23 +426,39 @@ try {
     await page.waitForTimeout(160);
   }
   await waitState(page, "end", 15_000);
+  // 模拟真实滚轮惯性: 进档后仍有短暂 wheel 余波, 不应掐掉自动滑屏
+  for (let i = 0; i < 4; i += 1) {
+    await page.mouse.wheel(0, 120);
+    await page.waitForTimeout(60);
+  }
   await page.waitForFunction(
     () => {
       const target = document.querySelector("#zoom-parallax-root");
       return (
         document.documentElement.classList.contains("is-document-mode") &&
         target &&
-        Math.abs(target.getBoundingClientRect().top) < 2
+        // 新契约: 99→100 穿越进档后自动向下滚满一整屏揭示距离
+        // (≈zoom 根 offsetTop), 期间测试不发出任何 wheel 输入
+        window.scrollY >= target.offsetTop - 2
       );
     },
     null,
-    { timeout: 5_000 },
+    { timeout: 8_000 },
+  );
+  await page.waitForFunction(
+    () => window.__ENTERPRIZE_DEMO__?.archiveAutoScrollActive === false,
+    null,
+    { timeout: 4_000 },
   );
   const documentModeState = await page.evaluate(() => ({
     renderLoopActive: window.__ENTERPRIZE_DEMO__?.renderLoopActive,
     state: window.__ENTERPRIZE_DEMO__?.state,
     documentMode: document.documentElement.classList.contains("is-document-mode"),
     scrollY: window.scrollY,
+    zoomRootTop: document
+      .querySelector("#zoom-parallax-root")
+      ?.getBoundingClientRect().top,
+    viewportH: window.innerHeight,
     targetY: document.querySelector("#zoom-parallax-root")?.offsetTop ?? null,
     zoomVisibility: getComputedStyle(
       document.querySelector("#zoom-parallax-root"),
@@ -463,16 +479,29 @@ try {
       !documentModeState.documentMode ||
       documentModeState.zoomVisibility !== "visible" ||
       documentModeState.unitSiteVisibility !== "visible" ||
-      Math.abs(documentModeState.scrollY - documentModeState.targetY) > 3 ||
+      Math.abs(documentModeState.scrollY - documentModeState.targetY) > 2 ||
+      Math.abs(
+        documentModeState.zoomRootTop +
+          documentModeState.scrollY -
+          documentModeState.viewportH,
+      ) > 2 ||
+      documentModeState.enteringClass ||
       documentModeState.transitioningClass ||
-      documentModeState.handoffProbe.calls.length !== 1,
-    "timeline_0 completion uses one native scroll, CSS rise, and pauses Three",
+      documentModeState.handoffProbe.calls.length < 2,
+    "timeline_0 completion auto-scrolls one reveal screen into the archive and pauses Three",
     { documentModeState },
   );
-  await page.waitForFunction(
-    () => !document.documentElement.classList.contains("is-document-entering"),
-    null,
-    { timeout: 5_000 },
+  // 反向纯手动: 无输入静置后档案不得自动回 3D, 滚动位置不得漂移
+  await page.waitForTimeout(700);
+  const idleArchiveState = await page.evaluate(() => ({
+    state: window.__ENTERPRIZE_DEMO__?.state,
+    scrollY: window.scrollY,
+  }));
+  failIf(
+    idleArchiveState.state !== "end" ||
+      Math.abs(idleArchiveState.scrollY - documentModeState.scrollY) > 4,
+    "archive stays put without input (2D→3D return remains manual only)",
+    { handoffScrollY: documentModeState.scrollY, idleArchiveState },
   );
 
   await page.waitForFunction(

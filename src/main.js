@@ -29,7 +29,6 @@ import { VISUAL_CONFIG } from "./config.js";
 
 const ASSEMBLE_DURATION = 2.6;
 const SCAN_DURATION = 3.2;
-const DOCUMENT_ENTER_DURATION_MS = 2100;
 const DOCUMENT_CANVAS_PARALLAX_RATIO = 0.14;
 const EXPLORE_P1_DELAY_MS = 550;
 const EXPLORE_CLOUD_BOOT_BUDGET_MS = 1_200;
@@ -1139,7 +1138,6 @@ async function boot({
           timeline.resumeFromCameraOverride();
           timelineHandoffThisFrame = true;
           archiveAutoEntryArmed = false;
-          archiveAutoEntryRequiresInput = true;
         }
       });
 
@@ -1274,8 +1272,7 @@ async function boot({
 
   // ---------- 全局状态机 ----------
   let state = "boot";
-  let documentEnterTimer = 0;
-  let documentEnterInProgress = false;
+  let lastDocumentScrollY = 0;
 
   function updateDocumentParallax(scrollY = window.scrollY) {
     const revealDistance = Math.max(documentIntro.offsetTop, 1);
@@ -1288,57 +1285,21 @@ async function boot({
     );
   }
 
-  function stopDocumentEnter() {
-    if (documentEnterTimer) {
-      window.clearTimeout(documentEnterTimer);
-      documentEnterTimer = 0;
-    }
-    documentEnterInProgress = false;
-    document.documentElement.classList.remove("is-document-entering");
+  function armArenaEnterSnap() {
+    document.documentElement.classList.add("is-arena-enter");
   }
 
-  // 一次原生 scrollTo 定位到 2D 起点, 再用 CSS 上移动画消掉瞬切闪现。
-  // 关键: 先挂 is-document-entering (opacity 0 起点), 再露 2D / scrollTo,
-  // 避免「整页先闪一下再上滑」。
-  function positionUnitArchive({ animate = true } = {}) {
-    if (documentEnterTimer) {
-      window.clearTimeout(documentEnterTimer);
-      documentEnterTimer = 0;
-    }
+  function clearArenaEnterSnap() {
+    document.documentElement.classList.remove("is-arena-enter");
+  }
 
-    const root = document.documentElement;
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const shouldAnimate = animate && !reduceMotion;
-
-    if (shouldAnimate) {
-      documentEnterInProgress = true;
-      // 先卸再挂, 保证每次交接都能重启动画
-      root.classList.remove("is-document-entering");
-      void root.offsetWidth;
-      root.classList.add("is-document-entering");
-    } else {
-      documentEnterInProgress = false;
-      root.classList.remove("is-document-entering");
-    }
-
-    // 强制把 entering 的 from 关键帧提交后再 scroll, 同一帧内不会先画出静止 2D
-    void root.offsetWidth;
-
-    const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
-    const targetY = Math.min(documentIntro.offsetTop, maxScrollY);
-    window.scrollTo(0, targetY);
-    updateDocumentParallax(targetY);
-
-    if (!shouldAnimate) {
-      return;
-    }
-
-    documentEnterTimer = window.setTimeout(() => {
-      documentEnterTimer = 0;
-      stopDocumentEnter();
-    }, DOCUMENT_ENTER_DURATION_MS + 40);
+  // 3D→2D 交接落点: 文档顶 (scrollY=0)。2D 图层仍在视口下方一屏处,
+  // 滚动量与上升量一一对应; timeline 播完自动进档时由 beginArchiveAutoScroll
+  // 自动滑一屏完成升起, 其余入口 (招新直达 / 手动滚回) 不自动滑。
+  function positionUnitArchive() {
+    lastDocumentScrollY = 0;
+    window.scrollTo(0, 0);
+    updateDocumentParallax(0);
   }
 
   let exploreCloudScheduleToken = 0;
@@ -1414,63 +1375,181 @@ async function boot({
 
   let archiveEntryPending = false;
   let archiveAutoEntryArmed = true;
-  let archiveAutoEntryRequiresInput = false;
-  function enterUnitArchive({
-    animate = true,
-    targetSelector = null,
-  } = {}) {
-    // scrub 自动进档仍要求 idle; EXPLORE 招新按钮可主动打断进 2D
-    const fromExplore = state === "explore" || state === "assemble";
+  let lastTimelineProgress = 0;
+  /* 前进播放进入尾段 (>=0.995) 的锁存: 自动播放首次到 100% 即触发进档;
+     上翻/回退清除, 避免停在尾段时被重新吸回档案 */
+  let timelineForwardEndLatch = false;
+  /* 返场回 SCRUB 后的短暂上行输入吸收窗: 吞掉 2D 贴顶上滚的惯性余波,
+     避免惯性回卷 -> 自动重播 -> 立刻又被抛回档案; 窗口之后主动上翻正常回卷 */
+  let scrubRewindGuardUntil = 0;
+  let archiveEnterGuardUntil = 0;
+  let archiveEntryFromState = null;
+  const ARCHIVE_ENTER_GUARD_MS = 900;
+  const SCRUB_REWIND_GUARD_MS = 700;
+  /* 滚到文档顶即返场; 略放宽避免未完全贴 0 时吸不回去 */
+  const ARCHIVE_RETURN_SCROLL_Y = 48;
+  /* timeline 播完进档后自动滑屏时长: 一屏揭示距离用 1.2s easeInOut 滚完 */
+  const ARCHIVE_AUTO_SCROLL_MS = 1200;
+  let archiveAutoScrollRaf = 0;
+  let archiveAutoScrollToken = 0;
+  let archiveAutoScrollStartedAt = 0;
+  let archiveAutoScrollLastCancel = null;
+
+  function armArchiveEnterGuard(ms = ARCHIVE_ENTER_GUARD_MS) {
+    archiveEnterGuardUntil = Math.max(
+      archiveEnterGuardUntil,
+      performance.now() + ms,
+    );
+  }
+
+  function canReturnToTimelineByScroll() {
+    return (
+      state === "end" &&
+      performance.now() >= archiveEnterGuardUntil &&
+      window.scrollY <= ARCHIVE_RETURN_SCROLL_Y
+    );
+  }
+
+  /* EXPLORE/SCAN 直达 2D 后, 时间轴可能仍在 0、点云仍可见。
+     上滑返场必须先切到完整 SCRUB 战场, 不能裸 setState("scrub") 留在点云。 */
+  function prepareScrubBattlefieldAfterArchive({ pinOverview = false } = {}) {
+    if (!timeline || !deferredAssetsReady) {
+      setState("explore");
+      exploreModels.forEach((entry) => {
+        if (entry.cloud) {
+          entry.cloud.points.visible = entry.cloud === cloud;
+        }
+      });
+      if (cloud) {
+        cloud.points.visible = true;
+        cloud.setProgress?.(1);
+      }
+      backRing.group.visible = true;
+      return "explore";
+    }
+
+    exploreModels.forEach((entry) => {
+      if (!entry.cloud) return;
+      entry.cloud.points.visible = false;
+      entry.cloud.points.rotation.y = 0;
+      entry.cloud.resetScreenMask?.();
+    });
+    if (cloud) cloud.points.visible = false;
+    scanPlane.constant = FAR_SCAN;
+    backRing.group.visible = false;
+    viewOffsetX = 0;
+    viewOffsetY = 0;
+    freeCamera.clearViewOffset?.();
+    scanRequested = false;
+    scanAttachedToTrack = true;
+    scanBlend = 1;
+
+    // 从点云/扫描中段直达招新时, 进度可能仍接近 0: 拉到末段并钉住环视
+    const cameEarly =
+      archiveEntryFromState === "explore" ||
+      archiveEntryFromState === "assemble" ||
+      archiveEntryFromState === "scan" ||
+      !Number.isFinite(timeline.progress) ||
+      timeline.progress < 0.8;
+    if (cameEarly) {
+      timeline.seekImmediate(1);
+    }
+    timeline.setAutoDrive(false);
+    setState("scrub");
+    hud.setTimeline(timeline.progress);
+    lastTimelineProgress = timeline.progress;
+    timelineForwardEndLatch = false;
+    focus?.setHighlightTarget(1);
+    archiveAutoEntryArmed = false;
+    scrubRewindGuardUntil = performance.now() + SCRUB_REWIND_GUARD_MS;
+    if (pinOverview || cameEarly) {
+      lookAround.enterOverview();
+    } else {
+      lookAround.reset();
+    }
+    return "scrub";
+  }
+
+  function enterUnitArchive({ targetSelector = null, autoScroll = false } = {}) {
+    // scrub 自动进档仍要求 idle; 招新 CTA 可从 EXPLORE/SCAN/FOCUS 等主动打断进 2D
+    const interactive3d =
+      state === "explore" ||
+      state === "assemble" ||
+      state === "scan" ||
+      state === "focus" ||
+      state === "scrub";
     if (
       archiveEntryPending ||
-      (state !== "scrub" && !fromExplore) ||
-      (state === "scrub" && !lookAround.isIdle)
+      !interactive3d ||
+      (state === "scrub" && !targetSelector && !lookAround.isIdle)
     ) {
       return;
     }
+    archiveEntryFromState = state;
     archiveAutoEntryArmed = false;
     archiveEntryPending = true;
-    timeline.setAutoDrive(false);
+    timeline?.setAutoDrive?.(false);
     const startArchive = () => {
       archiveEntryPending = false;
       const root = document.documentElement;
-      const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-      const shouldAnimate = animate && !reduceMotion;
-      // 先锁住 entering, 再打开 document-mode 可见性, 杜绝首帧整页闪现
-      if (shouldAnimate) {
-        documentEnterInProgress = true;
-        root.classList.add("is-document-entering");
-      }
+      // 进档保护窗: 避免 scrollY 仍≈0 / 布局未稳时被 returnToTimeline 立刻弹回 3D
+      armArchiveEnterGuard();
       setState("end");
+      if (!targetSelector) armArenaEnterSnap();
       root.classList.add("is-document-mode");
       window.dispatchEvent(new Event("enterprize:zoom-activate"));
       releasePageScroll();
       if (targetSelector) {
-        // 直达招新坐标: 关 snap 后跳目标, 不做 sheet rise, 避免先停在 BEYOND
-        stopDocumentEnter();
-        root.classList.add("is-snap-suppressed");
-        const target =
-          document.querySelector(targetSelector) ??
-          document.querySelector("#archive-join") ??
-          documentIntro;
-        const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
-        const top =
-          target instanceof Element
-            ? target.getBoundingClientRect().top + window.scrollY
-            : documentIntro.offsetTop;
-        window.scrollTo(0, Math.min(Math.max(top, 0), maxScrollY));
-        updateDocumentParallax(window.scrollY);
-        window.requestAnimationFrame(() => {
+        // 直达招新坐标: 原生滚动直接跳目标, 不做 sheet rise, 避免先停在 BEYOND
+        // 保护窗期间不允许 scrollY<=48 上滚返场
+        const measureAndJump = () => {
+          const target =
+            document.querySelector(targetSelector) ??
+            document.querySelector("#archive-join") ??
+            document.querySelector("#archive-hero") ??
+            documentIntro;
+          const maxScrollY = Math.max(root.scrollHeight - window.innerHeight, 0);
+          const fallbackY = Math.min(
+            Math.max(documentIntro?.offsetTop ?? window.innerHeight, window.innerHeight * 0.8),
+            maxScrollY,
+          );
+          let top = fallbackY;
+          if (target instanceof Element) {
+            const measured =
+              target.getBoundingClientRect().top + window.scrollY;
+            // 布局未展开时 measured 可能≈0, 回退到档案起点, 绝不用 0 (会触发返场)
+            top = measured > ARCHIVE_RETURN_SCROLL_Y + 1 ? measured : fallbackY;
+          }
+          lastDocumentScrollY = Math.min(Math.max(top, 0), maxScrollY);
+          window.scrollTo(0, Math.min(Math.max(top, 0), maxScrollY));
+          updateDocumentParallax(window.scrollY);
+          armArchiveEnterGuard();
           window.requestAnimationFrame(() => {
-            window.setTimeout(() => {
-              root.classList.remove("is-snap-suppressed");
-            }, 120);
+            window.requestAnimationFrame(() => {
+              // 二次校准: document-mode 下 margin/图片可能改变目标 y
+              if (target instanceof Element) {
+                const corrected =
+                  target.getBoundingClientRect().top + window.scrollY;
+                if (Math.abs(corrected - window.scrollY) > 8) {
+                  lastDocumentScrollY = Math.min(
+                    Math.max(corrected, 0),
+                    maxScrollY,
+                  );
+                  window.scrollTo(
+                    0,
+                    Math.min(Math.max(corrected, 0), maxScrollY),
+                  );
+                  updateDocumentParallax(window.scrollY);
+                }
+              }
+            });
           });
-        });
+        };
+        // 等 document-mode 可见性/布局提交后再量坐标
+        window.requestAnimationFrame(measureAndJump);
       } else {
-        positionUnitArchive({ animate: shouldAnimate });
+        positionUnitArchive();
+        if (autoScroll) beginArchiveAutoScroll();
       }
       stage.pause();
     };
@@ -1489,13 +1568,66 @@ async function boot({
 
   function jumpToRecruitCoords() {
     enterUnitArchive({
-      animate: false,
       targetSelector: "#archive-coords",
+    });
+  }
+
+  /* 3D→2D 自动滑屏: 只在 timeline 99→100 穿越 (或 100% 处主动下滑) 进档后触发,
+     rAF 驱动向下滚一整屏 (交接揭示距离), 让 2D 图层自动从底部升起。
+     任何滚轮/触摸/键盘输入立即取消并交还原生滚动; 2D→3D 反向永远手动。 */
+  function cancelArchiveAutoScroll(reason = "input") {
+    archiveAutoScrollLastCancel = { reason, at: performance.now() };
+    archiveAutoScrollToken += 1;
+    if (archiveAutoScrollRaf) {
+      window.cancelAnimationFrame(archiveAutoScrollRaf);
+      archiveAutoScrollRaf = 0;
+    }
+  }
+
+  function beginArchiveAutoScroll() {
+    cancelArchiveAutoScroll();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+    const token = archiveAutoScrollToken;
+    // 等 document-mode 布局提交后再量目标 (与招新直达的二次校准同理)
+    window.requestAnimationFrame(() => {
+      if (token !== archiveAutoScrollToken) return;
+      window.requestAnimationFrame(() => {
+        if (token !== archiveAutoScrollToken || state !== "end") return;
+        const maxScrollY = Math.max(
+          document.documentElement.scrollHeight - window.innerHeight,
+          0,
+        );
+        const target = Math.min(
+          Math.max(documentIntro?.offsetTop ?? window.innerHeight, 0),
+          maxScrollY,
+        );
+        const startY = window.scrollY;
+        if (target - startY <= ARCHIVE_RETURN_SCROLL_Y) return;
+        archiveAutoScrollStartedAt = performance.now();
+        const tick = (now) => {
+          if (token !== archiveAutoScrollToken || state !== "end") {
+            archiveAutoScrollRaf = 0;
+            return;
+          }
+          const p = Math.min(
+            (now - archiveAutoScrollStartedAt) / ARCHIVE_AUTO_SCROLL_MS,
+            1,
+          );
+          const eased =
+            p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+          window.scrollTo(0, Math.round(startY + (target - startY) * eased));
+          archiveAutoScrollRaf = p < 1 ? window.requestAnimationFrame(tick) : 0;
+        };
+        archiveAutoScrollRaf = window.requestAnimationFrame(tick);
+      });
     });
   }
 
   document.querySelector("#recruit-jump")?.addEventListener("click", (event) => {
     event.preventDefault();
+    event.stopPropagation();
     jumpToRecruitCoords();
   });
 
@@ -1503,14 +1635,18 @@ async function boot({
     if (state !== "end") {
       return;
     }
-    stopDocumentEnter();
+    if (performance.now() < archiveEnterGuardUntil) {
+      return;
+    }
+    cancelArchiveAutoScroll("return-timeline");
+    clearArenaEnterSnap();
+    lastDocumentScrollY = 0;
     stage.resume();
     window.scrollTo(0, 0);
     document.documentElement.classList.remove("is-document-mode");
     document.documentElement.style.removeProperty("--document-canvas-shift");
     lockPageScroll();
-    setState("scrub");
-    hud.setTimeline(timeline.progress);
+    prepareScrubBattlefieldAfterArchive({ pinOverview: false });
   }
 
   const archiveReturnFade = document.querySelector("#archive-return-fade");
@@ -1569,8 +1705,8 @@ async function boot({
   async function returnToArenaOverview() {
     if (state !== "end" || arenaReturnInProgress) return;
     arenaReturnInProgress = true;
+    cancelArchiveAutoScroll("return-arena");
     archiveAutoEntryArmed = false;
-    archiveAutoEntryRequiresInput = true;
     const root = document.documentElement;
     root.dataset.arenaReturnPhase = "covering";
     performance.mark?.("enterprize:arena-return-start");
@@ -1578,17 +1714,14 @@ async function boot({
     try {
       await setArchiveReturnFade(true);
       root.dataset.arenaReturnPhase = "preparing";
-      stopDocumentEnter();
+      clearArenaEnterSnap();
+      lastDocumentScrollY = 0;
       stage.resume();
       window.scrollTo(0, 0);
       root.classList.remove("is-document-mode");
       root.style.removeProperty("--document-canvas-shift");
       lockPageScroll();
-      setState("scrub");
-      hud.setTimeline(timeline.progress);
-      archiveAutoEntryArmed = false;
-      archiveAutoEntryRequiresInput = true;
-      lookAround.enterOverview();
+      prepareScrubBattlefieldAfterArchive({ pinOverview: true });
 
       await waitForTwoFrames();
       root.dataset.arenaReturnPhase = "revealing";
@@ -1611,7 +1744,6 @@ async function boot({
     }
     exploreReloading = true;
     archiveAutoEntryArmed = true;
-    archiveAutoEntryRequiresInput = false;
     timeline.setAutoDrive(false);
     lookAround.reset();
     // 立刻掐灭 SCRUB 脚底 3D 环 + DOM 引导圈, 避免黑场/回 EXPLORE 仍残留
@@ -2081,7 +2213,10 @@ async function boot({
       if (lookAround.isIdle) {
         if (delta > 0) {
           archiveAutoEntryArmed = true;
-          archiveAutoEntryRequiresInput = false;
+          if (timeline.progress >= 0.995) armArenaEnterSnap();
+        } else if (delta < 0) {
+          if (performance.now() < scrubRewindGuardUntil) return; // 返场上滚惯性吸收
+          timelineForwardEndLatch = false; // 尾段主动上翻: 取消自动进档锁存
         }
         timeline.addWheel(delta * 3.2);
       }
@@ -2304,16 +2439,32 @@ async function boot({
         event.preventDefault();
         if (event.deltaY > 0) {
           archiveAutoEntryArmed = true;
-          archiveAutoEntryRequiresInput = false;
+          if (timeline.progress >= 0.995) armArenaEnterSnap();
+        } else if (event.deltaY < 0) {
+          if (performance.now() < scrubRewindGuardUntil) return; // 返场上滚惯性吸收
+          timelineForwardEndLatch = false; // 尾段主动上翻: 取消自动进档锁存
         }
         timeline.addWheel(event.deltaY);
       } else if (state === "focus") {
         event.preventDefault();
         if (Math.abs(event.deltaY) > 4) exitFocus();
       } else if (state === "end") {
-        // 交接动画期间锁住滚轮, 结束后交还给原生滚动
-        if (documentEnterInProgress) {
+        // 自动滑屏期间吞掉滚轮: 推进穿越的惯性余波不再叠加原生滚动把页面推过落点;
+        // 向上滚 = 用户接管, 停掉动画, 之后的滚轮回到原生行为
+        if (archiveAutoScrollRaf !== 0) {
           event.preventDefault();
+          if (event.deltaY < 0) cancelArchiveAutoScroll("wheel-up");
+          return;
+        }
+        // 2D 全程原生滚动, 图层随滚动从屏幕底部升起; 只有贴顶仍向上滚时,
+        // 原生滚动已到顶不会再发 scroll 事件, 由滚轮直接返场
+        if (
+          event.deltaY < 0 &&
+          window.scrollY <= ARCHIVE_RETURN_SCROLL_Y &&
+          performance.now() >= archiveEnterGuardUntil
+        ) {
+          event.preventDefault();
+          returnToTimeline();
         }
       } else if (state === "assemble" || state === "scan" || state === "boot") {
         event.preventDefault();
@@ -2322,22 +2473,64 @@ async function boot({
     { passive: false },
   );
 
+  // 用户接管: 触摸/键盘立即停掉 3D→2D 自动滑屏 (滚轮在主 wheel 处理器里吞掉)
+  window.addEventListener(
+    "touchstart",
+    () => cancelArchiveAutoScroll("touch"),
+    { passive: true },
+  );
+  window.addEventListener("keydown", () => cancelArchiveAutoScroll("keydown"));
+
   window.addEventListener(
     "scroll",
     () => {
+      const currentScrollY = window.scrollY;
+      const scrollingUp = currentScrollY < lastDocumentScrollY;
+      lastDocumentScrollY = currentScrollY;
       if (state === "end") {
-        updateDocumentParallax();
+        updateDocumentParallax(currentScrollY);
       }
-      if (
-        state === "end" &&
-        !documentEnterInProgress &&
-        window.scrollY <= 1
-      ) {
+      // 只有向上回滚贴顶才返场; 进档落顶后的小幅下滑 (scrollY 仍<=48) 不误触
+      if (scrollingUp && canReturnToTimelineByScroll()) {
         returnToTimeline();
       }
     },
     { passive: true },
   );
+
+  // 移动端贴顶时下拉 (上滚意图) 已到滚动边界, 不会产生 scroll 事件,
+  // 用被动触摸监听补返场; 全程 passive, 不接管原生滚动与惯性
+  const ARCHIVE_RETURN_PULL_PX = 64;
+  let topReturnTouchStartY = null;
+  window.addEventListener(
+    "touchstart",
+    (event) => {
+      topReturnTouchStartY =
+        state === "end" && window.scrollY <= ARCHIVE_RETURN_SCROLL_Y
+          ? (event.touches[0]?.clientY ?? null)
+          : null;
+    },
+    { passive: true },
+  );
+  window.addEventListener(
+    "touchmove",
+    (event) => {
+      if (topReturnTouchStartY == null || state !== "end") return;
+      if (performance.now() < archiveEnterGuardUntil) return;
+      const currentY = event.touches[0]?.clientY;
+      if (currentY == null) return;
+      if (currentY - topReturnTouchStartY > ARCHIVE_RETURN_PULL_PX) {
+        topReturnTouchStartY = null;
+        returnToTimeline();
+      }
+    },
+    { passive: true },
+  );
+  const clearTopReturnTouch = () => {
+    topReturnTouchStartY = null;
+  };
+  window.addEventListener("touchend", clearTopReturnTouch, { passive: true });
+  window.addEventListener("touchcancel", clearTopReturnTouch, { passive: true });
 
   // EXPLORE 模型切换: 屏幕箭头按钮 + 键盘左右方向键 / 空格键
   hud.setExploreSwitchHandler((step) => {
@@ -2508,21 +2701,30 @@ async function boot({
         if (lookAroundResult?.finishedThisFrame) {
           timeline.resumeFromCameraOverride();
           timelineHandoffThisFrame = true;
-          // 从 2D 返场后的环视结束仍要求一次输入, 避免立刻又被弹回档案
+          // 从 2D 返场后的环视结束停在尾段: 解除武装, 不立刻又被弹回档案
           if (timeline.progress >= 0.995) {
             archiveAutoEntryArmed = false;
-            archiveAutoEntryRequiresInput = true;
+            timelineForwardEndLatch = false;
           }
         }
       }
-      if (timeline.progress < 0.995) {
-        if (!archiveAutoEntryRequiresInput) archiveAutoEntryArmed = true;
+      const progress = timeline.progress;
+      const crossedTimelineEnd = lastTimelineProgress < 0.995 && progress >= 0.995;
+      if (crossedTimelineEnd) timelineForwardEndLatch = true;
+      lastTimelineProgress = progress;
+      if (progress < 0.995) {
+        timelineForwardEndLatch = false;
+        // 回卷离开尾段即重新武装: 每次自动重播播到 100% 都会再次自动进档
+        archiveAutoEntryArmed = true;
       } else if (
         archiveAutoEntryArmed &&
         timeline.isComplete &&
-        lookAround.isIdle
+        lookAround.isIdle &&
+        (timelineForwardEndLatch ||
+          document.documentElement.classList.contains("is-arena-enter"))
       ) {
-        enterUnitArchive();
+        // 前进播到 100% 自动进档并自动滑屏; 上翻停在尾段不强吸, 除非 3D 里主动下滑
+        enterUnitArchive({ autoScroll: true });
       }
     }
 
@@ -2653,6 +2855,14 @@ async function boot({
     },
     get renderLoopActive() {
       return stage.running;
+    },
+    get archiveAutoScrollActive() {
+      return archiveAutoScrollRaf !== 0;
+    },
+    get archiveAutoScrollLastCancel() {
+      return archiveAutoScrollLastCancel
+        ? { ...archiveAutoScrollLastCancel }
+        : null;
     },
     get introReady() {
       return introControl?.ready ?? !intro;

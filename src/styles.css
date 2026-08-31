@@ -158,60 +158,11 @@ html.is-document-mode .pulse-guide {
   display: none;
 }
 
-/* 2D 分页感: 显式 data-snap-scene 用 mandatory + always,
-   一次下滑自然落到下一页; 交接/程序跳转期间关 snap, 避免互抢 */
-html.is-document-mode:not(.is-document-entering):not(.is-snap-suppressed) {
-  scroll-padding-block: 0;
-  scroll-snap-type: y mandatory;
-}
-
-html.is-document-entering,
-html.is-snap-suppressed {
-  scroll-snap-type: none;
-  overscroll-behavior-y: none;
-}
-
-[data-snap-scene] {
-  scroll-snap-stop: always;
-}
-
-/* 前两段(3D 落地 BEYOND / BEYOND→WHO WE ARE) 吸力放软:
-   normal 允许惯性穿过, 不强制每页必停; 后面章节仍 always */
-[data-snap-scene="beyond-arena"],
-[data-snap-scene="who-we-are"] {
-  scroll-snap-stop: normal;
-}
-
-[data-snap-align="start"] {
-  scroll-snap-align: start;
-}
-
-[data-snap-align="center"] {
-  scroll-snap-align: center;
-}
-
-/* 个别 snap 落点微调 (scroll-margin-top 正值 = 落点再往下留空;
-   负值 = 允许多滚一点, 把上方折线顶出视口)
-   调这里即可, 不用改 HTML:
-   --snap-who-we-are-offset : WHO WE ARE 折线不要露在顶边 (负值) */
+/* 2D 全程原生滚动: 不使用任何 scroll-snap / 吸附逻辑 (已按需求移除)。
+   data-snap-scene 仅作章节导航定位锚点, 不再有吸附行为。
+   文档模式下禁止 overscroll 串扰 (下拉刷新 / 橡皮筋链接)。 */
 html.is-document-mode {
-  --snap-who-we-are-offset: -56px; /* ≈ -(fold 46px + 余量), 把折线顶出视口 */
-}
-
-[data-snap-scene="who-we-are"] {
-  scroll-margin-top: var(--snap-who-we-are-offset);
-}
-
-@media (max-width: 767px) {
-  html.is-document-mode {
-    --snap-who-we-are-offset: -48px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.is-document-mode {
-    scroll-snap-type: none;
-  }
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -486,16 +437,18 @@ body {
 
 /* ---------- Top-right HUD: 开源档案 + 招新 CTA + state chip ----------
    调参位置 (桌面默认):
-   --hud-top-right-top     距顶
-   --hud-top-right-right   距右 (越大离右缘越远)
-   --hud-top-right-gap     开源/招新/state-chip 间距
-   --recruit-jump-pad-y/x  按钮内边距 (越大按钮越大)
-   --recruit-jump-font-size 按钮字号
+   --hud-top-right-top       距顶
+   --hud-top-right-right     距右 (越大离右缘越远)
+   --hud-top-right-gap       开源 ↔ 招新 横向间距 (保持)
+   --hud-top-right-chip-gap  招新 ↔ POINT CLOUD 间距 (加倍)
+   --recruit-jump-pad-y/x    按钮内边距 (越大按钮越大)
+   --recruit-jump-font-size  按钮字号
 */
 :root {
   --hud-top-right-top: 40px;
   --hud-top-right-right: 64px; /* 距右缘 */
-  --hud-top-right-gap: 28px; /* 开源/招新/state-chip 间距 (原 14×2) */
+  --hud-top-right-gap: 14px; /* 开源 ↔ 招新 */
+  --hud-top-right-chip-gap: 28px; /* 招新 ↔ state-chip (原 gap 14 加倍) */
   --recruit-jump-pad-y: 11px;
   --recruit-jump-pad-x: 22px;
   --recruit-jump-font-size: 15px;
@@ -508,8 +461,24 @@ body {
   right: var(--hud-top-right-right);
   z-index: 45;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  gap: var(--hud-top-right-chip-gap);
+  pointer-events: none;
+}
+
+/* 开源 / 招新同一行同级; 流星 cue 只挂在开源列下方 */
+.hud-top-right__actions {
+  display: flex;
+  align-items: flex-start;
   gap: var(--hud-top-right-gap);
+  pointer-events: none;
+}
+
+.hud-top-right__open-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
   pointer-events: none;
 }
 
@@ -595,26 +564,28 @@ body {
   filter: brightness(0.92);
 }
 
-/* EXPLORE + 全局交互(scrub/focus/scan/end) 都显示; boot / 2D 文档态隐藏 */
+/* 仅 3D 交互态显示招新/开源 (assemble/explore/scan/scrub)。
+   end/document-mode 与 BEYOND 叠层时按钮在 canvas 背后点不到, 必须隐藏;
+   FOCUS 也不显示, 避免抢操作。 */
 #app[data-state="assemble"] .recruit-jump,
 #app[data-state="explore"] .recruit-jump,
 #app[data-state="scan"] .recruit-jump,
 #app[data-state="scrub"] .recruit-jump,
-#app[data-state="focus"] .recruit-jump,
-#app[data-state="end"] .recruit-jump,
 #app[data-state="assemble"] .opensource-jump,
 #app[data-state="explore"] .opensource-jump,
 #app[data-state="scan"] .opensource-jump,
-#app[data-state="scrub"] .opensource-jump,
-#app[data-state="focus"] .opensource-jump,
-#app[data-state="end"] .opensource-jump {
+#app[data-state="scrub"] .opensource-jump {
   display: inline-flex;
 }
 
 html.is-document-mode .recruit-jump,
 html.is-document-mode .opensource-jump,
 #app[data-state="boot"] .recruit-jump,
-#app[data-state="boot"] .opensource-jump {
+#app[data-state="boot"] .opensource-jump,
+#app[data-state="focus"] .recruit-jump,
+#app[data-state="focus"] .opensource-jump,
+#app[data-state="end"] .recruit-jump,
+#app[data-state="end"] .opensource-jump {
   display: none;
 }
 
@@ -690,6 +661,17 @@ html.is-document-mode .opensource-jump,
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.42s ease,
+    visibility 0.42s ease;
+}
+
+/* FOCUS 退出: 与 focus-panel 同步淡出, 不要拖到最后才消失 */
+#app[data-focus-leaving="true"] .hint-bar {
+  opacity: 0;
+  visibility: hidden;
 }
 
 /* EXPLORE 正下方提示框无用, 直接隐藏; 其它阶段仍用 hint-bar */
@@ -1281,22 +1263,28 @@ html.is-document-mode .explore-panel,
   text-shadow: 0 1px 8px rgba(5, 7, 13, 0.9);
 }
 
-/* ---------- Scroll cue (EXPLORE 右侧流星白线 + 竖排引导文字) ---------- */
-/* 动画关键帧由 hud.js 依据 VISUAL_CONFIG.explore.scrollCue 动态生成 */
+/* ---------- Scroll cue (挂在开源档案按钮下方: 流星白线 + 竖排引导文字) ---------- */
+/* 动画关键帧由 hud.js 依据 VISUAL_CONFIG.explore.scrollCue 动态生成;
+   enabled=false 时整块不显示 (见 .scroll-cue[hidden] / setupScrollCue) */
 
 .scroll-cue {
-  position: absolute;
-  top: 0;
-  right: var(--scroll-cue-right, 33.3vw);
-  height: min(62vh, 540px);
+  position: relative;
+  top: auto;
+  right: auto;
+  height: min(48vh, 420px);
   display: flex;
   align-items: stretch;
+  justify-content: flex-end;
   gap: 18px;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.6s ease, visibility 0.6s ease;
   pointer-events: none;
   user-select: none;
+}
+
+.scroll-cue[hidden] {
+  display: none !important;
 }
 
 /* is-active 由 hud.js 在进入 EXPLORE 并经过 beginTimeOffsetSeconds 后添加 */
@@ -1658,31 +1646,13 @@ html.is-document-mode .unit-site {
   margin-top: -100svh;
 }
 
-/* 3D→2D 交接: 文档层从透明+下方升起, 进入期间关 snap。
-   from 必须 opacity:0, 且 JS 先挂 entering 再露 document-mode, 否则会先闪静止 2D */
-html.is-document-mode.is-document-entering #zoom-parallax-root,
-html.is-document-mode.is-document-entering #unit-site {
-  animation: document-sheet-rise 2100ms cubic-bezier(0.16, 0.84, 0.18, 1) both;
-  will-change: transform, opacity;
-  pointer-events: none;
-}
-
-@keyframes document-sheet-rise {
-  from {
-    transform: translate3d(0, 36vh, 0);
-    opacity: 0;
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.is-document-mode.is-document-entering #zoom-parallax-root,
-  html.is-document-mode.is-document-entering #unit-site {
-    animation: none;
-  }
+/* 3D→2D 交接: 进档落在文档顶 (scrollY=0), 2D 图层初始位于视口下方一屏,
+   上升量与滚动量一一对应; timeline 播完自动进档时由 rAF 自动滑一屏完成升起
+   (见 main.js beginArchiveAutoScroll), 其余时刻交给用户原生滚动。
+   触屏上视口被冻结 canvas 覆盖, 必须放行纵向原生滚动。 */
+html.is-document-mode #scene-canvas {
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
 }
 
 html.is-document-mode #app {
@@ -1723,7 +1693,8 @@ html.is-document-mode #scene-canvas {
   :root {
     --hud-top-right-top: 26px;
     --hud-top-right-right: 36px;
-    --hud-top-right-gap: 20px;
+    --hud-top-right-gap: 10px; /* 开源 ↔ 招新 */
+    --hud-top-right-chip-gap: 20px; /* 招新 ↔ POINT CLOUD (gap 加倍) */
     --recruit-jump-pad-y: 9px;
     --recruit-jump-pad-x: 16px;
     --recruit-jump-font-size: 13px;
@@ -1901,16 +1872,19 @@ html.is-document-mode #scene-canvas {
     font-size: 10px;
   }
 
+  /* FOCUS 底栏: 宽度跟文字, 左右不贴边 */
   #app[data-state="focus"] .hint-bar {
-    right: 14px;
+    left: 50%;
+    right: auto;
     bottom: calc(min(31svh, 250px) + 12px);
-    left: 14px;
-    width: calc(100vw - 28px);
-    max-width: none;
-    transform: none;
+    width: max-content;
+    max-width: calc(100vw - 48px);
+    transform: translateX(-50%);
     justify-content: center;
-    overflow: hidden;
+    overflow: visible;
+    white-space: nowrap;
     font-size: 10px;
+    padding: 8px 14px;
   }
 
 }
