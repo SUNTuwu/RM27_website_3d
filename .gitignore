@@ -33,6 +33,7 @@ REF_PIC/
 # Browser test output
 playwright-report/
 test-results/
+scripts/out/
 
 AGENT.md
 shots/

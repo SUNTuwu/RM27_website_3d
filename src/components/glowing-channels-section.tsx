@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUpRight,
   Camera,
@@ -9,14 +10,17 @@ import {
   CodeXml,
   Copy,
   Mail,
-  MessageCircle,
   QrCode,
   Tv,
+  Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { cn } from "@/lib/utils";
+
+const WECHAT_GROUP_QR_SRC = "/assets/images/wx/qrcode.webp";
 
 type Channel = {
   label: string;
@@ -27,15 +31,18 @@ type Channel = {
     | { kind: "link"; href: string; action: string }
     | { kind: "copy"; copyText: string }
     | { kind: "static"; action: string }
+    | { kind: "qr"; action: string; qrSrc: string; qrAlt: string }
   );
 
 const CHANNELS: readonly Channel[] = [
   {
-    kind: "copy",
-    label: "QQ 招新群",
-    value: "581184202",
-    copyText: "581184202",
-    icon: MessageCircle,
+    kind: "qr",
+    label: "微信招新群",
+    value: "扫码加入 RM2027 招新群",
+    action: "VIEW QR",
+    qrSrc: WECHAT_GROUP_QR_SRC,
+    qrAlt: "RM2027 微信招新群二维码",
+    icon: Users,
   },
   {
     kind: "link",
@@ -87,6 +94,7 @@ const pillClass = cn(
 
 function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const Icon = channel.icon;
 
   const handleCopy = async () => {
@@ -105,7 +113,54 @@ function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
     window.setTimeout(() => setCopied(false), 1600);
   };
 
-  const body = (
+  const pill =
+    channel.kind === "copy" ? (
+      <button type="button" onClick={handleCopy} className={cn(pillClass, "cursor-pointer")}>
+        {copied ? (
+          <Check className="h-3.5 w-3.5" strokeWidth={2} />
+        ) : (
+          <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+        )}
+        {copied ? "COPIED" : "COPY"}
+      </button>
+    ) : (
+      <span className={pillClass}>
+        {channel.action}
+        {channel.kind === "qr" ? (
+          <QrCode className="h-3.5 w-3.5" strokeWidth={1.75} />
+        ) : (
+          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        )}
+      </span>
+    );
+
+  const body =
+    channel.kind === "qr" ? (
+      <span className="flex items-stretch justify-between gap-4">
+        <span className="flex min-w-0 flex-col gap-2.5">
+          <span className="flex items-center justify-between gap-3">
+            <span className="[font-family:var(--archive-font-en)] text-[11px] tracking-[0.2em] text-muted-foreground">
+              {channel.label}
+            </span>
+            <Icon
+              className="h-4 w-4 shrink-0 text-muted-foreground/70"
+              strokeWidth={1.75}
+            />
+          </span>
+          <b className="text-lg font-bold leading-snug text-foreground [overflow-wrap:anywhere]">
+            {channel.value}
+          </b>
+          {pill}
+        </span>
+        <img
+          src={channel.qrSrc}
+          alt={channel.qrAlt}
+          loading="lazy"
+          decoding="async"
+          className="h-24 w-24 shrink-0 self-center rounded-lg border border-border/60 bg-white object-contain p-1.5 sm:h-28 sm:w-28"
+        />
+      </span>
+    ) : (
     <>
       <div className="flex items-center justify-between gap-3">
         <span className="[font-family:var(--archive-font-en)] text-[11px] tracking-[0.2em] text-muted-foreground">
@@ -119,21 +174,7 @@ function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
       <b className="text-lg font-bold leading-snug text-foreground [overflow-wrap:anywhere]">
         {channel.value}
       </b>
-      {channel.kind === "copy" ? (
-        <button type="button" onClick={handleCopy} className={cn(pillClass, "cursor-pointer")}>
-          {copied ? (
-            <Check className="h-3.5 w-3.5" strokeWidth={2} />
-          ) : (
-            <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-          )}
-          {copied ? "COPIED" : "COPY"}
-        </button>
-      ) : (
-        <span className={pillClass}>
-          {channel.action}
-          <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </span>
-      )}
+      {pill}
     </>
   );
 
@@ -177,11 +218,107 @@ function ChannelCard({ channel, index }: { channel: Channel; index: number }) {
           >
             {body}
           </a>
+        ) : channel.kind === "qr" ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setQrOpen(true)}
+              aria-haspopup="dialog"
+              aria-label={`${channel.label}：点开查看二维码`}
+              className={cn(cardClass, "w-full cursor-pointer text-left")}
+              data-channel-card
+            >
+              {body}
+            </button>
+            <QrLightbox
+              open={qrOpen}
+              onClose={() => setQrOpen(false)}
+              src={channel.qrSrc}
+              alt={channel.qrAlt}
+            />
+          </>
         ) : (
           <div className={cardClass} data-channel-card>{body}</div>
         )}
       </div>
     </motion.li>
+  );
+}
+
+function QrLightbox({
+  open,
+  onClose,
+  src,
+  alt,
+}: {
+  open: boolean;
+  onClose: () => void;
+  src: string;
+  alt: string;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+
+  // 注意: 不要用 is-scroll-locked 锁背景滚动 —— 该锁会让 html 高度塌缩、
+  // scrollY 归零, 触发 2D→3D 返场, 浮层背景会从招新档案跳回 3D 赛场
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label={alt}
+          className="fixed inset-0 z-[300] flex items-center justify-center p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <button
+            type="button"
+            aria-label="关闭二维码浮层"
+            onClick={onClose}
+            className="absolute inset-0 cursor-zoom-out bg-black/75 backdrop-blur-sm"
+          />
+          <motion.figure
+            className="relative m-0 flex flex-col items-center gap-4"
+            initial={{ opacity: 0, scale: 0.92, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="[font-family:var(--archive-font-en)] text-[11px] tracking-[0.25em] text-[#7fd4ff]">
+              WECHAT GROUP
+            </span>
+            <img
+              src={src}
+              alt={alt}
+              className="w-[min(72vw,320px)] rounded-xl bg-white p-3 shadow-2xl"
+            />
+            <figcaption className="text-sm text-white/85">
+              微信扫码，加入 RM2027 招新群
+            </figcaption>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="关闭"
+              className="absolute -right-3 -top-3 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/60 text-white/90 backdrop-blur transition-colors hover:bg-[#ff2d4d]"
+            >
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </motion.figure>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }
 
