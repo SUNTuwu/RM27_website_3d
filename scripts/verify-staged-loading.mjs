@@ -47,22 +47,45 @@ function check(condition, message, detail) {
 
 try {
   await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
-    timeout: 30_000,
-  });
-
-  const bootSnapshot = await page.evaluate(() => ({
-    state: window.__ENTERPRIZE_DEMO__.state,
-    loadedAssetKeys: window.__ENTERPRIZE_DEMO__.loadedAssetKeys,
-    deferredAssetsReady: window.__ENTERPRIZE_DEMO__.deferredAssetsReady,
+  // Boot reaches the P1 fetch phase and then stalls on the gated model routes.
+  await page.waitForFunction(
+    () => performance.getEntriesByName("enterprize:p1-start").length > 0,
+    null,
+    { timeout: 60_000 },
+  );
+  await page.waitForTimeout(1_000);
+  const gatedSnapshot = await page.evaluate(() => ({
+    demoReady: window.__ENTERPRIZE_DEMO__?.ready === true,
+    loadedAssetKeys: window.__ENTERPRIZE_DEMO__?.loadedAssetKeys ?? [],
+    deferredAssetsReady:
+      window.__ENTERPRIZE_DEMO__?.deferredAssetsReady ?? false,
   }));
   check(
     requests.some((url) => url.includes("/assets/pointcloud/arena_points.bin")),
     "P0 requests the precomputed arena point cloud",
   );
   check(
-    bootSnapshot.loadedAssetKeys.length === 0 && !bootSnapshot.deferredAssetsReady,
-    "P0 becomes ready without a completed glTF asset",
+    !gatedSnapshot.demoReady && gatedSnapshot.loadedAssetKeys.length === 0,
+    "boot holds ARENA READY while P1 glTF assets are gated",
+    gatedSnapshot,
+  );
+
+  releaseModelRequests();
+  await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.ready === true, null, {
+    timeout: 120_000,
+  });
+  const bootSnapshot = await page.evaluate(() => ({
+    state: window.__ENTERPRIZE_DEMO__.state,
+    loadedAssetKeys: window.__ENTERPRIZE_DEMO__.loadedAssetKeys,
+    deferredAssetsReady: window.__ENTERPRIZE_DEMO__.deferredAssetsReady,
+  }));
+  check(
+    bootSnapshot.deferredAssetsReady &&
+      ["arena", "timeline", "hero", "engineer", "infantry", "sentry"].every(
+        (key) => bootSnapshot.loadedAssetKeys.includes(key),
+      ),
+    "boot completes the full P1 glTF warmup before ARENA READY",
+    bootSnapshot,
   );
   check(
     !requests.some((url) => url.includes("/assets/images/hero/arena-fleet.webp")),
@@ -74,18 +97,6 @@ try {
     timeout: 45_000,
   });
   await page.mouse.wheel(0, 600);
-  await page.waitForTimeout(750);
-  check(
-    (await page.evaluate(() => window.__ENTERPRIZE_DEMO__.state)) === "explore",
-    "an early SCAN request remains queued in EXPLORE",
-  );
-
-  releaseModelRequests();
-  await page.waitForFunction(
-    () => window.__ENTERPRIZE_DEMO__?.deferredAssetsReady === true,
-    null,
-    { timeout: 60_000 },
-  );
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "scan", null, {
     timeout: 30_000,
   });

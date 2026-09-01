@@ -81,12 +81,11 @@ try {
   );
   failIf(
     !introPreReadyState.bootstrap?.pointFetchStarted ||
-      introPreReadyState.bootstrap?.runtimeImportStarted ||
-      introPreReadyState.runtimeImportAt !== null ||
+      !introPreReadyState.bootstrap?.runtimeImportStarted ||
+      introPreReadyState.runtimeImportAt === null ||
       introPreReadyState.geometryStartAt !== null ||
-      !pointCloudRequests.some((url) => url.includes("/arena_points.bin")) ||
-      scriptRequests.some((url) => /(?:^|[/\\])three(?:\.module)?\.js(?:[?#]|$)/i.test(url)),
-    "typing starts point-cloud prefetch without importing the Three runtime",
+      !pointCloudRequests.some((url) => url.includes("/arena_points.bin")),
+    "typing window prefetches point data and the 3D runtime chunk in parallel",
     {
       introPreReadyState,
       pointCloudRequests,
@@ -108,6 +107,7 @@ try {
       pointFetchStartAt: lastMark("enterprize:point-fetch-start"),
       pointFetchEndAt: lastMark("enterprize:point-fetch-end"),
       typingCompleteAt: lastMark("enterprize:intro-typing-complete"),
+      completionRevealedAt: lastMark("enterprize:intro-completion-revealed"),
       runtimeImportStartAt: lastMark("enterprize:runtime-import-start"),
       runtimeImportEndAt: lastMark("enterprize:runtime-import-end"),
       pointBufferReadyAt: lastMark("enterprize:point-buffer-ready"),
@@ -126,7 +126,7 @@ try {
   const orderedBootMarks = [
     bootOrderState.introPaintWindowAt,
     bootOrderState.typingCompleteAt,
-    bootOrderState.runtimeImportStartAt,
+    bootOrderState.completionRevealedAt,
     bootOrderState.runtimeImportEndAt,
     bootOrderState.pointBufferReadyAt,
     bootOrderState.geometryStartAt,
@@ -138,11 +138,13 @@ try {
       orderedBootMarks.some(
         (value, index) => index > 0 && value < orderedBootMarks[index - 1],
       ) ||
+      bootOrderState.runtimeImportStartAt === null ||
+      bootOrderState.runtimeImportStartAt > bootOrderState.typingCompleteAt ||
       bootOrderState.pointFetchStartAt === null ||
       bootOrderState.pointFetchEndAt === null ||
       bootOrderState.pointFetchStartAt > bootOrderState.typingCompleteAt ||
       bootOrderState.pointFetchEndAt > bootOrderState.pointBufferReadyAt,
-    "point fetch, typing, runtime import, geometry, and P0 compile have one staged order",
+    "runtime import starts during typing, boot work waits for the completion reveal, and geometry/compile keep one staged order",
     bootOrderState,
   );
 
@@ -172,11 +174,11 @@ try {
       window.__ENTERPRIZE_DEMO__?.exploreCloudKeysReady ?? [],
   }));
   failIf(
-    modelRequests.length !== 0 ||
+    modelRequests.length === 0 ||
       !bootRuntimeState.introReady ||
-      bootRuntimeState.loadedAssetKeys.length !== 0 ||
-      bootRuntimeState.deferredAssetsReady ||
-      bootRuntimeState.archiveIslandsReady ||
+      bootRuntimeState.loadedAssetKeys.length !== 6 ||
+      !bootRuntimeState.deferredAssetsReady ||
+      !bootRuntimeState.archiveIslandsReady ||
       pointCloudRequests.length !== 4 ||
       !["arena", "dart", "infantry", "engineer"].every((key) =>
         pointCloudRequests.some((url) => url.includes(`/${key}_points.bin`)),
@@ -185,7 +187,7 @@ try {
       !["arena", "dart", "infantry", "engineer"].every((key) =>
         bootRuntimeState.exploreCloudKeysReady.includes(key),
       ),
-    "BOOT prebuilds EXPLORE clouds while leaving P1 glTF and 2D islands deferred",
+    "BOOT finishes EXPLORE clouds, P1 glTF warmup, and 2D archive islands before ARENA READY",
     { modelRequests, bootRuntimeState },
   );
 

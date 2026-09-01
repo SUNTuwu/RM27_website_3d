@@ -138,12 +138,12 @@ check(
     main.includes("enterprize:p1-start") &&
     main.includes("DEFERRED_SCENE_LAYER") &&
     main.includes("warmDeferredRoots") &&
-    main.includes("EXPLORE_CLOUD_BOOT_BUDGET_MS") &&
+    main.includes("warmExploreCloudBuffers") &&
     main.includes("prepareRemainingExploreClouds") &&
     main.includes("warmCamera.layers.set(DEFERRED_SCENE_LAYER)") &&
     main.includes("object.frustumCulled = false") &&
     entry.includes("explorePointCloudBufferPromises"),
-  "EXPLORE point artifacts use bounded startup work and isolated GPU warmup",
+  "EXPLORE point artifacts prebuild during boot with isolated GPU warmup",
 );
 check(
   main.includes("returnToArenaOverview") &&

@@ -126,6 +126,18 @@ try {
       null,
       { timeout: 120_000 },
     );
+    const bootP1State = await page.evaluate(() => ({
+      deferredAssetsReady: window.__ENTERPRIZE_DEMO__?.deferredAssetsReady,
+      p1Started:
+        performance.getEntriesByName("enterprize:p1-start").length > 0,
+      p1Ready:
+        performance.getEntriesByName("enterprize:p1-ready").length > 0,
+    }));
+    if (!bootP1State.deferredAssetsReady || !bootP1State.p1Started || !bootP1State.p1Ready) {
+      throw new Error(
+        `Run ${run} did not finish P1 during boot: ${JSON.stringify(bootP1State)}`,
+      );
+    }
     await page.evaluate(() => {
       const probe = { active: true, frames: [] };
       window.__ENTERPRIZE_EXPLORE_FRAME_PROBE__ = probe;
@@ -143,28 +155,13 @@ try {
     await page.waitForFunction(
       () => window.__ENTERPRIZE_DEMO__?.state === "explore",
       null,
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     );
-    await page.waitForFunction(
-      () => performance.getEntriesByName("enterprize:p1-start").length > 0,
-      null,
-      { timeout: 30_000 },
-    );
-    await page.waitForFunction(
-      () => window.__ENTERPRIZE_DEMO__?.deferredAssetsReady === true,
-      null,
-      { timeout: 120_000 },
-    );
-    await page.waitForTimeout(1_500);
+    // Idle EXPLORE sampling window: no background preparation may remain here.
+    await page.waitForTimeout(2_500);
     const idleState = await page.evaluate(() => ({
-      deferredAssetsReady: window.__ENTERPRIZE_DEMO__?.deferredAssetsReady,
-      p1Started:
-        performance.getEntriesByName("enterprize:p1-start").length > 0,
       scanInputAt: performance.now(),
     }));
-    if (!idleState.deferredAssetsReady || !idleState.p1Started) {
-      throw new Error(`Run ${run} did not finish P1 during EXPLORE`);
-    }
     if (mobileViewport) {
       await cdp.send("Input.dispatchTouchEvent", {
         type: "touchStart",
@@ -231,10 +228,21 @@ try {
     const markTime = (name) =>
       raw.marks.find((entry) => entry.name === name)?.startTime ?? null;
     const exploreStart = markTime("enterprize:explore-first-paint");
+    const assembleRequested = markTime("enterprize:assemble-requested");
     const p1Start = markTime("enterprize:p1-start");
     const p1Ready = markTime("enterprize:p1-ready");
-    if (exploreStart === null || p1Start === null || p1Ready === null) {
+    if (
+      exploreStart === null ||
+      assembleRequested === null ||
+      p1Start === null ||
+      p1Ready === null
+    ) {
       throw new Error(`Run ${run} did not emit the required EXPLORE/P1 marks`);
+    }
+    if (p1Ready > exploreStart) {
+      throw new Error(
+        `Run ${run} finished P1 after EXPLORE entry; the boot screen must absorb it`,
+      );
     }
 
     const decorateCadence = (cadence) => ({
@@ -243,16 +251,11 @@ try {
         describeGap(gap, raw.measures, raw.marks, raw.longTasks),
       ),
     });
+    const revealCadence = summarizeFrames(raw.frames, assembleRequested, exploreStart);
     const idleCadence = summarizeFrames(
       raw.frames,
       exploreStart,
       idleState.scanInputAt,
-    );
-    const preparationCadence = summarizeFrames(raw.frames, p1Start, p1Ready);
-    const afterReadyCadence = summarizeFrames(
-      raw.frames,
-      p1Ready,
-      p1Ready + 1_500,
     );
     const report = {
       run,
@@ -260,14 +263,12 @@ try {
         idleExploreBeforeInputMs: Number(
           (idleState.scanInputAt - exploreStart).toFixed(2),
         ),
-        exploreToP1StartMs: Number((p1Start - exploreStart).toFixed(2)),
-        p1ReadyBeforeInputMs: Number((idleState.scanInputAt - p1Ready).toFixed(2)),
+        p1ReadyBeforeExploreMs: Number((exploreStart - p1Ready).toFixed(2)),
         p1DurationMs: Number((p1Ready - p1Start).toFixed(2)),
       },
       cadence: {
+        assembleReveal: decorateCadence(revealCadence),
         idleExplore: decorateCadence(idleCadence),
-        backgroundPreparation: decorateCadence(preparationCadence),
-        afterReady: decorateCadence(afterReadyCadence),
       },
       measures: raw.measures.map((entry) => ({
         name: entry.name,
@@ -303,11 +304,8 @@ try {
               run,
               timings: report.timings,
               cadence: {
+                assembleReveal: compactCadence(report.cadence.assembleReveal),
                 idleExplore: compactCadence(report.cadence.idleExplore),
-                backgroundPreparation: compactCadence(
-                  report.cadence.backgroundPreparation,
-                ),
-                afterReady: compactCadence(report.cadence.afterReady),
               },
               renderer: report.renderer,
               pageErrors,
@@ -324,8 +322,8 @@ try {
 }
 
 const idleMaxima = reports.map((report) => report.cadence.idleExplore.maxMs);
-const preparationMaxima = reports.map(
-  (report) => report.cadence.backgroundPreparation.maxMs,
+const revealMaxima = reports.map(
+  (report) => report.cadence.assembleReveal.maxMs,
 );
 console.log(
   JSON.stringify(
@@ -339,7 +337,7 @@ console.log(
             idleMaxima.length
           ).toFixed(2),
         ),
-        maxBackgroundPreparationFrameGapMs: Math.max(...preparationMaxima),
+        maxAssembleRevealFrameGapMs: Math.max(...revealMaxima),
         rendererMode,
         viewport: mobileViewport ? "mobile" : "desktop",
         note:

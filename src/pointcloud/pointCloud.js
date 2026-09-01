@@ -4,6 +4,8 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { VISUAL_CONFIG } from "../config.js";
 
 const MAX_RIPPLES = 4;
+// 每生成多少个点让出一次主线程, 把 50k 点云的属性填充摊到多个帧切片里
+const ATTRIBUTE_SLICE_SIZE = 4096;
 
 // uScanX 取 ±FAR_SCAN 时表示扫描未开始 / 已全部显示
 export const FAR_SCAN = 1e5;
@@ -108,8 +110,11 @@ const FRAGMENT_SHADER = /* glsl */ `
 /**
  * 从场地实体网格表面采样点云。
  * 点位置 = 实体表面世界坐标, 保证扫描转场时点云与实体空间对齐。
+ *
+ * options.sliceYield: 可选 async 回调, 每填充 ATTRIBUTE_SLICE_SIZE 个点调用一次,
+ * 让加载屏有机会渲染进度; 不传则在单个任务内同步完成。
  */
-function buildPointCloud(
+async function buildPointCloud(
   sourceData,
   {
     count: requestedCount = VISUAL_CONFIG.pointCloud.count,
@@ -117,6 +122,7 @@ function buildPointCloud(
     glow = VISUAL_CONFIG.pointCloud.glow,
     rippleScale = 1,
     recenter = false,
+    sliceYield = null,
   } = {},
   precomputed = false,
 ) {
@@ -174,7 +180,9 @@ function buildPointCloud(
     bounds = merged.boundingBox.clone();
     center = bounds.getCenter(new THREE.Vector3());
     extent = bounds.getSize(new THREE.Vector3());
+    if (sliceYield) await sliceYield(0, requestedCount);
     sampler = new MeshSurfaceSampler(new THREE.Mesh(merged)).build();
+    if (sliceYield) await sliceYield(0, requestedCount);
     positions = new Float32Array(count * 3);
   }
 
@@ -189,6 +197,9 @@ function buildPointCloud(
   const target = new THREE.Vector3();
 
   for (let i = 0; i < count; i++) {
+    if (sliceYield && i > 0 && i % ATTRIBUTE_SLICE_SIZE === 0) {
+      await sliceYield(i, count);
+    }
     if (sampler) {
       sampler.sample(target);
       positions[i * 3] = target.x - pivot.x;

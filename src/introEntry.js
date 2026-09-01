@@ -315,6 +315,16 @@ async function startArena() {
   bootstrap.introMounted = Boolean(intro);
   if (intro) performance.mark?.("enterprize:intro-mounted");
 
+  // Start the 3D runtime import immediately so chunk fetch and module
+  // evaluation overlap the typing window instead of colliding with the
+  // completion copy/CTA reveal that follows typing.
+  bootstrap.runtimeImportStarted = true;
+  performance.mark?.("enterprize:runtime-import-start");
+  const runtimeImportPromise = import("./main.js");
+  // The runtime import is awaited after typing; attach a handler now so an
+  // early failure is never reported as an unhandled rejection.
+  void runtimeImportPromise.catch(() => {});
+
   bootstrap.pointFetchStarted = true;
   reportProgress(0.08, "FETCHING POINT CLOUD");
   performance.mark?.("enterprize:point-fetch-start");
@@ -326,13 +336,13 @@ async function startArena() {
         total > 0
           ? `POINT DATA ${Math.round(pointRatio * 100)}%`
           : `POINT DATA ${Math.max(Math.round(loaded / 1024), 0)} KB`;
-      reportProgress(0.08 + pointRatio * 0.47, detail);
+      reportProgress(0.08 + pointRatio * 0.32, detail);
     },
   )
     .then((buffer) => {
       bootstrap.pointFetchDone = true;
       bootstrap.pointBytes = buffer.byteLength;
-      reportProgress(0.55, "POINT DATA READY");
+      reportProgress(0.4, "POINT DATA READY");
       performance.mark?.("enterprize:point-fetch-end");
       return buffer;
     })
@@ -375,22 +385,25 @@ async function startArena() {
     await intro.control.waitForTypingDone?.();
     if (mode !== "arena") return;
     bootstrap.typingDone = true;
-    reportProgress(0.58, "LOADING 3D RUNTIME");
+    reportProgress(0.45, "LOADING 3D RUNTIME");
     performance.mark?.("enterprize:intro-typing-complete");
+    // Let the completion copy/CTA reveal run on an idle main thread; the
+    // sliced boot work starts only after the reveal settles.
+    await intro.control.waitForCompletionRevealed?.();
+    if (mode !== "arena") return;
+    performance.mark?.("enterprize:intro-completion-revealed");
     await waitForNextPaint();
     if (mode !== "arena") return;
   }
 
-  bootstrap.runtimeImportStarted = true;
-  reportProgress(0.62, "LOADING 3D RUNTIME");
-  performance.mark?.("enterprize:runtime-import-start");
-  const { startArenaRuntime } = await import("./main.js");
+  reportProgress(0.48, "LOADING 3D RUNTIME");
+  const { startArenaRuntime } = await runtimeImportPromise;
   if (mode !== "arena") return;
   bootstrap.runtimeImported = true;
-  reportProgress(0.76, "BUILDING POINT CLOUD");
+  reportProgress(0.52, "BUILDING POINT CLOUD");
   performance.mark?.("enterprize:runtime-import-end");
 
-  reportProgress(0.82, "COMPILING ARENA SCENE");
+  reportProgress(0.55, "COMPILING ARENA SCENE");
   await startArenaRuntime({
     intro,
     pointCloudUrl,

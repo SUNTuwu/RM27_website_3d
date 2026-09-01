@@ -22,11 +22,19 @@ export function mountIntroScreen({
   const typingDonePromise = new Promise<void>((resolve) => {
     resolveTypingDone = resolve;
   });
+  let resolveCompletionRevealed: (() => void) | null = null;
+  const completionRevealedPromise = new Promise<void>((resolve) => {
+    resolveCompletionRevealed = resolve;
+  });
   const markTypingDone = () => {
     if (control.typingDone) return;
     control.typingDone = true;
     resolveTypingDone?.();
     resolveTypingDone = null;
+  };
+  const markCompletionRevealed = () => {
+    resolveCompletionRevealed?.();
+    resolveCompletionRevealed = null;
   };
   const control: IntroControl = {
     ready,
@@ -38,6 +46,7 @@ export function mountIntroScreen({
       control.ready = nextReady;
     },
     waitForTypingDone: () => typingDonePromise,
+    waitForCompletionRevealed: () => completionRevealedPromise,
   };
   reactRoot = createRoot(container);
   reactRoot.render(
@@ -46,6 +55,7 @@ export function mountIntroScreen({
       ready={ready}
       onLaunch={onLaunch}
       onTypingDone={markTypingDone}
+      onCompletionRevealed={markCompletionRevealed}
       onDone={() => {
         reactRoot?.unmount();
         reactRoot = null;

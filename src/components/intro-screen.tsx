@@ -211,18 +211,21 @@ export type IntroControl = {
   markCompleted?: () => void;
   typingDone?: boolean;
   waitForTypingDone?: () => Promise<void>;
+  waitForCompletionRevealed?: () => Promise<void>;
 };
 
 export function IntroScreen({
   onLaunch,
   onDone,
   onTypingDone,
+  onCompletionRevealed,
   control,
   ready = true,
 }: {
   onLaunch: () => void;
   onDone: () => void;
   onTypingDone?: () => void;
+  onCompletionRevealed?: () => void;
   control?: IntroControl;
   ready?: boolean;
 }) {
@@ -305,6 +308,15 @@ export function IntroScreen({
       onTypingDone?.();
     }
   }, [done, onTypingDone]);
+
+  // The 3D boot sequence starts only once the completion copy/CTA reveal has
+  // settled (or the user leaves the typing phase early), so heavy main-thread
+  // slices never overlap the reveal animation.
+  useEffect(() => {
+    if (phase !== "typing" || completionStage === "ready") {
+      onCompletionRevealed?.();
+    }
+  }, [phase, completionStage, onCompletionRevealed]);
 
   useEffect(() => {
     window.cancelAnimationFrame(completionFrameRef.current);

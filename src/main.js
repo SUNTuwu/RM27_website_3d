@@ -31,7 +31,6 @@ const ASSEMBLE_DURATION = 2.6;
 const SCAN_DURATION = 3.2;
 const DOCUMENT_CANVAS_PARALLAX_RATIO = 0.14;
 const EXPLORE_P1_DELAY_MS = 550;
-const EXPLORE_CLOUD_BOOT_BUDGET_MS = 1_200;
 const DEFERRED_SCENE_LAYER = 1;
 
 function easeInOutCubic(x) {
@@ -57,10 +56,6 @@ function yieldToMainThread() {
     }
     window.requestAnimationFrame(() => window.setTimeout(resolve, 0));
   });
-}
-
-function waitForDelay(delayMs) {
-  return new Promise((resolve) => window.setTimeout(resolve, delayMs));
 }
 
 function trackPromiseState(promise) {
@@ -94,6 +89,19 @@ const hud = createHud();
 let archiveIslandsPromise = null;
 let archiveIslandsMounted = false;
 
+// 照片墙图片逐张在空闲切片里 fetch + decode, 均摊到 3D 阶段, 放大滚动时不再现解码
+function warmZoomGalleryImages(sources) {
+  sources.filter(Boolean).forEach((src) => {
+    scheduleLowPriority(() => {
+      const image = new Image();
+      image.decoding = "async";
+      image.fetchPriority = "low";
+      image.src = src;
+      image.decode?.().catch(() => {});
+    });
+  });
+}
+
 function ensureArchiveIslands() {
   if (!archiveIslandsPromise) {
     archiveIslandsPromise = Promise.all([
@@ -106,6 +114,7 @@ function ensureArchiveIslands() {
         staggerTestimonials.mountStaggerTestimonials();
         glowingChannels.mountGlowingChannels();
         archiveIslandsMounted = true;
+        warmZoomGalleryImages(zoomParallax.ZOOM_IMAGE_SOURCES ?? []);
       })
       .catch((error) => {
         archiveIslandsPromise = null;
@@ -173,6 +182,13 @@ async function boot({
   const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
   const unitSite = document.querySelector("#unit-site");
   const documentIntro = document.querySelector("#zoom-parallax-root") ?? unitSite;
+  // 加载屏进度统一出口: intro CTA 进度条 + 无 intro 时的 HUD loading 屏
+  const reportBootProgress = (ratio, status) => {
+    introControl?.setProgress?.(ratio, status);
+    hud.setLoading(ratio, status);
+  };
+  // 点云属性填充的帧切片回调, 把 50k 点的循环摊到多个任务里
+  const slicePointCloudWork = () => yieldToMainThread();
   const stage = createStage(canvas, VISUAL_CONFIG);
   const freeCamera = stage.freeCamera;
   const exploreFov = Number(VISUAL_CONFIG.explore.cameraFov);
@@ -190,17 +206,21 @@ async function boot({
   const pointBufferPromise =
     pointCloudBufferPromise ??
     fetchPointCloudBuffer(pointCloudUrl, {
-      onProgress: (progress) => hud.setLoading(progress.ratio, progress.url),
+      onProgress: (progress) =>
+        reportBootProgress(0.08 + progress.ratio * 0.32, progress.url),
     });
-  hud.setLoading(0, pointCloudUrl);
+  reportBootProgress(0.08, pointCloudUrl);
   const pointBuffer = await pointBufferPromise;
-  hud.setLoading(1, pointCloudUrl);
-  introControl?.setProgress?.(0.72, "POINT CLOUD RECEIVED");
+  reportBootProgress(0.55, "POINT CLOUD RECEIVED");
   performance.mark?.("enterprize:point-buffer-ready");
   performance.mark?.("enterprize:p0-geometry-start");
+  await yieldToMainThread();
   const pointData = parsePointCloudData(pointBuffer, pointCloudUrl);
-  const cloud = createPointCloudFromData(pointData, VISUAL_CONFIG.pointCloud);
-  introControl?.setProgress?.(0.82, "POINT CLOUD READY");
+  const cloud = await createPointCloudFromData(pointData, {
+    ...VISUAL_CONFIG.pointCloud,
+    sliceYield: slicePointCloudWork,
+  });
+  reportBootProgress(0.62, "POINT CLOUD READY");
   performance.mark?.("enterprize:p0-geometry-created");
   const minX = cloud.bounds.min.x;
   const maxX = cloud.bounds.max.x;
@@ -276,9 +296,8 @@ async function boot({
   let scanRequested = false;
   let remainingExploreCloudsPromise = null;
   let exploreCloudBootState = {
-    budgetMs: EXPLORE_CLOUD_BOOT_BUDGET_MS,
     elapsedMs: 0,
-    budgetExhausted: false,
+    complete: false,
     deferredKeys: [],
   };
 
@@ -450,9 +469,9 @@ async function boot({
             ? await bufferPromise
             : await fetchPointCloudBuffer(entry.pointCloudUrl);
           const pointData = parsePointCloudData(buffer, entry.pointCloudUrl);
-          const modelCloud = createPointCloudFromData(
+          const modelCloud = await createPointCloudFromData(
             pointData,
-            VISUAL_CONFIG.pointCloud,
+            { ...VISUAL_CONFIG.pointCloud, sliceYield: slicePointCloudWork },
           );
           normalizeExploreCloud(modelCloud, entry.key);
           entry.cloud = modelCloud;
@@ -480,9 +499,10 @@ async function boot({
         );
       }
       configureProjectAsset(entry.key, gltf);
-      const modelCloud = createPointCloud(gltf.scene, {
+      const modelCloud = await createPointCloud(gltf.scene, {
         ...VISUAL_CONFIG.pointCloud,
         recenter: true,
+        sliceYield: slicePointCloudWork,
       });
       normalizeExploreCloud(modelCloud, entry.key);
       entry.cloud = modelCloud;
@@ -497,27 +517,33 @@ async function boot({
 
   async function prepareExploreCloudsForLaunch() {
     const startedAt = performance.now();
-    const deadline = startedAt + EXPLORE_CLOUD_BOOT_BUDGET_MS;
     const pending = new Set(exploreModels.slice(1));
+    const total = pending.size;
+    let built = 0;
 
-    while (pending.size > 0 && performance.now() < deadline) {
+    // 加载屏内把全部 EXPLORE 点云构建完: 宁可多等, 不让 EXPLORE 阶段再承担构建长任务
+    while (pending.size > 0) {
       let settledEntryHandled = false;
       for (const entry of [...pending]) {
         const bufferState = entry.pointCloudBufferState;
         if (bufferState?.status === "rejected") {
           pending.delete(entry);
           settledEntryHandled = true;
+          built += 1;
           console.warn(
             `[ENTERPRIZE] ${entry.key} EXPLORE point prefetch failed`,
             bufferState.error,
           );
           continue;
         }
-        if (!bufferState || bufferState.status !== "fulfilled") continue;
-        if (performance.now() >= deadline) break;
+        if (bufferState && bufferState.status !== "fulfilled") continue;
 
         pending.delete(entry);
         settledEntryHandled = true;
+        reportBootProgress(
+          0.64 + (built / Math.max(total, 1)) * 0.12,
+          `BUILDING ${entry.key.toUpperCase()} CLOUD`,
+        );
         await yieldToMainThread();
         try {
           await ensureExploreCloud(entry, { allowModelFallback: false });
@@ -530,9 +556,10 @@ async function boot({
             error,
           );
         }
+        built += 1;
       }
 
-      if (pending.size === 0 || performance.now() >= deadline) break;
+      if (pending.size === 0) break;
       if (!settledEntryHandled) {
         const pendingSettlements = [...pending]
           .map((entry) => entry.pointCloudBufferState?.promise)
@@ -542,23 +569,17 @@ async function boot({
             () => undefined,
           ));
         if (pendingSettlements.length === 0) break;
-        await Promise.race([
-          ...pendingSettlements,
-          waitForDelay(Math.max(deadline - performance.now(), 0)),
-        ]);
+        await Promise.race(pendingSettlements);
       }
     }
 
-    const deferredKeys = exploreModels
-      .slice(1)
-      .filter((entry) => !entry.cloud)
-      .map((entry) => entry.key);
     exploreCloudBootState = {
-      budgetMs: EXPLORE_CLOUD_BOOT_BUDGET_MS,
       elapsedMs: performance.now() - startedAt,
-      budgetExhausted:
-        deferredKeys.length > 0 && performance.now() >= deadline,
-      deferredKeys,
+      complete: true,
+      deferredKeys: exploreModels
+        .slice(1)
+        .filter((entry) => !entry.cloud)
+        .map((entry) => entry.key),
     };
   }
 
@@ -603,6 +624,41 @@ async function boot({
       }
     })();
     return remainingExploreCloudsPromise;
+  }
+
+  // One offscreen 1x1 draw with every EXPLORE cloud visible: uploads each
+  // point buffer to the GPU during the loading screen instead of mid-switch.
+  function warmExploreCloudBuffers() {
+    const builtClouds = exploreModels
+      .map((entry) => entry.cloud)
+      .filter(Boolean);
+    if (builtClouds.length === 0) {
+      return;
+    }
+    const renderer = stage.renderer;
+    const warmTarget = new THREE.WebGLRenderTarget(1, 1, {
+      depthBuffer: false,
+      stencilBuffer: false,
+    });
+    const previousVisibility = new Map(
+      builtClouds.map((modelCloud) => [modelCloud.points, modelCloud.points.visible]),
+    );
+    const previousTarget = renderer.getRenderTarget();
+    try {
+      renderer.initRenderTarget(warmTarget);
+      builtClouds.forEach((modelCloud) => {
+        modelCloud.points.visible = true;
+      });
+      renderer.setRenderTarget(warmTarget);
+      renderer.clear();
+      renderer.render(stage.scene, freeCamera);
+    } finally {
+      renderer.setRenderTarget(previousTarget);
+      previousVisibility.forEach((visible, points) => {
+        points.visible = visible;
+      });
+      warmTarget.dispose();
+    }
   }
 
   function startExploreTransition(outgoing, incoming, requestId) {
@@ -940,24 +996,27 @@ async function boot({
     }
   }
 
-  function prepareDeferredAssets() {
+  function prepareDeferredAssets({ onPhase } = {}) {
     if (deferredAssetsPromise) {
       return deferredAssetsPromise;
     }
 
     performance.mark?.("enterprize:p1-start");
     deferredAssetsPromise = (async () => {
+      onPhase?.("fetch", 0);
       const assetLoadConcurrency = isCoarsePointer ? 1 : 2;
       const scanCore = await assetLoader.loadMany(["arena", "timeline"], {
         concurrency: assetLoadConcurrency,
       });
       performance.mark?.("enterprize:p1-scan-core-loaded");
+      onPhase?.("fetch", 0.5);
       await yieldToMainThread();
       const squadAssets = await assetLoader.loadMany(
         ["hero", "engineer", "infantry", "sentry"],
         { concurrency: assetLoadConcurrency },
       );
       performance.mark?.("enterprize:p1-squad-loaded");
+      onPhase?.("fetch", 1);
       const loaded = { ...scanCore, ...squadAssets };
       arenaInstance = await runDeferredPhase(
         "arena-symmetry",
@@ -969,6 +1028,7 @@ async function boot({
       loaded.arena = arenaInstance.asset;
       simplifyTimelineHitMaterial(loaded.timeline);
       Object.assign(stagedAssets, loaded);
+      onPhase?.("configure");
       report = await runDeferredPhase("asset-audit", () =>
         auditProjectAssets(stagedAssets, {
           required: [
@@ -1177,6 +1237,7 @@ async function boot({
         { name: "squad-blue", root: robotSquadInstance.teamRoots.blue },
         { name: "squad-red", root: robotSquadInstance.teamRoots.red },
       ]);
+      onPhase?.("warm");
       performance.mark?.("enterprize:p1-compile-start");
       await warmDeferredRoots(deferredWarmEntries);
       performance.mark?.("enterprize:p1-compile-end");
@@ -2751,14 +2812,50 @@ async function boot({
 
   // ---------- 入场: 起始界面 -> 星线跃迁 -> ASSEMBLE ----------
   // P0 只预热首屏点云、装饰环与星空；完整 PBR 场景在后台单独预热。
-  introControl?.setProgress?.(0.88, "PREPARING EXPLORE CLOUDS");
+  // All heavy work finishes inside the loading screen: build every EXPLORE
+  // cloud, load and warm the P1 battlefield assets, pre-mount the 2D archive
+  // islands. Longer load is intentional; EXPLORE keeps no leftover tasks.
+  reportBootProgress(0.64, "PREPARING EXPLORE CLOUDS");
   performance.mark?.("enterprize:explore-clouds-build-start");
+  // Kick the P1 battlefield pipeline first so glTF fetches overlap the
+  // point-cloud builds; both finish behind the loading screen.
+  const deferredPhasePromise = prepareDeferredAssets({
+    onPhase: (phase, ratio = 0) => {
+      if (phase === "fetch") {
+        reportBootProgress(0.78 + ratio * 0.07, "LOADING ARENA ASSETS");
+      } else if (phase === "configure") {
+        reportBootProgress(0.86, "CONFIGURING BATTLEFIELD");
+      } else if (phase === "warm") {
+        reportBootProgress(0.9, "COMPILING SHADERS");
+      }
+    },
+  });
+  // The phase promise is awaited after the cloud builds; attach a handler now
+  // so an early P1 failure never surfaces as an unhandled rejection.
+  void deferredPhasePromise.catch(() => {});
   await prepareExploreCloudsForLaunch();
   performance.mark?.("enterprize:explore-clouds-build-end");
-  introControl?.setProgress?.(0.92, "COMPILING ARENA");
+  await deferredPhasePromise;
+
+  // Upload every EXPLORE cloud buffer to the GPU behind the loading screen so
+  // the first model switch never pays the upload cost mid-transition.
+  reportBootProgress(0.92, "WARMING POINT BUFFERS");
+  await yieldToMainThread();
+  warmExploreCloudBuffers();
+
+  // Mount the 2D archive islands early and decode the photo-wall images in
+  // idle slices, keeping the zoom scrub free of mount/decode hitches.
+  reportBootProgress(0.94, "PREPARING ARCHIVE");
+  await yieldToMainThread();
+  await ensureArchiveIslands().catch((error) => {
+    console.error("[ENTERPRIZE] Archive islands preparation failed", error);
+  });
+
+  await yieldToMainThread();
+  reportBootProgress(0.96, "COMPILING ARENA");
   await stage.renderer.compileAsync(stage.scene, freeCamera);
   stage.render(freeCamera, 0);
-  introControl?.setProgress?.(1, "ARENA READY");
+  reportBootProgress(1, "ARENA READY");
   performance.mark?.("enterprize:p0-ready");
 
   hud.finishLoading();

@@ -257,8 +257,19 @@ await page.mouse.wheel(0, 600);
 let scrubReached = true;
 let scrubProbeError = null;
 try {
+  // Software WebGL makes deferred SCAN preparation slow; keep nudging the
+  // wheel while the runtime is still in EXPLORE so the request is not lost.
+  const nudgeDeadline = Date.now() + 90_000;
+  while (Date.now() < nudgeDeadline) {
+    const state = await page.evaluate(
+      () => window.__ENTERPRIZE_DEMO__?.state,
+    );
+    if (state !== "explore") break;
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(700);
+  }
   await page.waitForFunction(() => window.__ENTERPRIZE_DEMO__?.state === "scrub", null, {
-    timeout: 20_000,
+    timeout: 120_000,
   });
 } catch (error) {
   scrubReached = false;

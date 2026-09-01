@@ -27,6 +27,12 @@ const ENTERPRIZE_IMAGES: readonly ZoomParallaxImage[] = [
   { src: "/assets/images/zoom/6.webp", alt: "RoboMaster 赛事签名留言墙" },
 ] as const;
 
+// 3D 阶段预解码用的照片墙图源清单 (main.js 在加载屏内 warm)
+export const ENTERPRIZE_ZOOM_IMAGE_SOURCES: readonly string[] =
+  ENTERPRIZE_IMAGES.map((image) =>
+    typeof image === "string" ? image : image.src,
+  );
+
 const ENTERPRIZE_LAYOUT: readonly ZoomParallaxSlot[] = [
   {
     x: "0vw",
