@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-31T09:43:34.956Z",
+  "generatedAt": "2026-09-07T08:17:02.345Z",
   "github": {
-    "totalTrackedStars": 394,
+    "totalTrackedStars": 400,
     "repositories": {
       "RM2023-SuperCapacitor": {
         "stars": 80,
@@ -12,17 +12,17 @@
         "sourceUrl": "https://github.com/hkustenterprize/RM2023-SuperCapacitor"
       },
       "RM2024-SuperCapacitorController": {
-        "stars": 68,
-        "forks": 13,
+        "stars": 69,
+        "forks": 14,
         "archived": false,
-        "updatedAt": "2026-08-21T14:31:37Z",
+        "updatedAt": "2026-09-06T05:32:18Z",
         "sourceUrl": "https://github.com/hkustenterprize/RM2024-SuperCapacitorController"
       },
       "RM2024-PowerModule": {
-        "stars": 78,
+        "stars": 81,
         "forks": 12,
         "archived": false,
-        "updatedAt": "2026-08-29T07:50:54Z",
+        "updatedAt": "2026-09-05T10:03:47Z",
         "sourceUrl": "https://github.com/hkustenterprize/RM2024-PowerModule"
       },
       "RM2025-Super-Capacitor-Array": {
@@ -33,10 +33,10 @@
         "sourceUrl": "https://github.com/hkustenterprize/RM2025-Super-Capacitor-Array"
       },
       "RM2025-PowerControlBoard-WirelessCharging": {
-        "stars": 17,
+        "stars": 18,
         "forks": 4,
         "archived": false,
-        "updatedAt": "2026-08-13T14:58:18Z",
+        "updatedAt": "2026-09-04T07:46:51Z",
         "sourceUrl": "https://github.com/hkustenterprize/RM2025-PowerControlBoard-WirelessCharging"
       },
       "RM2025-Radar-Algorithm": {
@@ -89,10 +89,10 @@
         "sourceUrl": "https://github.com/hkustenterprize/RM2025-Ethernet-Switch"
       },
       "RM2025-Portable-Armor": {
-        "stars": 11,
+        "stars": 12,
         "forks": 3,
         "archived": false,
-        "updatedAt": "2026-08-30T14:00:43Z",
+        "updatedAt": "2026-09-02T08:39:22Z",
         "sourceUrl": "https://github.com/hkustenterprize/RM2025-Portable-Armor"
       },
       "RM2024-SerialDriver-STM32": {
@@ -110,197 +110,197 @@
       "articleId": 54254,
       "citations": 7,
       "references": 32,
-      "views": 22764,
+      "views": 23108,
       "approvals": 89,
       "comments": 10,
-      "observedAt": "2026-08-31T09:43:16.764Z"
+      "observedAt": "2026-09-07T08:16:35.072Z"
     },
     "projects": {
       "4812": {
         "sourceUrl": "https://bbs.robomaster.com/article/4812",
         "articleId": 4812,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:17.437Z"
+        "observedAt": "2026-09-07T08:16:35.749Z"
       },
       "9452": {
         "sourceUrl": "https://bbs.robomaster.com/article/9452",
         "articleId": 9452,
         "citations": 4,
-        "observedAt": "2026-08-31T09:43:17.982Z"
+        "observedAt": "2026-09-07T08:16:37.745Z"
       },
       "9656": {
         "sourceUrl": "https://bbs.robomaster.com/article/9656",
         "articleId": 9656,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:32.979Z"
+        "observedAt": "2026-09-07T08:16:59.540Z"
       },
       "20424": {
         "sourceUrl": "https://bbs.robomaster.com/article/20424",
         "articleId": 20424,
         "citations": 13,
-        "observedAt": "2026-08-31T09:43:23.461Z"
+        "observedAt": "2026-09-07T08:16:47.111Z"
       },
       "48014": {
         "sourceUrl": "https://bbs.robomaster.com/article/48014",
         "articleId": 48014,
         "citations": 8,
-        "observedAt": "2026-08-31T09:43:22.466Z"
+        "observedAt": "2026-09-07T08:16:45.717Z"
       },
       "53682": {
         "sourceUrl": "https://bbs.robomaster.com/article/53682",
         "articleId": 53682,
         "citations": 4,
-        "observedAt": "2026-08-31T09:43:28.390Z"
+        "observedAt": "2026-09-07T08:16:54.153Z"
       },
       "54086": {
         "sourceUrl": "https://bbs.robomaster.com/article/54086",
         "articleId": 54086,
         "citations": 5,
-        "observedAt": "2026-08-31T09:43:26.902Z"
+        "observedAt": "2026-09-07T08:16:52.506Z"
       },
       "54087": {
         "sourceUrl": "https://bbs.robomaster.com/article/54087",
         "articleId": 54087,
         "citations": 1,
-        "observedAt": "2026-08-31T09:43:33.559Z"
+        "observedAt": "2026-09-07T08:17:01.097Z"
       },
       "54121": {
         "sourceUrl": "https://bbs.robomaster.com/article/54121",
         "articleId": 54121,
         "citations": 25,
-        "observedAt": "2026-08-31T09:43:19.182Z"
+        "observedAt": "2026-09-07T08:16:39.147Z"
       },
       "54127": {
         "sourceUrl": "https://bbs.robomaster.com/article/54127",
         "articleId": 54127,
         "citations": 17,
-        "observedAt": "2026-08-31T09:43:18.655Z"
+        "observedAt": "2026-09-07T08:16:38.478Z"
       },
       "54153": {
         "sourceUrl": "https://bbs.robomaster.com/article/54153",
         "articleId": 54153,
         "citations": 4,
-        "observedAt": "2026-08-31T09:43:25.128Z"
+        "observedAt": "2026-09-07T08:16:49.178Z"
       },
       "54198": {
         "sourceUrl": "https://bbs.robomaster.com/article/54198",
         "articleId": 54198,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:34.471Z"
+        "observedAt": "2026-09-07T08:17:01.723Z"
       },
       "55593": {
         "sourceUrl": "https://bbs.robomaster.com/article/55593",
         "articleId": 55593,
         "citations": 20,
-        "observedAt": "2026-08-31T09:43:27.485Z"
+        "observedAt": "2026-09-07T08:16:53.257Z"
       },
       "95847": {
         "sourceUrl": "https://bbs.robomaster.com/article/95847",
         "articleId": 95847,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:34.956Z"
+        "observedAt": "2026-09-07T08:17:02.345Z"
       },
       "714430": {
         "sourceUrl": "https://bbs.robomaster.com/article/714430",
         "articleId": 714430,
         "citations": 4,
-        "observedAt": "2026-08-31T09:43:21.291Z"
+        "observedAt": "2026-09-07T08:16:43.790Z"
       },
       "760947": {
         "sourceUrl": "https://bbs.robomaster.com/article/760947",
         "articleId": 760947,
         "citations": 3,
-        "observedAt": "2026-08-31T09:43:31.989Z"
+        "observedAt": "2026-09-07T08:16:58.190Z"
       },
       "760956": {
         "sourceUrl": "https://bbs.robomaster.com/article/760956",
         "articleId": 760956,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:31.489Z"
+        "observedAt": "2026-09-07T08:16:57.521Z"
       },
       "760959": {
         "sourceUrl": "https://bbs.robomaster.com/article/760959",
         "articleId": 760959,
         "citations": 8,
-        "observedAt": "2026-08-31T09:43:19.706Z"
+        "observedAt": "2026-09-07T08:16:40.866Z"
       },
       "760961": {
         "sourceUrl": "https://bbs.robomaster.com/article/760961",
         "articleId": 760961,
         "citations": 1,
-        "observedAt": "2026-08-31T09:43:20.800Z"
+        "observedAt": "2026-09-07T08:16:42.335Z"
       },
       "760965": {
         "sourceUrl": "https://bbs.robomaster.com/article/760965",
         "articleId": 760965,
         "citations": 3,
-        "observedAt": "2026-08-31T09:43:28.895Z"
+        "observedAt": "2026-09-07T08:16:54.839Z"
       },
       "760967": {
         "sourceUrl": "https://bbs.robomaster.com/article/760967",
         "articleId": 760967,
         "citations": 1,
-        "observedAt": "2026-08-31T09:43:29.871Z"
+        "observedAt": "2026-09-07T08:16:55.509Z"
       },
       "760969": {
         "sourceUrl": "https://bbs.robomaster.com/article/760969",
         "articleId": 760969,
         "citations": 3,
-        "observedAt": "2026-08-31T09:43:25.728Z"
+        "observedAt": "2026-09-07T08:16:49.822Z"
       },
       "761138": {
         "sourceUrl": "https://bbs.robomaster.com/article/761138",
         "articleId": 761138,
         "citations": 18,
-        "observedAt": "2026-08-31T09:43:21.858Z"
+        "observedAt": "2026-09-07T08:16:45.119Z"
       },
       "761377": {
         "sourceUrl": "https://bbs.robomaster.com/article/761377",
         "articleId": 761377,
         "citations": 7,
-        "observedAt": "2026-08-31T09:43:26.310Z"
+        "observedAt": "2026-09-07T08:16:50.665Z"
       },
       "761385": {
         "sourceUrl": "https://bbs.robomaster.com/article/761385",
         "articleId": 761385,
         "citations": 28,
-        "observedAt": "2026-08-31T09:43:20.263Z"
+        "observedAt": "2026-09-07T08:16:41.603Z"
       },
       "764738": {
         "sourceUrl": "https://bbs.robomaster.com/article/764738",
         "articleId": 764738,
         "citations": 10,
-        "observedAt": "2026-08-31T09:43:23.953Z"
+        "observedAt": "2026-09-07T08:16:47.876Z"
       },
       "765552": {
         "sourceUrl": "https://bbs.robomaster.com/article/765552",
         "articleId": 765552,
         "citations": 1,
-        "observedAt": "2026-08-31T09:43:32.460Z"
+        "observedAt": "2026-09-07T08:16:58.980Z"
       },
       "766927": {
         "sourceUrl": "https://bbs.robomaster.com/article/766927",
         "articleId": 766927,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:24.534Z"
+        "observedAt": "2026-09-07T08:16:48.541Z"
       },
       "779451": {
         "sourceUrl": "https://bbs.robomaster.com/article/779451",
         "articleId": 779451,
         "citations": 2,
-        "observedAt": "2026-08-31T09:43:30.413Z"
+        "observedAt": "2026-09-07T08:16:56.313Z"
       },
       "803683": {
         "sourceUrl": "https://bbs.robomaster.com/article/803683",
         "articleId": 803683,
         "citations": 1,
-        "observedAt": "2026-08-31T09:43:30.910Z"
+        "observedAt": "2026-09-07T08:16:56.869Z"
       },
       "803685": {
         "sourceUrl": "https://bbs.robomaster.com/article/803685",
         "articleId": 803685,
         "citations": 15,
-        "observedAt": "2026-08-31T09:43:22.975Z"
+        "observedAt": "2026-09-07T08:16:46.303Z"
       }
     }
   },
